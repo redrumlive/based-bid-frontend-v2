@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
 import { createPortal } from 'react-dom';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
   BriefcaseBusiness,
   Check,
@@ -93,6 +94,7 @@ const RP = [0.01, 0.1, 1, 5] as const;
 const RWA_DISTRIBUTION_MODES = ['rotating', 'all'] as const;
 const REWARD_GAS_PAYERS = ['project', 'user'] as const;
 const TRIGGER_PRESETS = [0.01, 0.05, 0.1, 0.25] as const;
+const CONTROL_REVEAL_TRANSITION = { duration: 0.24, ease: [0.22, 1, 0.36, 1] as const };
 const PRESETS: Array<{ key: PresetKey; label: string; mobileLabel: string; hint: string }> = [
   { key: 'rewards', label: 'Rewards', mobileLabel: 'Rewards', hint: 'Prioritize holder rewards.' },
   { key: 'creator', label: 'Creator-led', mobileLabel: 'Creator', hint: 'Maximize creator revenue.' },
@@ -904,8 +906,19 @@ function RewardBasketSelector({ value, onChange, distributionMode, weights, pinn
                   <span className='block truncate text-[8.5px] leading-3.5 sm:text-[9.5px]' style={{ color: active ? rgba(accent, 0.76) : 'rgba(244,249,246,0.48)' }}>{asset.name}</span>
                 </span>
               </span>
+              <AnimatePresence initial={false} mode='popLayout'>
               {active && showWeights ? (
-                <div className='relative z-10 inline-flex shrink-0 items-center gap-0.5' onClick={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()}>
+                <motion.div
+                  key='allocation'
+                  layout
+                  initial={{ opacity: 0, x: 5, scale: 0.96, filter: 'blur(2px)' }}
+                  animate={{ opacity: 1, x: 0, scale: 1, filter: 'blur(0px)' }}
+                  exit={{ opacity: 0, x: 3, scale: 0.97, filter: 'blur(2px)' }}
+                  transition={CONTROL_REVEAL_TRANSITION}
+                  className='relative z-10 inline-flex shrink-0 items-center gap-0.5'
+                  onClick={(event) => event.stopPropagation()}
+                  onPointerDown={(event) => event.stopPropagation()}
+                >
                   <button
                     type='button'
                     disabled={disabled || weight <= 0.1}
@@ -962,12 +975,22 @@ function RewardBasketSelector({ value, onChange, distributionMode, weights, pinn
                   >
                     <Plus size={10.5} strokeWidth={2.4} />
                   </button>
-                </div>
+                </motion.div>
               ) : (
-                <span className='pointer-events-none relative z-[1] inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border transition' style={{ color: active ? '#07100C' : 'transparent', background: active ? accent : 'rgba(244,249,246,0.025)', borderColor: active ? accent : 'rgba(244,249,246,0.10)' }}>
+                <motion.span
+                  key='selection'
+                  layout
+                  initial={{ opacity: 0, scale: 0.82 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.82 }}
+                  transition={CONTROL_REVEAL_TRANSITION}
+                  className='pointer-events-none relative z-[1] inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border transition'
+                  style={{ color: active ? '#07100C' : 'transparent', background: active ? accent : 'rgba(244,249,246,0.025)', borderColor: active ? accent : 'rgba(244,249,246,0.10)' }}
+                >
                   <Check size={9.5} strokeWidth={2.5} />
-                </span>
+                </motion.span>
               )}
+              </AnimatePresence>
             </div>
           );
         })}
@@ -1287,22 +1310,44 @@ function Row({ fee, chain, max, disabled, dragging, ghost, patch, setPct, remove
             format={(n) => `${n}%`}
             helperText={<>Wallets holding at least <span className='font-semibold text-white/86'>{fee.rewardThresholdPct ?? 0.1}%</span> of total supply receive the selected rewards.</>}
           />
-          <div className='grid min-w-0 grid-cols-2 items-center gap-2 sm:flex sm:flex-nowrap sm:justify-end sm:gap-4'>
-            {rwaAssets.length >= 2 ? (
-              <RwaDistributionModeControl
-                disabled={disabled}
-                value={rwaDistributionMode}
-                onChange={(mode) => patch(fee.id, { rwaDistributionMode: mode, ...(mode === 'all' ? { rwaAssetWeights } : {}) })}
-              />
-            ) : null}
-            {rwaAssets.length >= 2 && rwaDistributionMode === 'all' ? (
-              <RewardGasPayerControl
-                disabled={disabled}
-                value={rewardGasPayer}
-                onChange={(payer) => patch(fee.id, { rewardGasPayer: payer })}
-              />
-            ) : null}
-          </div>
+          <motion.div layout className='grid min-w-0 grid-cols-2 items-center gap-2 sm:flex sm:flex-nowrap sm:justify-end sm:gap-4' transition={CONTROL_REVEAL_TRANSITION}>
+            <AnimatePresence initial={false} mode='popLayout'>
+              {rwaAssets.length >= 2 ? (
+                <motion.div
+                  key='basket-mode'
+                  layout
+                  initial={{ opacity: 0, x: 6, scale: 0.97, filter: 'blur(2px)' }}
+                  animate={{ opacity: 1, x: 0, scale: 1, filter: 'blur(0px)' }}
+                  exit={{ opacity: 0, x: 4, scale: 0.97, filter: 'blur(2px)' }}
+                  transition={CONTROL_REVEAL_TRANSITION}
+                  className='min-w-0'
+                >
+                  <RwaDistributionModeControl
+                    disabled={disabled}
+                    value={rwaDistributionMode}
+                    onChange={(mode) => patch(fee.id, { rwaDistributionMode: mode, ...(mode === 'all' ? { rwaAssetWeights } : {}) })}
+                  />
+                </motion.div>
+              ) : null}
+              {rwaAssets.length >= 2 && rwaDistributionMode === 'all' ? (
+                <motion.div
+                  key='gas-payer'
+                  layout
+                  initial={{ opacity: 0, x: 8, scale: 0.96, filter: 'blur(3px)' }}
+                  animate={{ opacity: 1, x: 0, scale: 1, filter: 'blur(0px)' }}
+                  exit={{ opacity: 0, x: 6, scale: 0.96, filter: 'blur(3px)' }}
+                  transition={CONTROL_REVEAL_TRANSITION}
+                  className='min-w-0'
+                >
+                  <RewardGasPayerControl
+                    disabled={disabled}
+                    value={rewardGasPayer}
+                    onChange={(payer) => patch(fee.id, { rewardGasPayer: payer })}
+                  />
+                </motion.div>
+              ) : null}
+            </AnimatePresence>
+          </motion.div>
         </div>
       ) : null}
     </div>

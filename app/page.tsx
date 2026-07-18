@@ -325,19 +325,33 @@ const GLOBAL_CSS = `
   opacity: 0.86;
 }
 
+@property --bb-create-edge-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
 .bb-create-launch__edge::before {
   content: "";
   position: absolute;
   inset: 0;
   border-radius: inherit;
   padding: 2px;
-  background: var(--bb-create-spectrum);
-  background-size: 145% 100%;
-  background-position: 50% 50%;
+  background: conic-gradient(
+    from var(--bb-create-edge-angle),
+    transparent 0deg 70deg,
+    rgba(29, 217, 148, 0.16) 92deg,
+    var(--bb-green) 124deg,
+    #dfb858 160deg,
+    var(--bb-red) 196deg,
+    rgba(29, 217, 148, 0.12) 228deg,
+    transparent 254deg 360deg
+  );
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
-  animation: bbCreateGlowFlow 5.2s ease-in-out infinite;
+  animation: bbCreateEdgeOrbit 4.4s linear infinite;
+  will-change: background;
 }
 
 .bb-create-launch__wash {
@@ -365,23 +379,21 @@ const GLOBAL_CSS = `
 }
 
 .bb-create-launch:hover .bb-create-launch__edge { opacity: 0.92; }
-.bb-create-launch:hover .bb-create-launch__edge::before { animation-duration: 2.8s; }
+.bb-create-launch:hover .bb-create-launch__edge::before { animation-duration: 2.6s; }
 
 .bb-create-launch__plus {
-  filter: drop-shadow(0 0 7px rgba(255, 255, 255, 0.16));
   transform-origin: center;
-  transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1), color 220ms ease, filter 220ms ease;
+  shape-rendering: geometricPrecision;
+  transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1), color 220ms ease, opacity 220ms ease;
 }
 
 .bb-create-launch:hover .bb-create-launch__plus {
   color: rgba(255, 255, 255, 1);
-  filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.4));
   transform: rotate(90deg) scale(1.14);
 }
 
-@keyframes bbCreateGlowFlow {
-  0%, 100% { background-position: 42% 50%; }
-  50% { background-position: 58% 50%; }
+@keyframes bbCreateEdgeOrbit {
+  to { --bb-create-edge-angle: 360deg; }
 }
 
 @keyframes bbCreateBottomFlow {
@@ -1196,18 +1208,19 @@ function MiniTokenChart({ card, idle = false }: { card: TokenCardData; idle?: bo
   const id = React.useId().replace(/:/g, "");
   const isUp = card.change >= 0;
   const variant = card.chartVariant ?? 0;
+  const chartEndX = 411;
   const variants = isUp
     ? [
-        "M0 62 C42 62 54 61 78 54 C104 46 122 48 146 41 C172 33 190 35 216 28 C250 19 274 25 302 17 C338 7 376 12 420 4",
-        "M0 60 C38 60 54 58 82 59 C112 60 134 49 164 43 C192 37 218 42 246 34 C278 25 306 28 338 17 C370 8 399 9 420 5",
-        "M0 62 C44 62 65 61 92 54 C120 47 146 40 172 43 C202 46 224 34 252 29 C282 24 306 22 334 14 C366 6 394 10 420 4",
+        `M0 62 C42 62 54 61 78 54 C104 46 122 48 146 41 C172 33 190 35 216 28 C250 19 274 25 302 17 C338 7 376 12 ${chartEndX} 4`,
+        `M0 60 C38 60 54 58 82 59 C112 60 134 49 164 43 C192 37 218 42 246 34 C278 25 306 28 338 17 C370 8 399 9 ${chartEndX} 5`,
+        `M0 62 C44 62 65 61 92 54 C120 47 146 40 172 43 C202 46 224 34 252 29 C282 24 306 22 334 14 C366 6 394 10 ${chartEndX} 4`,
       ]
     : [
-        "M0 13 C46 16 72 21 104 29 C138 38 168 45 198 42 C230 39 252 49 282 54 C320 60 368 60 420 64",
-        "M0 10 C38 13 72 25 104 28 C138 31 164 43 198 46 C230 49 256 46 286 56 C324 66 370 62 420 65",
-        "M0 15 C44 18 74 20 108 34 C142 48 170 44 204 50 C240 57 264 53 298 60 C340 67 380 64 420 66",
+        `M0 13 C46 16 72 21 104 29 C138 38 168 45 198 42 C230 39 252 49 282 54 C320 60 368 60 ${chartEndX} 64`,
+        `M0 10 C38 13 72 25 104 28 C138 31 164 43 198 46 C230 49 256 46 286 56 C324 66 370 62 ${chartEndX} 65`,
+        `M0 15 C44 18 74 20 108 34 C142 48 170 44 204 50 C240 57 264 53 298 60 C340 67 380 64 ${chartEndX} 66`,
       ];
-  const d = idle ? "M0 52 C92 52 148 52 214 52 C286 52 356 52 420 52" : variants[variant];
+  const d = idle ? `M0 52 C92 52 148 52 214 52 C286 52 356 52 ${chartEndX} 52` : variants[variant];
   const line = idle ? "rgba(74,222,128,0.38)" : isUp ? "#4ade80" : "#ff3771";
   const fillStrong = idle ? "rgba(52,211,153,0.06)" : isUp ? "rgba(52,211,153,0.19)" : "rgba(255,55,113,0.16)";
   const fillMid = idle ? "rgba(52,211,153,0.025)" : isUp ? "rgba(52,211,153,0.085)" : "rgba(255,55,113,0.07)";
@@ -1219,7 +1232,7 @@ function MiniTokenChart({ card, idle = false }: { card: TokenCardData; idle?: bo
   const areaD = `${d} L424 ${areaEndY} L424 ${chartHeight + 4} L-4 ${chartHeight + 4} L-4 104 Z`;
 
   return (
-    <div className="relative mt-1 h-[84px] w-[calc(100%+28px)] -mx-3.5">
+    <div className="relative -mx-5 mt-1 h-[84px] w-[calc(100%+40px)]">
       <div className="absolute inset-0">
         <svg viewBox={`0 0 420 ${chartHeight}`} preserveAspectRatio="none" className="block h-full w-full shrink-0" aria-hidden="true">
           <defs>
@@ -1229,13 +1242,20 @@ function MiniTokenChart({ card, idle = false }: { card: TokenCardData; idle?: bo
               <stop offset="74%" stopColor={fillSoft} />
               <stop offset="100%" stopColor={fillTail} />
             </linearGradient>
+            <linearGradient id={`card-edge-fade-${id}`} gradientUnits="userSpaceOnUse" x1="390" y1="0" x2="414" y2="0">
+              <stop offset="0%" stopColor="white" stopOpacity="1" />
+              <stop offset="100%" stopColor="white" stopOpacity="0" />
+            </linearGradient>
+            <mask id={`card-edge-mask-${id}`} maskUnits="userSpaceOnUse" x="-4" y="-16" width="418" height={chartHeight + 32}>
+              <rect x="-4" y="-16" width="418" height={chartHeight + 32} fill={`url(#card-edge-fade-${id})`} />
+            </mask>
             <filter id={`card-glow-wide-${id}`} x="-8%" y="-70%" width="116%" height="190%"><feGaussianBlur stdDeviation="4" /></filter>
             <filter id={`card-glow-${id}`} x="-5%" y="-50%" width="110%" height="160%"><feGaussianBlur stdDeviation="2.4" /></filter>
           </defs>
-          <path d={areaD} fill={`url(#card-fill-${id})`} />
-          <path d={d} fill="none" stroke={line} strokeWidth="11" strokeLinecap="round" strokeLinejoin="round" opacity="0.1" filter={`url(#card-glow-wide-${id})`} />
-          <path d={d} fill="none" stroke={line} strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" opacity="0.22" filter={`url(#card-glow-${id})`} />
-          <path d={d} fill="none" stroke={line} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ filter: `drop-shadow(0 0 4px ${isUp ? "rgba(52,211,153,0.22)" : "rgba(255,55,113,0.2)"})` }} />
+          <path d={areaD} fill={`url(#card-fill-${id})`} mask={`url(#card-edge-mask-${id})`} />
+          <path d={d} fill="none" stroke={line} strokeWidth="11" strokeLinecap="round" strokeLinejoin="round" opacity="0.1" filter={`url(#card-glow-wide-${id})`} mask={`url(#card-edge-mask-${id})`} />
+          <path d={d} fill="none" stroke={line} strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" opacity="0.22" filter={`url(#card-glow-${id})`} mask={`url(#card-edge-mask-${id})`} />
+          <path d={d} fill="none" stroke={line} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </div>
       {!idle ? (
@@ -1243,7 +1263,7 @@ function MiniTokenChart({ card, idle = false }: { card: TokenCardData; idle?: bo
           aria-hidden="true"
           className="bb-chart-endpoint pointer-events-none absolute z-[2] h-[6px] w-[6px] rounded-full"
           style={{
-            right: "0px",
+            right: "6px",
             top: `calc(${(endY / chartHeight) * 100}% - 3px)`,
             backgroundColor: line,
             boxShadow: `0 0 8px ${isUp ? "rgba(52,211,153,0.46)" : "rgba(255,55,113,0.4)"}`,
@@ -1698,7 +1718,9 @@ function DropdownMotion({ children, direction, className, id }: { children: Reac
 function CreatorPayoutStat() {
   return (
     <div className="group inline-flex h-8 items-center gap-2.5" data-ui-hint="Lifetime creator payouts" data-ui-hint-side="bottom">
-      <HandCoins className="h-[15px] w-[15px] text-[#4ade80]/76 transition-colors group-hover:text-[#4ade80]" strokeWidth={1.8} />
+      <span className="relative -my-1 h-8 w-6 shrink-0 overflow-visible" aria-hidden="true">
+        <Image unoptimized src="/based-bid-coin-payout-animated.svg" alt="" width={36} height={24} className="absolute left-0 top-1 h-6 w-9 max-w-none object-contain" />
+      </span>
       <span className="inline-flex items-baseline gap-1.5 whitespace-nowrap">
         <span className="text-[14px] font-semibold tabular-nums tracking-[-0.025em] text-[#4ade80]">$2.84M</span>
         <span className="text-[11px] font-medium tracking-[-0.01em] text-white/48">paid to creators</span>
