@@ -1,0 +1,151 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  background: #0a0a0a;
+  color: #ffffff;
+}
+
+body {
+  min-height: 100vh;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+section.mt-8 > .grid > button {
+  transition-property: transform, border-color, background-color, box-shadow, filter;
+  transition-duration: 240ms;
+  transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+section.mt-8 > .grid > button:hover {
+  transform: translateY(-3px);
+  filter: brightness(1.12) saturate(1.05);
+  box-shadow: 0 22px 46px rgba(0, 0, 0, 0.38);
+}
+
+section.mt-8 > .grid > button:has(.bg-\[\#10B981\]):hover {
+  border-color: rgba(16, 185, 129, 0.45);
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.10), #121212 42%, #101010);
+  box-shadow: 0 22px 46px rgba(0, 0, 0, 0.38), 0 0 28px rgba(16, 185, 129, 0.12);
+}
+
+section.mt-8 > .grid > button:has(.bg-fuchsia-500):hover {
+  border-color: rgba(217, 70, 239, 0.45);
+  background: linear-gradient(135deg, rgba(217, 70, 239, 0.11), #121212 42%, #101010);
+  box-shadow: 0 22px 46px rgba(0, 0, 0, 0.38), 0 0 28px rgba(217, 70, 239, 0.13);
+}
+
+section.mt-8 > .grid > button:has(.bg-amber-400):hover {
+  border-color: rgba(251, 191, 36, 0.48);
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.12), #121212 42%, #101010);
+  box-shadow: 0 22px 46px rgba(0, 0, 0, 0.38), 0 0 28px rgba(251, 191, 36, 0.14);
+}
+
+section.mt-8 > .grid > button:hover > div:first-child {
+  height: 3px;
+  filter: saturate(1.25) brightness(1.16);
+}
+
+button[class*="bg-[#10B981]"][class*="text-[#02130B]"],
+button[class*="bg-[#10B981]/90"][class*="text-[#03150D]"] {
+  --bb-launch-rainbow: linear-gradient(
+    90deg,
+    rgb(255, 109, 27),
+    rgb(255, 238, 85),
+    rgb(91, 255, 137),
+    rgb(77, 138, 255),
+    rgb(107, 95, 255),
+    rgb(255, 100, 249),
+    rgb(255, 101, 101),
+    rgb(255, 109, 27)
+  );
+  position: relative;
+  isolation: isolate;
+  overflow: visible;
+  border: 2px solid transparent !important;
+  border-radius: 999px !important;
+  background:
+    linear-gradient(rgb(23, 24, 28), rgb(23, 24, 28)) padding-box,
+    linear-gradient(rgb(23, 24, 28) 50%, rgba(18, 18, 19, 0.62) 82%, rgba(18, 18, 19, 0)) border-box,
+    var(--bb-launch-rainbow) border-box !important;
+  background-size: 200% 100%;
+  background-origin: border-box;
+  background-clip: padding-box, border-box, border-box;
+  color: rgb(225, 229, 239) !important;
+  text-shadow: none;
+  box-shadow:
+    0 16px 36px rgba(0, 0, 0, 0.30),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+  animation: bbLaunchRainbowFlow 2.4s linear infinite;
+  transition:
+    transform 220ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 220ms ease,
+    filter 220ms ease;
+}
+
+button[class*="bg-[#10B981]"][class*="text-[#02130B]"]::before,
+button[class*="bg-[#10B981]/90"][class*="text-[#03150D]"]::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -18%;
+  z-index: -1;
+  width: 78%;
+  height: 64%;
+  border-radius: inherit;
+  pointer-events: none;
+  background: var(--bb-launch-rainbow);
+  background-size: 200% 100%;
+  filter: blur(16px);
+  opacity: 0.38;
+  transform: translateX(-50%);
+  animation: bbLaunchRainbowFlow 3s linear infinite;
+}
+
+button[class*="bg-[#10B981]"][class*="text-[#02130B]"]:hover,
+button[class*="bg-[#10B981]/90"][class*="text-[#03150D]"]:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.06) saturate(1.08);
+  box-shadow:
+    0 20px 44px rgba(0, 0, 0, 0.34),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12) !important;
+}
+
+button[class*="bg-[#10B981]"][class*="text-[#02130B]"]:hover::before,
+button[class*="bg-[#10B981]/90"][class*="text-[#03150D]"]:hover::before {
+  opacity: 0.52;
+}
+
+button[class*="bg-[#10B981]"][class*="text-[#02130B]"]:active,
+button[class*="bg-[#10B981]/90"][class*="text-[#03150D]"]:active {
+  transform: translateY(0) scale(0.99);
+}
+
+@keyframes bbLaunchRainbowFlow {
+  0% {
+    background-position: 0 center;
+  }
+
+  100% {
+    background-position: 200% center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button[class*="bg-[#10B981]"][class*="text-[#02130B]"],
+  button[class*="bg-[#10B981]/90"][class*="text-[#03150D]"],
+  button[class*="bg-[#10B981]"][class*="text-[#02130B]"]::before,
+  button[class*="bg-[#10B981]/90"][class*="text-[#03150D]"]::before {
+    animation: none;
+  }
+}

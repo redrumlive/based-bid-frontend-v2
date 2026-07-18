@@ -1,0 +1,18 @@
+# Dependencies
+node_modules/
+
+# Next.js and other generated output
+.next/
+out/
+dist/
+coverage/
+*.tsbuildinfo
+
+# Local environment and logs
+.env*
+!.env.example
+*.log
+.next-dev*
+
+# Generated release artifacts
+releases/
