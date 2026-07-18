@@ -2,6 +2,24 @@
 
 Technical implementation notes and migration details for the BB Creation Panel.
 
+## 1.1.0 - 2026-07-18
+
+### Application Shell
+
+- Added shared top-bar, footer, wallet, network, create-selector, discovery-card, and fee-collection components around the existing creation panel.
+- Kept the LBP creation workflow isolated under its dedicated route while preserving app-wide navigation and typography.
+
+### Source Integrity
+
+- Replaced the malformed remote `app/page.tsx` blob with the validated local UTF-8 source.
+- Added `.gitattributes` rules for UTF-8 source normalization, LF line endings, and binary asset protection.
+- Excluded local reference-deck material from source control.
+
+### Validation
+
+- Validated all published text files with strict UTF-8 decoding.
+- Verified the release with ESLint and a clean production build before publishing.
+
 ## 1.0.0 - 2026-07-18
 
 ### Platform Baseline

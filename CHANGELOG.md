@@ -2,6 +2,18 @@
 
 All notable user-facing changes to the BB Creation Panel are documented here.
 
+## 1.1.0 - 2026-07-18
+
+### App Experience
+
+- Added the shared based.bid app shell, create selector, discovery feed, wallet controls, fee collection flow, and responsive navigation.
+- Refined pool cards, launch-state presentation, network filtering, creation calls to action, and app-wide footer behavior.
+
+### Reliability
+
+- Re-published all source files as valid UTF-8 to resolve a compiler parsing failure after cloning or pulling the repository.
+- Added repository encoding rules to prevent malformed source blobs from being committed again.
+
 ## 1.0.0 - 2026-07-18
 
 ### Launch Creation

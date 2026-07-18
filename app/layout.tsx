@@ -1,21 +1,33 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
+import { Space_Grotesk } from 'next/font/google';
+import AppFooter from './AppFooter';
+import AppTopBar from './AppTopBar';
 import './globals.css';
 
-const inter = Inter({
+const spaceGrotesk = Space_Grotesk({
   subsets: ['latin'],
   display: 'swap',
+  variable: '--font-space',
 });
 
 export const metadata: Metadata = {
-  title: 'BBLBP Creation Rework Preview',
-  description: 'Canvas-matched Next.js build of the BBLBP creation flow.',
+  title: 'Based Bid',
+  description: 'Discover, create, and launch tokens on Based Bid.',
+  icons: {
+    icon: '/brand-icon.svg',
+    shortcut: '/brand-icon.svg',
+    apple: '/brand-icon.svg',
+  },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en">
-      <body className={inter.className}>{children}</body>
+    <html lang="en" className={`${spaceGrotesk.className} ${spaceGrotesk.variable}`}>
+      <body>
+        <AppTopBar />
+        {children}
+        <AppFooter />
+      </body>
     </html>
   );
 }

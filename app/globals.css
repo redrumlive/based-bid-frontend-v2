@@ -1,5 +1,17 @@
 @import "tailwindcss";
 
+html,
+body {
+  font-family: var(--font-space), sans-serif;
+}
+
+button,
+input,
+textarea,
+select {
+  font-family: inherit;
+}
+
 :root {
   color-scheme: dark;
 }
@@ -8,6 +20,29 @@ html,
 body {
   background: #0a0a0a;
   color: #ffffff;
+}
+
+html {
+  scrollbar-color: rgba(255, 255, 255, 0.16) #0a0a0a;
+  scrollbar-width: thin;
+}
+
+html::-webkit-scrollbar {
+  width: 10px;
+}
+
+html::-webkit-scrollbar-track {
+  background: #0a0a0a;
+}
+
+html::-webkit-scrollbar-thumb {
+  border: 3px solid #0a0a0a;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+html::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.24);
 }
 
 body {
@@ -19,6 +54,18 @@ body {
 
 * {
   box-sizing: border-box;
+}
+
+::selection {
+  background: rgba(16, 185, 129, 0.28);
+  color: #ffffff;
+}
+
+button,
+input,
+textarea,
+select {
+  -webkit-tap-highlight-color: transparent;
 }
 
 section.mt-8 > .grid > button {

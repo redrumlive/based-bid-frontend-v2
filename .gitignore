@@ -16,3 +16,6 @@ coverage/
 
 # Generated release artifacts
 releases/
+
+# Local design/reference material
+based-bid-deck/
