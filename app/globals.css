@@ -68,6 +68,40 @@ select {
   -webkit-tap-highlight-color: transparent;
 }
 
+.bb-ambient-effect {
+  transition: opacity 240ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+html[data-ambient="off"] .bb-ambient-effect,
+html[data-ambient="off"] .bb-ambient-surface::before,
+html[data-ambient="off"] .bb-ambient-surface::after,
+html[data-ambient="off"] button[class*="bg-[#10B981]"][class*="text-[#02130B]"]::before,
+html[data-ambient="off"] button[class*="bg-[#10B981]/90"][class*="text-[#03150D]"]::before {
+  opacity: 0 !important;
+  animation: none !important;
+  pointer-events: none !important;
+}
+
+html[data-animation="reduced"] *,
+html[data-animation="reduced"] *::before,
+html[data-animation="reduced"] *::after {
+  scroll-behavior: auto !important;
+  animation-duration: 180ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 120ms !important;
+}
+
+html[data-animation="off"] *,
+html[data-animation="off"] *::before,
+html[data-animation="off"] *::after {
+  scroll-behavior: auto !important;
+  animation-delay: 0ms !important;
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-delay: 0ms !important;
+  transition-duration: 0.001ms !important;
+}
+
 section.mt-8 > .grid > button {
   transition-property: transform, border-color, background-color, box-shadow, filter;
   transition-duration: 240ms;
@@ -189,6 +223,15 @@ button[class*="bg-[#10B981]/90"][class*="text-[#03150D]"]:active {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+
   button[class*="bg-[#10B981]"][class*="text-[#02130B]"],
   button[class*="bg-[#10B981]/90"][class*="text-[#03150D]"],
   button[class*="bg-[#10B981]"][class*="text-[#02130B]"]::before,

@@ -6,6 +6,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { FaXTwitter } from "react-icons/fa6";
+import { useAppPreferences, type AmbientPreference, type AnimationPreference } from "./AppPreferences";
 import {
   ArrowLeftRight,
   ArrowUpRight,
@@ -265,17 +266,21 @@ const GLOBAL_CSS = `
 
 .bb-create-launch {
   --bb-create-spectrum: linear-gradient(
-    100deg,
-    var(--bb-green) 0%,
-    #e8ad52 42%,
-    var(--bb-red) 72%,
-    var(--bb-green) 100%
+    102deg,
+    transparent 0%,
+    var(--bb-green) 22%,
+    #dfb858 50%,
+    var(--bb-red) 78%,
+    transparent 100%
   );
   position: relative;
   overflow: visible;
-  border: 1px solid rgba(255, 255, 255, 0.11);
-  background: linear-gradient(180deg, #171918 0%, #101211 100%);
-  box-shadow: inset 0 1px rgba(255, 255, 255, 0.065), 0 10px 28px rgba(0, 0, 0, 0.34);
+  border: 1px solid rgba(255, 255, 255, 0.105);
+  background: linear-gradient(180deg, rgba(24, 26, 25, 0.98) 0%, rgba(13, 15, 14, 0.99) 100%);
+  box-shadow:
+    inset 0 1px rgba(255, 255, 255, 0.065),
+    inset 0 -1px rgba(0, 0, 0, 0.34),
+    0 9px 24px rgba(0, 0, 0, 0.32);
   animation: bbCreateIdleShake 8.4s linear infinite;
   will-change: transform;
   transition:
@@ -286,37 +291,26 @@ const GLOBAL_CSS = `
 
 .bb-create-launch__glow {
   position: absolute;
-  inset: -8px -14px -11px;
-  z-index: -1;
-  border-radius: inherit;
+  left: 14%;
+  right: 14%;
+  bottom: -5px;
+  height: 6px;
+  z-index: -2;
+  border-radius: 999px;
   pointer-events: none;
-  background:
-    radial-gradient(48% 118% at -3% 52%, rgba(var(--bb-green-rgb), 0.38), transparent 72%),
-    radial-gradient(48% 118% at 103% 52%, rgba(var(--bb-red-rgb), 0.28), transparent 72%),
-    radial-gradient(76% 78% at 50% 106%, rgba(232, 173, 82, 0.24), rgba(var(--bb-red-rgb), 0.09) 44%, transparent 76%);
-  opacity: 0.5;
+  background: var(--bb-create-spectrum);
+  background-position: 50% 50%;
+  background-size: 145% 100%;
+  box-shadow: none;
+  filter: blur(8px) saturate(1.04);
+  opacity: 0.28;
   transform: translateZ(0);
-  animation: bbCreateBreathe 3.8s ease-in-out infinite;
-  transition: inset 220ms ease, opacity 220ms ease;
+  animation: bbCreateBottomFlow 5.2s ease-in-out infinite, bbCreateBreathe 4.4s ease-in-out infinite;
+  transition: opacity 220ms ease, filter 220ms ease;
 }
 
 .bb-create-launch__glow::before {
-  content: "";
-  position: absolute;
-  left: 10%;
-  right: 10%;
-  top: 55%;
-  bottom: -2px;
-  border-radius: 999px;
-  background: var(--bb-create-spectrum);
-  background-size: 240% 100%;
-  box-shadow:
-    0 7px 18px rgba(var(--bb-green-rgb), 0.18),
-    0 8px 20px rgba(var(--bb-red-rgb), 0.12);
-  filter: blur(16px) saturate(1.08);
-  opacity: 0.78;
-  animation: bbCreateBottomFlow 2.8s linear infinite;
-  transition: opacity 220ms ease, filter 220ms ease;
+  content: none;
 }
 
 .bb-create-launch__edge {
@@ -325,9 +319,10 @@ const GLOBAL_CSS = `
   z-index: 0;
   border-radius: inherit;
   pointer-events: none;
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.08) 24%, rgba(0,0,0,0.68) 58%, #000 78%, #000 100%);
-  mask-image: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.08) 24%, rgba(0,0,0,0.68) 58%, #000 78%, #000 100%);
-  opacity: 0.82;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.04) 22%, rgba(0, 0, 0, 0.52) 52%, #000 74%, #000 100%);
+  mask-image: linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.04) 22%, rgba(0, 0, 0, 0.52) 52%, #000 74%, #000 100%);
+  filter: drop-shadow(0 3px 6px rgba(223, 184, 88, 0.1));
+  opacity: 0.86;
 }
 
 .bb-create-launch__edge::before {
@@ -337,11 +332,12 @@ const GLOBAL_CSS = `
   border-radius: inherit;
   padding: 2px;
   background: var(--bb-create-spectrum);
-  background-size: 240% 100%;
+  background-size: 145% 100%;
+  background-position: 50% 50%;
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
-  animation: bbCreateGlowFlow 4.4s ease-in-out infinite;
+  animation: bbCreateGlowFlow 5.2s ease-in-out infinite;
 }
 
 .bb-create-launch__wash {
@@ -350,24 +346,22 @@ const GLOBAL_CSS = `
   z-index: 0;
   border-radius: inherit;
   pointer-events: none;
-  background: radial-gradient(105% 78% at 50% -14%, rgba(255, 255, 255, 0.085), transparent 58%);
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.16);
+  background: radial-gradient(96% 72% at 50% -12%, rgba(255, 255, 255, 0.075), transparent 58%);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.14);
 }
 
 .bb-create-launch:hover {
   animation: bbCreateHoverShake 360ms linear infinite;
-  border-color: rgba(255, 255, 255, 0.16);
-  box-shadow: inset 0 1px rgba(255, 255, 255, 0.085), 0 15px 36px rgba(0, 0, 0, 0.42);
+  border-color: rgba(255, 255, 255, 0.15);
+  box-shadow:
+    inset 0 1px rgba(255, 255, 255, 0.08),
+    inset 0 -1px rgba(0, 0, 0, 0.34),
+    0 13px 32px rgba(0, 0, 0, 0.4);
 }
 
 .bb-create-launch:hover .bb-create-launch__glow {
-  inset: -10px -17px -14px;
-  opacity: 0.62;
-}
-
-.bb-create-launch:hover .bb-create-launch__glow::before {
-  opacity: 0.92;
-  filter: blur(18px) saturate(1.12);
+  opacity: 0.42;
+  filter: blur(9px) saturate(1.08);
 }
 
 .bb-create-launch:hover .bb-create-launch__edge { opacity: 0.92; }
@@ -386,18 +380,18 @@ const GLOBAL_CSS = `
 }
 
 @keyframes bbCreateGlowFlow {
-  0%, 100% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
+  0%, 100% { background-position: 42% 50%; }
+  50% { background-position: 58% 50%; }
 }
 
 @keyframes bbCreateBottomFlow {
-  0% { background-position: 0% 50%; }
-  100% { background-position: 240% 50%; }
+  0%, 100% { background-position: 38% 50%; }
+  50% { background-position: 62% 50%; }
 }
 
 @keyframes bbCreateBreathe {
-  0%, 100% { opacity: 0.42; transform: scaleX(0.97); }
-  50% { opacity: 0.58; transform: scaleX(1.025); }
+  0%, 100% { opacity: 0.23; transform: scaleX(0.96); }
+  50% { opacity: 0.34; transform: scaleX(1.02); }
 }
 
 @keyframes bbCreateIdleShake {
@@ -1204,35 +1198,36 @@ function MiniTokenChart({ card, idle = false }: { card: TokenCardData; idle?: bo
   const variant = card.chartVariant ?? 0;
   const variants = isUp
     ? [
-        "M0 62 C42 62 54 61 78 54 C104 46 122 48 146 41 C172 33 190 35 216 28 C250 19 274 25 302 17 C338 7 374 12 417 4",
-        "M0 60 C38 60 54 58 82 59 C112 60 134 49 164 43 C192 37 218 42 246 34 C278 25 306 28 338 17 C370 8 397 9 417 5",
-        "M0 62 C44 62 65 61 92 54 C120 47 146 40 172 43 C202 46 224 34 252 29 C282 24 306 22 334 14 C366 6 392 10 417 4",
+        "M0 62 C42 62 54 61 78 54 C104 46 122 48 146 41 C172 33 190 35 216 28 C250 19 274 25 302 17 C338 7 376 12 420 4",
+        "M0 60 C38 60 54 58 82 59 C112 60 134 49 164 43 C192 37 218 42 246 34 C278 25 306 28 338 17 C370 8 399 9 420 5",
+        "M0 62 C44 62 65 61 92 54 C120 47 146 40 172 43 C202 46 224 34 252 29 C282 24 306 22 334 14 C366 6 394 10 420 4",
       ]
     : [
-        "M0 13 C46 16 72 21 104 29 C138 38 168 45 198 42 C230 39 252 49 282 54 C320 60 366 60 417 64",
-        "M0 10 C38 13 72 25 104 28 C138 31 164 43 198 46 C230 49 256 46 286 56 C324 66 368 62 417 65",
-        "M0 15 C44 18 74 20 108 34 C142 48 170 44 204 50 C240 57 264 53 298 60 C340 67 378 64 417 66",
+        "M0 13 C46 16 72 21 104 29 C138 38 168 45 198 42 C230 39 252 49 282 54 C320 60 368 60 420 64",
+        "M0 10 C38 13 72 25 104 28 C138 31 164 43 198 46 C230 49 256 46 286 56 C324 66 370 62 420 65",
+        "M0 15 C44 18 74 20 108 34 C142 48 170 44 204 50 C240 57 264 53 298 60 C340 67 380 64 420 66",
       ];
-  const d = idle ? "M0 52 C92 52 148 52 214 52 C286 52 354 52 417 52" : variants[variant];
+  const d = idle ? "M0 52 C92 52 148 52 214 52 C286 52 356 52 420 52" : variants[variant];
   const line = idle ? "rgba(74,222,128,0.38)" : isUp ? "#4ade80" : "#ff3771";
-  const fillStrong = idle ? "rgba(52,211,153,0.07)" : isUp ? "rgba(52,211,153,0.22)" : "rgba(255,55,113,0.18)";
-  const fillMid = idle ? "rgba(52,211,153,0.03)" : isUp ? "rgba(52,211,153,0.11)" : "rgba(255,55,113,0.085)";
-  const fillSoft = idle ? "rgba(52,211,153,0.012)" : isUp ? "rgba(52,211,153,0.04)" : "rgba(255,55,113,0.03)";
+  const fillStrong = idle ? "rgba(52,211,153,0.06)" : isUp ? "rgba(52,211,153,0.19)" : "rgba(255,55,113,0.16)";
+  const fillMid = idle ? "rgba(52,211,153,0.025)" : isUp ? "rgba(52,211,153,0.085)" : "rgba(255,55,113,0.07)";
+  const fillSoft = idle ? "rgba(52,211,153,0.01)" : isUp ? "rgba(52,211,153,0.025)" : "rgba(255,55,113,0.022)";
+  const fillTail = idle ? "rgba(52,211,153,0.003)" : isUp ? "rgba(52,211,153,0.007)" : "rgba(255,55,113,0.006)";
   const endY = isUp ? [4, 5, 4][variant] : [64, 65, 66][variant];
-  const endX = 417;
   const areaEndY = idle ? 52 : endY;
-  const areaD = `${d} L${endX} ${areaEndY} L${endX} 104 L0 104 Z`;
+  const chartHeight = 128;
+  const areaD = `${d} L424 ${areaEndY} L424 ${chartHeight + 4} L-4 ${chartHeight + 4} L-4 104 Z`;
 
   return (
-    <div className="relative mt-1 h-[64px] w-[calc(100%+28px)] -mx-3.5">
-      <div className="absolute inset-0 overflow-hidden">
-        <svg viewBox="0 0 420 104" preserveAspectRatio="none" className="block h-full w-full shrink-0" aria-hidden="true">
+    <div className="relative mt-1 h-[84px] w-[calc(100%+28px)] -mx-3.5">
+      <div className="absolute inset-0">
+        <svg viewBox={`0 0 420 ${chartHeight}`} preserveAspectRatio="none" className="block h-full w-full shrink-0" aria-hidden="true">
           <defs>
             <linearGradient id={`card-fill-${id}`} x1="0%" y1="0%" x2="0%" y2="100%">
               <stop offset="0%" stopColor={fillStrong} />
               <stop offset="42%" stopColor={fillMid} />
-              <stop offset="72%" stopColor={fillSoft} />
-              <stop offset="100%" stopColor="rgba(0,0,0,0)" />
+              <stop offset="74%" stopColor={fillSoft} />
+              <stop offset="100%" stopColor={fillTail} />
             </linearGradient>
             <filter id={`card-glow-wide-${id}`} x="-8%" y="-70%" width="116%" height="190%"><feGaussianBlur stdDeviation="4" /></filter>
             <filter id={`card-glow-${id}`} x="-5%" y="-50%" width="110%" height="160%"><feGaussianBlur stdDeviation="2.4" /></filter>
@@ -1248,10 +1243,10 @@ function MiniTokenChart({ card, idle = false }: { card: TokenCardData; idle?: bo
           aria-hidden="true"
           className="bb-chart-endpoint pointer-events-none absolute z-[2] h-[6px] w-[6px] rounded-full"
           style={{
-            right: "1px",
-            top: `calc(${(endY / 104) * 100}% - 3px)`,
+            right: "0px",
+            top: `calc(${(endY / chartHeight) * 100}% - 3px)`,
             backgroundColor: line,
-            filter: `drop-shadow(0 0 5px ${isUp ? "rgba(52,211,153,0.35)" : "rgba(255,55,113,0.3)"})`,
+            boxShadow: `0 0 8px ${isUp ? "rgba(52,211,153,0.46)" : "rgba(255,55,113,0.4)"}`,
           }}
         />
       ) : null}
@@ -1277,7 +1272,7 @@ function TokenFeedCard({ card, spotlight, currentTime }: { card: TokenCardData; 
     >
       <span
         aria-hidden="true"
-        className="pointer-events-none absolute -inset-x-[4%] -top-5 h-[138px] scale-[1.04] opacity-0 blur-[16px] transition-opacity duration-500 group-hover:opacity-100"
+        className="bb-ambient-effect pointer-events-none absolute -inset-x-[4%] -top-5 h-[138px] scale-[1.04] opacity-0 blur-[16px] transition-opacity duration-500 group-hover:opacity-100"
         style={{
           background: tokenAmbient(card.palette),
           WebkitMaskImage: "linear-gradient(to bottom, black 0%, black 54%, transparent 100%)",
@@ -1815,7 +1810,10 @@ function SidebarPanel({ query, onQuery, searchRef, sortLabel, onCycleSort, board
   );
 }
 
-function SettingsDropdown({ open, onToggle, animations, ambient, setAnimations, setAmbient }: { open: boolean; onToggle: () => void; animations: string; ambient: string; setAnimations: (v: string) => void; setAmbient: (v: string) => void }) {
+function SettingsDropdown({ open, onToggle }: { open: boolean; onToggle: () => void }) {
+  const { animation, ambient, setAnimation, setAmbient } = useAppPreferences();
+  const animationLabel = animation === "on" ? "On" : animation === "reduced" ? "Reduced" : "Off";
+  const ambientLabel = ambient === "on" ? "On" : "Off";
   return (
     <div className="relative" data-settings>
       <button type="button" onClick={onToggle} className="grid h-8 w-8 cursor-pointer place-items-center rounded-xl bg-transparent text-white/60 transition hover:bg-white/5" aria-label="Preferences" data-ui-hint="Preferences"><Settings className="h-3.5 w-3.5" /></button>
@@ -1825,8 +1823,8 @@ function SettingsDropdown({ open, onToggle, animations, ambient, setAnimations, 
             <div className="px-3 py-2 text-[11px] font-medium text-white/60">Preferences</div>
             <div className="border-t border-white/10" />
             <div className="space-y-2 px-3 py-2">
-              <PrefToggle label="Animations" value={animations} onChange={setAnimations} options={["On", "Reduced", "Off"]} />
-              <PrefToggle label="Ambient effects" value={ambient} onChange={setAmbient} options={["On", "Off"]} />
+              <PrefToggle label="Animations" value={animationLabel} onChange={(value) => setAnimation(value.toLowerCase() as AnimationPreference)} options={["On", "Reduced", "Off"]} />
+              <PrefToggle label="Ambient effects" value={ambientLabel} onChange={(value) => setAmbient(value.toLowerCase() as AmbientPreference)} options={["On", "Off"]} />
             </div>
           </DropdownMotion>
         ) : null}
@@ -1953,7 +1951,7 @@ function MainContentHeader({ contentSort, onSetContentSort, selectedNetworks, on
         aria-label="Create a token"
         className="bb-create-launch group relative z-10 isolate inline-flex h-10 min-w-[132px] shrink-0 items-center justify-center gap-2 rounded-[15px] px-6 text-[13px] font-semibold text-white/90"
       >
-        <span aria-hidden="true" className="bb-create-launch__glow" />
+        <span aria-hidden="true" className="bb-create-launch__glow bb-ambient-effect" />
         <span aria-hidden="true" className="bb-create-launch__wash" />
         <span aria-hidden="true" className="bb-create-launch__edge" />
         <Plus className="bb-create-launch__plus relative z-10 h-4 w-4 text-white/68" />
@@ -1974,8 +1972,6 @@ export default function BBLayout() {
   const [addr] = React.useState("0x4573A94fF2b711A4EcB9");
   const [settingsOpen, setSettingsOpen] = React.useState(false);
   const [collectFeesOpen, setCollectFeesOpen] = React.useState(false);
-  const [animations, setAnimations] = React.useState("On");
-  const [ambient, setAmbient] = React.useState("On");
   const [cookiesEnabled, setCookiesEnabled] = React.useState(true);
   const [smartNow, setSmartNow] = React.useState(now);
   const [toast, setToast] = React.useState<AppToast | null>(null);
@@ -2050,7 +2046,7 @@ export default function BBLayout() {
   }, [closeAll]);
 
   return (
-    <div data-animation={animations.toLowerCase()} className="bb-app relative flex h-[calc(100vh-56px)] w-full flex-col overflow-hidden bg-[#090a0a] text-white">
+    <div className="bb-app relative flex h-[calc(100vh-56px)] w-full flex-col overflow-hidden bg-[#090a0a] text-white">
       <style jsx global>{GLOBAL_CSS}</style>
 
       <div className="flex h-full w-full flex-col">
@@ -2074,7 +2070,7 @@ export default function BBLayout() {
         </div>
 
         <BottomBar
-          settings={<SettingsDropdown open={settingsOpen} onToggle={() => setSettingsOpen((v) => !v)} animations={animations} ambient={ambient} setAnimations={setAnimations} setAmbient={setAmbient} />}
+          settings={<SettingsDropdown open={settingsOpen} onToggle={() => setSettingsOpen((v) => !v)} />}
           cookiesEnabled={cookiesEnabled}
           onToggleCookies={() => setCookiesEnabled((value) => !value)}
         />

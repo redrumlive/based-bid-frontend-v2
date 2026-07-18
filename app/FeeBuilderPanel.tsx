@@ -46,6 +46,7 @@ export type FeeWallet = {
   rewardThresholdPct?: number;
   rwaAssets?: string[];
   rwaDistributionMode?: RwaDistributionMode;
+  rewardGasPayer?: RewardGasPayer;
   rwaAssetWeights?: Record<string, number>;
   rwaPinnedAssets?: string[];
 };
@@ -57,6 +58,7 @@ type ProtectionOption = { label: string; sublabel?: string; value: string };
 type PresetKey = 'mixed' | 'creator' | 'balanced' | 'rewards' | 'cto';
 type RwaCategory = 'token' | 'stock' | 'etf';
 type RwaDistributionMode = 'rotating' | 'all';
+type RewardGasPayer = 'project' | 'user';
 type RewardBasketAsset = { id?: string; symbol: string; name: string; category: RwaCategory; address: string; icon?: string };
 
 type ChipsProps<T extends string | number> = {
@@ -66,6 +68,7 @@ type ChipsProps<T extends string | number> = {
   format?: (v: T) => string;
   disabled?: boolean;
   className?: string;
+  compact?: boolean;
 };
 
 type RowProps = {
@@ -88,6 +91,7 @@ const ADDRESS_REQUIRED = new Set(['ops']);
 const ADD: FeeType[] = ['creator', 'buybacks', 'rwa', 'liq', 'ops', 'custom'];
 const RP = [0.01, 0.1, 1, 5] as const;
 const RWA_DISTRIBUTION_MODES = ['rotating', 'all'] as const;
+const REWARD_GAS_PAYERS = ['project', 'user'] as const;
 const TRIGGER_PRESETS = [0.01, 0.05, 0.1, 0.25] as const;
 const PRESETS: Array<{ key: PresetKey; label: string; mobileLabel: string; hint: string }> = [
   { key: 'rewards', label: 'Rewards', mobileLabel: 'Rewards', hint: 'Prioritize holder rewards.' },
@@ -450,7 +454,7 @@ const make = (chain: ChainId, t: Exclude<FeeType, 'custom'>): FeeWallet =>
     : t === 'rewards'
       ? { id: 'rewards', name: 'Holder Rewards', pct: 1, rewardAsset: rewardOf(chain), rewardThresholdPct: 0.1 }
       : t === 'rwa'
-        ? { id: 'rwa', name: 'Rewards Basket', pct: 1, rwaAssets: [...RWA_PRESET_ASSETS], rwaAssetWeights: equalAssetWeights(RWA_PRESET_ASSETS), rewardThresholdPct: 0.1, rwaDistributionMode: 'rotating' }
+        ? { id: 'rwa', name: 'Rewards Basket', pct: 1, rwaAssets: [...RWA_PRESET_ASSETS], rwaAssetWeights: equalAssetWeights(RWA_PRESET_ASSETS), rewardThresholdPct: 0.1, rwaDistributionMode: 'rotating', rewardGasPayer: 'user' }
       : t === 'buybacks'
         ? { id: 'buybacks', name: 'Buybacks & Burns', pct: 1 }
         : t === 'liq'
@@ -517,17 +521,70 @@ function TextField({ value, onChange, placeholder, label, className = '', disabl
   );
 }
 
-function Pills<T extends string | number>({ options, value, onChange, format, disabled, className }: ChipsProps<T>) {
+function Pills<T extends string | number>({ options, value, onChange, format, disabled, className, compact = false }: ChipsProps<T>) {
   return (
-    <div className={`bbNoScroll inline-flex max-w-full flex-nowrap gap-0.5 overflow-x-auto overflow-y-visible rounded-[13px] border p-0.5 ${className ?? ''}`} data-no-drag style={{ scrollbarWidth: 'none', background: 'rgba(244,249,246,0.018)', borderColor: 'rgba(244,249,246,0.085)' } as React.CSSProperties}>
+    <div className={`bbNoScroll inline-flex max-w-full flex-nowrap gap-0.5 overflow-x-auto overflow-y-visible rounded-[13px] border ${compact ? 'h-[18px] items-center p-[1px] sm:h-[24px]' : 'p-0.5'} ${className ?? ''}`} data-no-drag style={{ scrollbarWidth: 'none', background: 'rgba(244,249,246,0.018)', borderColor: 'rgba(244,249,246,0.085)' } as React.CSSProperties}>
       {options.map((o) => {
         const active = o === value;
         return (
-          <button key={String(o)} type='button' disabled={disabled} onClick={() => onChange(o)} className='bbPill bbPresetPill shrink-0 rounded-[8px] border px-1 py-0.5 text-[7.5px] font-semibold leading-none outline-none sm:rounded-[10px] sm:px-2 sm:py-1 sm:text-[9.5px]' style={{ color: active ? T.text : 'rgba(244,249,246,0.46)', background: active ? 'rgba(244,249,246,0.095)' : 'transparent', borderColor: active ? 'rgba(244,249,246,0.14)' : 'transparent', boxShadow: active ? 'inset 0 1px 0 rgba(255,255,255,0.030)' : 'none' }}>
+          <button key={String(o)} type='button' disabled={disabled} onClick={() => onChange(o)} className={`bbPill bbPresetPill shrink-0 rounded-[8px] border px-1 text-[7.5px] font-semibold leading-none outline-none sm:rounded-[10px] sm:px-2 sm:text-[9.5px] ${compact ? 'h-[14px] py-0 sm:h-[20px]' : 'py-0.5 sm:py-1'}`} style={{ color: active ? T.text : 'rgba(244,249,246,0.46)', background: active ? 'rgba(244,249,246,0.095)' : 'transparent', borderColor: active ? 'rgba(244,249,246,0.14)' : 'transparent', boxShadow: active ? 'inset 0 1px 0 rgba(255,255,255,0.030)' : 'none' }}>
             {format ? format(o) : String(o)}
           </button>
         );
       })}
+    </div>
+  );
+}
+
+function DistributionTriggerControl({ value, onChange, disabled }: { value: number; onChange: (value: number) => void; disabled: boolean }) {
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(String(value));
+  const customValue = !TRIGGER_PRESETS.some((preset) => preset === value);
+
+  useEffect(() => {
+    if (editing) inputRef.current?.select();
+  }, [editing]);
+
+  const commit = () => {
+    const parsed = Number(draft.replace(',', '.'));
+    if (Number.isFinite(parsed) && parsed > 0) {
+      onChange(Math.min(1000, Math.max(0.001, Math.round(parsed * 1_000_000) / 1_000_000)));
+    }
+    setEditing(false);
+  };
+
+  return (
+    <div className='bbNoScroll inline-flex max-w-full flex-nowrap gap-0.5 overflow-x-auto overflow-y-visible rounded-[13px] border p-0.5' data-no-drag style={{ scrollbarWidth: 'none', background: 'rgba(244,249,246,0.018)', borderColor: 'rgba(244,249,246,0.085)' } as React.CSSProperties}>
+      {TRIGGER_PRESETS.map((preset) => {
+        const active = preset === value;
+        return (
+          <button key={preset} type='button' disabled={disabled} onClick={() => { onChange(preset); setEditing(false); }} className='bbPill bbPresetPill shrink-0 rounded-[8px] border px-1 py-0.5 text-[7.5px] font-semibold leading-none outline-none sm:rounded-[10px] sm:px-2 sm:py-1 sm:text-[9.5px]' style={{ color: active ? T.text : 'rgba(244,249,246,0.46)', background: active ? 'rgba(244,249,246,0.095)' : 'transparent', borderColor: active ? 'rgba(244,249,246,0.14)' : 'transparent', boxShadow: active ? 'inset 0 1px 0 rgba(255,255,255,0.030)' : 'none' }}>
+            {preset}
+          </button>
+        );
+      })}
+      {editing ? (
+        <input
+          ref={inputRef}
+          value={draft}
+          inputMode='decimal'
+          aria-label='Custom distribution trigger in ETH'
+          disabled={disabled}
+          onChange={(event) => setDraft(event.target.value.replace(/[^0-9.,]/g, ''))}
+          onBlur={commit}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') event.currentTarget.blur();
+            if (event.key === 'Escape') setEditing(false);
+          }}
+          className='h-[14px] w-[38px] shrink-0 rounded-[8px] border bg-white/[0.08] px-1 text-center text-[7.5px] font-semibold leading-none text-white outline-none sm:h-[20px] sm:w-[50px] sm:rounded-[10px] sm:px-1.5 sm:text-[9.5px]'
+          style={{ borderColor: 'rgba(244,249,246,0.16)' }}
+        />
+      ) : (
+        <button type='button' disabled={disabled} onClick={() => { setDraft(customValue ? String(value) : ''); setEditing(true); }} className='bbPill bbPresetPill h-[14px] w-[38px] shrink-0 rounded-[8px] border px-1 text-[7.5px] font-semibold leading-none outline-none sm:h-[20px] sm:w-[50px] sm:rounded-[10px] sm:px-1.5 sm:text-[9.5px]' style={{ color: customValue ? T.text : 'rgba(244,249,246,0.46)', background: customValue ? 'rgba(244,249,246,0.095)' : 'transparent', borderColor: customValue ? 'rgba(244,249,246,0.14)' : 'transparent', boxShadow: customValue ? 'inset 0 1px 0 rgba(255,255,255,0.030)' : 'none' }}>
+          {customValue ? value : <><span className='sm:hidden'>Set</span><span className='hidden sm:inline'>Custom</span></>}
+        </button>
+      )}
     </div>
   );
 }
@@ -615,14 +672,16 @@ function InfoHint({ label, children, maxWidth = 290 }: { label: string; children
   );
 }
 
-const Threshold = <T extends string | number,>({ labelText, suffix, options, value, onChange, format, disabled, helperText, className = 'mt-2' }: { labelText: string; suffix: string; options: readonly T[]; value: T; onChange: (v: T) => void; format?: (v: T) => string; disabled?: boolean; helperText?: React.ReactNode; className?: string }) => (
+const Threshold = <T extends string | number,>({ labelText, mobileLabelText, suffix, options, value, onChange, format, disabled, helperText, className = 'mt-2' }: { labelText: string; mobileLabelText?: string; suffix: string; options: readonly T[]; value: T; onChange: (v: T) => void; format?: (v: T) => string; disabled?: boolean; helperText?: React.ReactNode; className?: string }) => (
   <div className={`${className} flex flex-nowrap items-center gap-1 sm:gap-1.5`} data-no-drag>
     <div className='flex shrink-0 items-center gap-1'>
-      <span className='text-[8px] font-medium uppercase tracking-[0.10em] sm:text-[9px] sm:tracking-[0.13em]' style={{ color: T.muted }}>{labelText}</span>
+      <span className='text-[8px] font-medium uppercase tracking-[0.10em] sm:text-[9px] sm:tracking-[0.13em]' style={{ color: T.muted }}>
+        {mobileLabelText ? <><span className='sm:hidden'>{mobileLabelText}</span><span className='hidden sm:inline'>{labelText}</span></> : labelText}
+      </span>
       {helperText ? <InfoHint label={`${labelText} helper`}>{helperText}</InfoHint> : null}
     </div>
     <div className='flex min-w-0 flex-1 flex-nowrap items-center gap-1 sm:gap-1.5'>
-      <Pills options={options} value={value} onChange={onChange} format={format} disabled={disabled} />
+      <Pills compact options={options} value={value} onChange={onChange} format={format} disabled={disabled} />
       {suffix ? <span className='hidden shrink-0 text-[8px] font-medium uppercase tracking-[0.10em] sm:inline sm:text-[9px] sm:tracking-[0.13em]' style={{ color: T.muted }}>{suffix}</span> : null}
     </div>
   </div>
@@ -651,11 +710,33 @@ function RwaDistributionModeControl({ value, onChange, disabled }: { value: RwaD
         </InfoHint>
       </div>
       <Pills
+        compact
         disabled={disabled}
         options={RWA_DISTRIBUTION_MODES}
         value={value}
         onChange={onChange}
         format={(mode) => mode === 'rotating' ? 'Rotating' : 'All at once'}
+      />
+    </div>
+  );
+}
+
+function RewardGasPayerControl({ value, onChange, disabled }: { value: RewardGasPayer; onChange: (value: RewardGasPayer) => void; disabled: boolean }) {
+  return (
+    <div className='flex min-w-0 flex-nowrap items-center gap-1 sm:gap-1.5' data-no-drag>
+      <div className='flex shrink-0 items-center gap-1'>
+        <span className='text-[8px] font-medium uppercase tracking-[0.10em] sm:text-[9px] sm:tracking-[0.13em]' style={{ color: T.muted }}><span className='sm:hidden'>Gas</span><span className='hidden sm:inline'>Gas paid by</span></span>
+        <InfoHint label='Reward gas payment helper' maxWidth={330}>
+          Project-sponsored gas is charged to the project, keeping holder transaction fees minimal. User-paid gas can reach about $1 as the basket grows.
+        </InfoHint>
+      </div>
+      <Pills
+        compact
+        disabled={disabled}
+        options={REWARD_GAS_PAYERS}
+        value={value}
+        onChange={onChange}
+        format={(payer) => payer === 'project' ? 'Project' : 'User'}
       />
     </div>
   );
@@ -1081,6 +1162,7 @@ function Row({ fee, chain, max, disabled, dragging, ghost, patch, setPct, remove
   const rwa = fee.id === 'rwa';
   const rwaAssets = fee.rwaAssets ?? [];
   const rwaDistributionMode = fee.rwaDistributionMode ?? 'rotating';
+  const rewardGasPayer = fee.rewardGasPayer ?? 'user';
   const rwaAssetWeights = normalizeAssetWeights(rwaAssets, fee.rwaAssetWeights);
   const rwaPinnedAssets = fee.rwaPinnedAssets?.filter((id) => rwaAssets.includes(id)) ?? [];
   const asset = fee.rewardAsset ?? rewardOf(chain);
@@ -1182,7 +1264,7 @@ function Row({ fee, chain, max, disabled, dragging, ghost, patch, setPct, remove
       {rewards ? (
         <Threshold
           disabled={disabled}
-          labelText='Threshold'
+          labelText='Wallet threshold'
           suffix=''
           options={RP}
           value={fee.rewardThresholdPct ?? 0.1}
@@ -1192,11 +1274,12 @@ function Row({ fee, chain, max, disabled, dragging, ghost, patch, setPct, remove
         />
       ) : null}
       {rwa ? (
-        <div className='mt-2 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 sm:flex sm:flex-nowrap sm:justify-between sm:gap-4' data-no-drag>
+        <div className='mt-2 grid items-center gap-1.5 sm:grid-cols-[minmax(0,1fr)_auto] sm:gap-4' data-no-drag>
           <Threshold
             className='min-w-0'
             disabled={disabled}
-            labelText='Threshold'
+            labelText='Wallet threshold'
+            mobileLabelText='Wallet'
             suffix=''
             options={RP}
             value={fee.rewardThresholdPct ?? 0.1}
@@ -1204,13 +1287,22 @@ function Row({ fee, chain, max, disabled, dragging, ghost, patch, setPct, remove
             format={(n) => `${n}%`}
             helperText={<>Wallets holding at least <span className='font-semibold text-white/86'>{fee.rewardThresholdPct ?? 0.1}%</span> of total supply receive the selected rewards.</>}
           />
-          {rwaAssets.length >= 2 ? (
-            <RwaDistributionModeControl
-              disabled={disabled}
-              value={rwaDistributionMode}
-              onChange={(mode) => patch(fee.id, { rwaDistributionMode: mode, ...(mode === 'all' ? { rwaAssetWeights } : {}) })}
-            />
-          ) : null}
+          <div className='grid min-w-0 grid-cols-2 items-center gap-2 sm:flex sm:flex-nowrap sm:justify-end sm:gap-4'>
+            {rwaAssets.length >= 2 ? (
+              <RwaDistributionModeControl
+                disabled={disabled}
+                value={rwaDistributionMode}
+                onChange={(mode) => patch(fee.id, { rwaDistributionMode: mode, ...(mode === 'all' ? { rwaAssetWeights } : {}) })}
+              />
+            ) : null}
+            {rwaAssets.length >= 2 && rwaDistributionMode === 'all' ? (
+              <RewardGasPayerControl
+                disabled={disabled}
+                value={rewardGasPayer}
+                onChange={(payer) => patch(fee.id, { rewardGasPayer: payer })}
+              />
+            ) : null}
+          </div>
         </div>
       ) : null}
     </div>
@@ -1596,7 +1688,7 @@ export function FeeStructureBuilder({ chain, fees, onChange, onAdvancedProtectio
                     </div>
                     <div className='flex flex-nowrap items-center justify-end gap-1 sm:gap-2'>
                       <span className='text-[8px] font-semibold uppercase tracking-[0.10em] sm:text-[9px] sm:tracking-[0.14em]' style={{ color: T.muted }}>Every</span>
-                      <Pills options={TRIGGER_PRESETS} value={distributionTrigger} onChange={setDistributionTrigger} format={(v) => String(v)} disabled={!enabled} />
+                      <DistributionTriggerControl value={distributionTrigger} onChange={setDistributionTrigger} disabled={!enabled} />
                       <span className='text-[8px] font-semibold uppercase tracking-[0.10em] sm:text-[9px] sm:tracking-[0.14em]' style={{ color: T.muted }}>ETH</span>
                     </div>
                   </div>

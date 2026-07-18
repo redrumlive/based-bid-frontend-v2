@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import React from "react";
+import { useAppPreferences, type AmbientPreference, type AnimationPreference } from "./AppPreferences";
 import { FaXTwitter } from "react-icons/fa6";
 import {
   ArrowUpRight,
@@ -199,14 +200,10 @@ function PreferenceChoice({ active, children, onClick }: { active: boolean; chil
 
 function GlobalFooterSettings() {
   const [open, setOpen] = React.useState(false);
-  const [animations, setAnimations] = React.useState("On");
-  const [ambient, setAmbient] = React.useState("On");
+  const { animation, ambient, setAnimation, setAmbient } = useAppPreferences();
   const rootRef = React.useRef<HTMLDivElement>(null);
-
-  React.useEffect(() => {
-    document.documentElement.dataset.animation = animations.toLowerCase();
-    document.documentElement.dataset.ambient = ambient.toLowerCase();
-  }, [ambient, animations]);
+  const animationLabel = animation === "on" ? "On" : animation === "reduced" ? "Reduced" : "Off";
+  const ambientLabel = ambient === "on" ? "On" : "Off";
 
   React.useEffect(() => {
     if (!open) return;
@@ -230,13 +227,13 @@ function GlobalFooterSettings() {
               <div className="flex items-center justify-between gap-3">
                 <span className="text-[10px] text-white/48">Animations</span>
                 <div className="flex items-center gap-1">
-                  {["On", "Reduced", "Off"].map((value) => <PreferenceChoice key={value} active={animations === value} onClick={() => setAnimations(value)}>{value}</PreferenceChoice>)}
+                  {["On", "Reduced", "Off"].map((value) => <PreferenceChoice key={value} active={animationLabel === value} onClick={() => setAnimation(value.toLowerCase() as AnimationPreference)}>{value}</PreferenceChoice>)}
                 </div>
               </div>
               <div className="mt-2 flex items-center justify-between gap-3">
                 <span className="text-[10px] text-white/48">Ambient effects</span>
                 <div className="flex items-center gap-1">
-                  {["On", "Off"].map((value) => <PreferenceChoice key={value} active={ambient === value} onClick={() => setAmbient(value)}>{value}</PreferenceChoice>)}
+                  {["On", "Off"].map((value) => <PreferenceChoice key={value} active={ambientLabel === value} onClick={() => setAmbient(value.toLowerCase() as AmbientPreference)}>{value}</PreferenceChoice>)}
                 </div>
               </div>
             </div>

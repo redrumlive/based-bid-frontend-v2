@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Space_Grotesk } from 'next/font/google';
 import AppFooter from './AppFooter';
+import { AppPreferencesProvider } from './AppPreferences';
 import AppTopBar from './AppTopBar';
 import './globals.css';
 
@@ -22,11 +23,13 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${spaceGrotesk.className} ${spaceGrotesk.variable}`}>
+    <html lang="en" data-animation="on" data-ambient="on" suppressHydrationWarning className={`${spaceGrotesk.className} ${spaceGrotesk.variable}`}>
       <body>
-        <AppTopBar />
-        {children}
-        <AppFooter />
+        <AppPreferencesProvider>
+          <AppTopBar />
+          {children}
+          <AppFooter />
+        </AppPreferencesProvider>
       </body>
     </html>
   );
