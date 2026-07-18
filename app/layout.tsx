@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Space_Grotesk } from 'next/font/google';
 import AppFooter from './AppFooter';
 import { AppPreferencesProvider } from './AppPreferences';
+import AppShell from './AppShell';
 import AppTopBar from './AppTopBar';
 import './globals.css';
 
@@ -27,7 +28,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <body>
         <AppPreferencesProvider>
           <AppTopBar />
-          {children}
+          <AppShell>{children}</AppShell>
           <AppFooter />
         </AppPreferencesProvider>
       </body>

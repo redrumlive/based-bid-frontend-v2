@@ -48,6 +48,9 @@ export type FeeWallet = {
   rwaAssets?: string[];
   rwaDistributionMode?: RwaDistributionMode;
   rewardGasPayer?: RewardGasPayer;
+  rewardDestination?: RewardDestination;
+  rewardRouteLabel?: string;
+  rewardRouteAddress?: string;
   rwaAssetWeights?: Record<string, number>;
   rwaPinnedAssets?: string[];
 };
@@ -60,13 +63,14 @@ type PresetKey = 'mixed' | 'creator' | 'balanced' | 'rewards' | 'cto';
 type RwaCategory = 'token' | 'stock' | 'etf';
 type RwaDistributionMode = 'rotating' | 'all';
 type RewardGasPayer = 'project' | 'user';
+type RewardDestination = 'holders' | 'treasury' | 'custom';
 type RewardBasketAsset = { id?: string; symbol: string; name: string; category: RwaCategory; address: string; icon?: string };
 
 type ChipsProps<T extends string | number> = {
   options: readonly T[];
   value: T;
   onChange: (v: T) => void;
-  format?: (v: T) => string;
+  format?: (v: T) => React.ReactNode;
   disabled?: boolean;
   className?: string;
   compact?: boolean;
@@ -264,6 +268,9 @@ const needsAddress = (f: FeeWallet) =>
 export const isMissingAddr = (f: FeeWallet) =>
   f.id === 'rwa' && f.pct > 0
     ? !(f.rwaAssets?.length)
+      || ((f.rewardDestination ?? 'holders') !== 'holders'
+        && (!(f.rewardRouteAddress ?? '').trim()
+          || ((f.rewardDestination ?? 'holders') === 'custom' && !(f.rewardRouteLabel ?? '').trim())))
     : !needsAddress(f) ? false : !(f.address ?? '').trim();
 
 export const totalWarnLevel = (n: number): 'danger' | 'warn' | null => (n > 6.9 ? 'danger' : n >= 4.1 ? 'warn' : null);
@@ -456,7 +463,7 @@ const make = (chain: ChainId, t: Exclude<FeeType, 'custom'>): FeeWallet =>
     : t === 'rewards'
       ? { id: 'rewards', name: 'Holder Rewards', pct: 1, rewardAsset: rewardOf(chain), rewardThresholdPct: 0.1 }
       : t === 'rwa'
-        ? { id: 'rwa', name: 'Rewards Basket', pct: 1, rwaAssets: [...RWA_PRESET_ASSETS], rwaAssetWeights: equalAssetWeights(RWA_PRESET_ASSETS), rewardThresholdPct: 0.1, rwaDistributionMode: 'rotating', rewardGasPayer: 'user' }
+        ? { id: 'rwa', name: 'Rewards Basket', pct: 1, rwaAssets: [...RWA_PRESET_ASSETS], rwaAssetWeights: equalAssetWeights(RWA_PRESET_ASSETS), rewardThresholdPct: 0.1, rwaDistributionMode: 'rotating', rewardGasPayer: 'user', rewardDestination: 'holders' }
       : t === 'buybacks'
         ? { id: 'buybacks', name: 'Buybacks & Burns', pct: 1 }
         : t === 'liq'
@@ -740,6 +747,44 @@ function RewardGasPayerControl({ value, onChange, disabled }: { value: RewardGas
         onChange={onChange}
         format={(payer) => payer === 'project' ? 'Project' : 'User'}
       />
+    </div>
+  );
+}
+
+function RewardDestinationControl({ value, onChange, disabled, accent }: { value: RewardDestination; onChange: (value: RewardDestination) => void; disabled: boolean; accent: string }) {
+  const options: Array<{ value: RewardDestination; label: string; mobileLabel?: string; icon: React.ComponentType<{ className?: string; strokeWidth?: number }> }> = [
+    { value: 'holders', label: 'Holders', icon: Crown },
+    { value: 'treasury', label: 'Treasury', icon: Landmark },
+    { value: 'custom', label: 'Custom route', mobileLabel: 'Custom', icon: Code2 },
+  ];
+
+  return (
+    <div className='grid min-w-0 grid-cols-3 gap-1.5 sm:gap-2' data-no-drag>
+      {options.map((option) => {
+        const active = option.value === value;
+        const Icon = option.icon;
+        return (
+          <button
+            key={option.value}
+            type='button'
+            disabled={disabled}
+            aria-pressed={active}
+            onClick={() => onChange(option.value)}
+            className='group/destination flex h-8 min-w-0 items-center justify-center gap-1.5 rounded-[10px] border px-2 text-[9px] font-semibold outline-none transition-[border-color,background-color,color,box-shadow] duration-200 disabled:cursor-not-allowed disabled:opacity-45 sm:h-9 sm:gap-2 sm:rounded-xl sm:px-3 sm:text-[11px]'
+            style={{
+              color: active ? rgba(accent, 0.96) : 'rgba(244,249,246,0.55)',
+              background: active ? rgba(accent, 0.075) : 'rgba(244,249,246,0.018)',
+              borderColor: active ? rgba(accent, 0.30) : 'rgba(244,249,246,0.09)',
+              boxShadow: active ? `inset 0 1px 0 rgba(255,255,255,0.035), 0 0 18px ${rgba(accent, 0.045)}` : 'inset 0 1px 0 rgba(255,255,255,0.018)',
+            }}
+          >
+            <Icon className='h-3 w-3 shrink-0 transition-colors group-hover/destination:text-white/80 sm:h-3.5 sm:w-3.5' strokeWidth={1.8} />
+            <span className='min-w-0 truncate'>
+              {option.mobileLabel ? <><span className='sm:hidden'>{option.mobileLabel}</span><span className='hidden sm:inline'>{option.label}</span></> : option.label}
+            </span>
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -1179,6 +1224,7 @@ function ProtectionCard({ title, description, enabled, onToggle, children }: { t
 
 function Row({ fee, chain, max, disabled, dragging, ghost, patch, setPct, remove, onDrag, bind, attention }: RowProps) {
   const [hover, setHover] = useState(false);
+  const [rewardDestinationOpen, setRewardDestinationOpen] = useState(false);
   const color = tint(fee.id, fee.name);
   const type = classify(fee.id, fee.name);
   const rewards = fee.id === 'rewards';
@@ -1186,11 +1232,15 @@ function Row({ fee, chain, max, disabled, dragging, ghost, patch, setPct, remove
   const rwaAssets = fee.rwaAssets ?? [];
   const rwaDistributionMode = fee.rwaDistributionMode ?? 'rotating';
   const rewardGasPayer = fee.rewardGasPayer ?? 'user';
+  const rewardDestination = fee.rewardDestination ?? 'holders';
   const rwaAssetWeights = normalizeAssetWeights(rwaAssets, fee.rwaAssetWeights);
   const rwaPinnedAssets = fee.rwaPinnedAssets?.filter((id) => rwaAssets.includes(id)) ?? [];
   const asset = fee.rewardAsset ?? rewardOf(chain);
   const treasury = fee.id === 'ops';
-  const rwaInvalid = rwa && (fee.pct ?? 0) > 0 && !(fee.rwaAssets?.length);
+  const rwaAssetsInvalid = rwa && (fee.pct ?? 0) > 0 && !(fee.rwaAssets?.length);
+  const rewardRouteLabelInvalid = rwa && rewardDestination === 'custom' && !(fee.rewardRouteLabel ?? '').trim();
+  const rewardRouteAddressInvalid = rwa && rewardDestination !== 'holders' && !(fee.rewardRouteAddress ?? '').trim();
+  const rwaInvalid = rwaAssetsInvalid || rewardRouteLabelInvalid || rewardRouteAddressInvalid;
   const addrInvalid = isMissingAddr(fee) && !rewards && !rwa;
   const invalid = addrInvalid || rwaInvalid;
   const custom = !LOCKED.has(fee.id);
@@ -1234,7 +1284,7 @@ function Row({ fee, chain, max, disabled, dragging, ghost, patch, setPct, remove
                       </div>
                     ) : null}
                   </div>
-                  <p className='bbRouteDesc mt-0.5 overflow-hidden text-[9.5px] leading-[13px] sm:text-[11px] sm:leading-5' style={{ color: 'rgba(244,249,246,0.56)' }}>{desc(fee)}</p>
+                  <p className='bbRouteDesc mt-0.5 overflow-hidden text-[9.5px] leading-[13px] sm:text-[11px] sm:leading-5' style={{ color: 'rgba(244,249,246,0.56)' }}>{rwa && rewardDestination !== 'holders' ? 'Routes your selected tokens, stocks, and ETFs to the selected destination.' : desc(fee)}</p>
                   {treasury ? (
                     <div className='mt-2.5'>
                       <TextField disabled={disabled} accent={color} invalid={addrInvalid} label='Recipient' value={fee.address ?? ''} onChange={(v) => patch(fee.id, { address: v })} placeholder='Paste treasury wallet address' className='w-full' />
@@ -1265,7 +1315,7 @@ function Row({ fee, chain, max, disabled, dragging, ghost, patch, setPct, remove
         <RewardBasketSelector
           disabled={disabled}
           accent={color}
-          invalid={rwaInvalid}
+          invalid={rwaAssetsInvalid}
           value={rwaAssets}
           distributionMode={rwaDistributionMode}
           weights={rwaAssetWeights}
@@ -1297,58 +1347,158 @@ function Row({ fee, chain, max, disabled, dragging, ghost, patch, setPct, remove
         />
       ) : null}
       {rwa ? (
-        <div className='mt-2 grid items-center gap-1.5 sm:grid-cols-[minmax(0,1fr)_auto] sm:gap-4' data-no-drag>
-          <Threshold
-            className='min-w-0'
-            disabled={disabled}
-            labelText='Wallet threshold'
-            mobileLabelText='Wallet'
-            suffix=''
-            options={RP}
-            value={fee.rewardThresholdPct ?? 0.1}
-            onChange={(v) => patch(fee.id, { rewardThresholdPct: v })}
-            format={(n) => `${n}%`}
-            helperText={<>Wallets holding at least <span className='font-semibold text-white/86'>{fee.rewardThresholdPct ?? 0.1}%</span> of total supply receive the selected rewards.</>}
-          />
-          <motion.div layout className='grid min-w-0 grid-cols-2 items-center gap-2 sm:flex sm:flex-nowrap sm:justify-end sm:gap-4' transition={CONTROL_REVEAL_TRANSITION}>
-            <AnimatePresence initial={false} mode='popLayout'>
-              {rwaAssets.length >= 2 ? (
-                <motion.div
-                  key='basket-mode'
-                  layout
-                  initial={{ opacity: 0, x: 6, scale: 0.97, filter: 'blur(2px)' }}
-                  animate={{ opacity: 1, x: 0, scale: 1, filter: 'blur(0px)' }}
-                  exit={{ opacity: 0, x: 4, scale: 0.97, filter: 'blur(2px)' }}
-                  transition={CONTROL_REVEAL_TRANSITION}
-                  className='min-w-0'
+        <motion.div layout className='mt-2 space-y-2' data-no-drag transition={CONTROL_REVEAL_TRANSITION}>
+          <motion.div layout className='pt-0.5' transition={CONTROL_REVEAL_TRANSITION}>
+            <div className='grid w-full grid-cols-[minmax(14px,1fr)_auto_minmax(14px,1fr)] items-center gap-2 sm:grid-cols-[minmax(28px,1fr)_auto_minmax(28px,1fr)] sm:gap-3'>
+              <span className='h-px' style={{ background: `linear-gradient(90deg, transparent, ${rgba(color, 0.18)})` }} aria-hidden />
+              <span className='flex min-w-0 items-center justify-center gap-1.5'>
+                <span className='text-[9px] font-semibold uppercase tracking-[0.14em] sm:text-[11px] sm:tracking-[0.17em]' style={{ color: rgba(color, 0.84) }}>Destination</span>
+                <InfoHint label='Reward destination helper' maxWidth={340}>
+                  <div className='space-y-2'>
+                    <div><span className='font-semibold text-white/88'>Holders</span><span className='text-white/58'> distributes rewards to eligible wallets.</span></div>
+                    <div className='border-t border-white/8 pt-2'><span className='font-semibold text-white/88'>Rewards Basket</span><span className='text-white/58'> sends every cycle to the selected wallet or smart contract.</span></div>
+                    <div className='border-t border-white/8 pt-2'><span className='font-semibold text-white/88'>Custom Route</span><span className='text-white/58'> uses your own route label and recipient.</span></div>
+                  </div>
+                </InfoHint>
+                <span className='mx-0.5 h-3.5 w-px shrink-0' style={{ background: rgba(color, 0.16) }} aria-hidden />
+                <button
+                  type='button'
+                  disabled={disabled}
+                  aria-expanded={rewardDestinationOpen}
+                  onClick={() => setRewardDestinationOpen((open) => !open)}
+                  className='group flex w-[106px] shrink-0 items-center justify-center gap-1.5 rounded-lg px-1.5 py-1 transition hover:bg-white/[0.025] disabled:cursor-not-allowed disabled:opacity-45 sm:w-[126px] sm:gap-2 sm:px-2'
                 >
-                  <RwaDistributionModeControl
+                  <span className='min-w-0 flex-1 truncate text-center text-[10px] font-medium sm:text-[11px]' style={{ color: rewardDestinationOpen ? rgba(color, 0.92) : 'rgba(244,249,246,0.72)' }}>
+                    {rewardDestination === 'holders' ? 'Holders' : rewardDestination === 'treasury' ? 'Rewards Basket' : 'Custom Route'}
+                  </span>
+                  <ChevronDown className={`h-3.5 w-3.5 transition duration-300 group-hover:text-white/68 ${rewardDestinationOpen ? 'rotate-180' : ''}`} style={{ color: rewardDestinationOpen ? rgba(color, 0.72) : 'rgba(244,249,246,0.38)' }} strokeWidth={1.8} />
+                </button>
+              </span>
+              <span className='h-px' style={{ background: `linear-gradient(90deg, ${rgba(color, 0.18)}, transparent)` }} aria-hidden />
+            </div>
+
+            <div
+              className='grid transition-[grid-template-rows,opacity,transform] duration-500 ease-[cubic-bezier(.22,1,.36,1)]'
+              style={{ gridTemplateRows: rewardDestinationOpen ? '1fr' : '0fr', opacity: rewardDestinationOpen ? 1 : 0, transform: rewardDestinationOpen ? 'translateY(0)' : 'translateY(-4px)' }}
+              aria-hidden={!rewardDestinationOpen}
+              inert={!rewardDestinationOpen}
+            >
+              <div className='min-h-0 overflow-hidden'>
+                <div className='space-y-2 px-1.5 pb-1.5 pt-2'>
+                  <RewardDestinationControl
                     disabled={disabled}
-                    value={rwaDistributionMode}
-                    onChange={(mode) => patch(fee.id, { rwaDistributionMode: mode, ...(mode === 'all' ? { rwaAssetWeights } : {}) })}
+                    value={rewardDestination}
+                    onChange={(destination) => patch(fee.id, { rewardDestination: destination })}
+                    accent={color}
                   />
-                </motion.div>
-              ) : null}
-              {rwaAssets.length >= 2 && rwaDistributionMode === 'all' ? (
-                <motion.div
-                  key='gas-payer'
-                  layout
-                  initial={{ opacity: 0, x: 8, scale: 0.96, filter: 'blur(3px)' }}
-                  animate={{ opacity: 1, x: 0, scale: 1, filter: 'blur(0px)' }}
-                  exit={{ opacity: 0, x: 6, scale: 0.96, filter: 'blur(3px)' }}
-                  transition={CONTROL_REVEAL_TRANSITION}
-                  className='min-w-0'
-                >
-                  <RewardGasPayerControl
+
+                  <div
+                    className='grid transition-[grid-template-rows,opacity,transform] duration-300 ease-[cubic-bezier(.22,1,.36,1)]'
+                    style={{
+                      gridTemplateRows: rewardDestination === 'holders' ? '0fr' : '1fr',
+                      opacity: rewardDestination === 'holders' ? 0 : 1,
+                      transform: rewardDestination === 'holders' ? 'translateY(-3px)' : 'translateY(0)',
+                    }}
+                  >
+                    <div className='min-h-0 overflow-hidden'>
+                      <AnimatePresence initial={false} mode='popLayout'>
+                        {rewardDestination === 'treasury' ? (
+                          <motion.div layout key='treasury-destination' initial={{ opacity: 0, y: -3 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -2 }} transition={CONTROL_REVEAL_TRANSITION} className='grid min-w-0 gap-1.5 sm:grid-cols-2 sm:gap-2'>
+                            <div className='flex h-7 min-w-0 items-center gap-1.5 rounded-[10px] border px-2.5 sm:h-8 sm:gap-2 sm:rounded-xl sm:px-3' style={{ borderColor: rgba(color, 0.14), background: `linear-gradient(180deg, ${rgba(color, 0.055)}, rgba(244,249,246,0.016))`, boxShadow: `0 0 0 1px ${rgba(color, 0.035)} inset, 0 8px 18px rgba(0,0,0,0.10)` }}>
+                              <span className='shrink-0 text-[8px] font-semibold uppercase tracking-[0.10em] sm:text-[9px] sm:tracking-[0.12em]' style={{ color: rgba(color, 0.72) }}>Label</span>
+                              <span className='h-3.5 w-px shrink-0' style={{ background: rgba(color, 0.16) }} aria-hidden />
+                              <span className='truncate text-[11.5px] font-medium leading-none sm:text-[12.5px]' style={{ color: rgba(color, 0.92) }}>Rewards Basket</span>
+                            </div>
+                            <TextField
+                              disabled={disabled}
+                              accent={color}
+                              invalid={rewardRouteAddressInvalid}
+                              focusTarget={rewardRouteAddressInvalid}
+                              label='Recipient'
+                              value={fee.rewardRouteAddress ?? ''}
+                              onChange={(value) => patch(fee.id, { rewardRouteAddress: value })}
+                              placeholder='Paste wallet or smart contract address'
+                              className='min-w-0'
+                            />
+                          </motion.div>
+                        ) : rewardDestination === 'custom' ? (
+                          <motion.div layout key='custom-destination' initial={{ opacity: 0, y: -3 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -2 }} transition={CONTROL_REVEAL_TRANSITION} className='grid min-w-0 gap-1.5 sm:grid-cols-2 sm:gap-2'>
+                            <TextField
+                              disabled={disabled}
+                              accent={color}
+                              invalid={rewardRouteLabelInvalid}
+                              focusTarget={rewardRouteLabelInvalid}
+                              label='Label'
+                              value={fee.rewardRouteLabel ?? ''}
+                              onChange={(value) => patch(fee.id, { rewardRouteLabel: value })}
+                              placeholder='Route label'
+                              className='min-w-0'
+                            />
+                            <TextField
+                              disabled={disabled}
+                              accent={color}
+                              invalid={rewardRouteAddressInvalid}
+                              focusTarget={!rewardRouteLabelInvalid && rewardRouteAddressInvalid}
+                              label='Recipient'
+                              value={fee.rewardRouteAddress ?? ''}
+                              onChange={(value) => patch(fee.id, { rewardRouteAddress: value })}
+                              placeholder='Paste wallet or smart contract address'
+                              className='min-w-0'
+                            />
+                          </motion.div>
+                        ) : null}
+                      </AnimatePresence>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+
+          <motion.div layout className='flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1.5' transition={CONTROL_REVEAL_TRANSITION}>
+            <AnimatePresence initial={false} mode='popLayout'>
+              {rewardDestination === 'holders' ? (
+                <motion.div key='wallet-threshold' layout initial={{ opacity: 0, x: -6, filter: 'blur(2px)' }} animate={{ opacity: 1, x: 0, filter: 'blur(0px)' }} exit={{ opacity: 0, x: -4, filter: 'blur(2px)' }} transition={CONTROL_REVEAL_TRANSITION} className='min-w-0'>
+                  <Threshold
+                    className='min-w-0'
                     disabled={disabled}
-                    value={rewardGasPayer}
-                    onChange={(payer) => patch(fee.id, { rewardGasPayer: payer })}
+                    labelText='Wallet threshold'
+                    mobileLabelText='Wallet'
+                    suffix=''
+                    options={RP}
+                    value={fee.rewardThresholdPct ?? 0.1}
+                    onChange={(v) => patch(fee.id, { rewardThresholdPct: v })}
+                    format={(n) => `${n}%`}
+                    helperText={<>Wallets holding at least <span className='font-semibold text-white/86'>{fee.rewardThresholdPct ?? 0.1}%</span> of total supply receive the selected rewards.</>}
                   />
                 </motion.div>
               ) : null}
             </AnimatePresence>
+
+            <motion.div layout className='ml-auto flex min-w-0 flex-wrap items-center justify-end gap-x-4 gap-y-1.5' transition={CONTROL_REVEAL_TRANSITION}>
+              <AnimatePresence initial={false} mode='popLayout'>
+                {rwaAssets.length >= 2 ? (
+                  <motion.div key='basket-mode' layout initial={{ opacity: 0, x: 6, filter: 'blur(2px)' }} animate={{ opacity: 1, x: 0, filter: 'blur(0px)' }} exit={{ opacity: 0, x: 4, filter: 'blur(2px)' }} transition={CONTROL_REVEAL_TRANSITION} className='min-w-0'>
+                    <RwaDistributionModeControl
+                      disabled={disabled}
+                      value={rwaDistributionMode}
+                      onChange={(mode) => patch(fee.id, { rwaDistributionMode: mode, ...(mode === 'all' ? { rwaAssetWeights } : {}) })}
+                    />
+                  </motion.div>
+                ) : null}
+                {rewardDestination === 'holders' && rwaAssets.length >= 2 && rwaDistributionMode === 'all' ? (
+                  <motion.div key='gas-payer' layout initial={{ opacity: 0, x: 8, filter: 'blur(3px)' }} animate={{ opacity: 1, x: 0, filter: 'blur(0px)' }} exit={{ opacity: 0, x: 6, filter: 'blur(3px)' }} transition={CONTROL_REVEAL_TRANSITION} className='min-w-0'>
+                    <RewardGasPayerControl
+                      disabled={disabled}
+                      value={rewardGasPayer}
+                      onChange={(payer) => patch(fee.id, { rewardGasPayer: payer })}
+                    />
+                  </motion.div>
+                ) : null}
+              </AnimatePresence>
+            </motion.div>
           </motion.div>
-        </div>
+        </motion.div>
       ) : null}
     </div>
   );
@@ -1417,9 +1567,14 @@ export function FeeStructureBuilder({ chain, fees, onChange, onAdvancedProtectio
 
   const missingSummary = useMemo(() => {
     if (!missing.length) return null;
-    const issues = missing.map((fee) => fee.id === 'rwa'
-      ? 'Select at least one token, stock, or ETF'
-      : `Add a recipient for ${fee.name?.trim() || fee.id}`);
+    const issues = missing.map((fee) => {
+      if (fee.id !== 'rwa') return `Add a recipient for ${fee.name?.trim() || fee.id}`;
+      if (!(fee.rwaAssets?.length)) return 'Select at least one token, stock, or ETF';
+      const missingLabel = !(fee.rewardRouteLabel ?? '').trim();
+      const missingAddress = !(fee.rewardRouteAddress ?? '').trim();
+      if (missingLabel && missingAddress) return 'Add a label and recipient for the custom reward route';
+      return missingLabel ? 'Label the custom reward route' : 'Add a recipient for the custom reward route';
+    });
     return {
       id: missing[0].id,
       text: issues.length === 1 ? issues[0] : `Complete ${issues.length} route settings`,

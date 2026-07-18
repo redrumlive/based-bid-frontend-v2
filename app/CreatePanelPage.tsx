@@ -985,6 +985,7 @@ function Field({
   label,
   placeholder,
   compact,
+  required,
   value,
   onChange,
   inputRef,
@@ -994,6 +995,7 @@ function Field({
   label: string;
   placeholder: string;
   compact?: boolean;
+  required?: boolean;
   value?: string;
   onChange?: (v: string) => void;
   inputRef?: React.RefObject<HTMLInputElement | null>;
@@ -1006,9 +1008,14 @@ function Field({
         className={`${compact ? "mb-1 flex min-h-[14px] items-center justify-between gap-2" : ""}`}
       >
         <label
-          className={`block font-medium ${compact ? "text-[11px] text-white/70" : "mb-2 text-sm text-white"}`}
+          className={`flex items-center gap-2 font-medium ${compact ? "text-[11px] text-white/70" : "mb-2 text-sm text-white"}`}
         >
-          {label}
+          <span>{label}</span>
+          {required ? (
+            <span className="inline-flex h-[17px] items-center rounded-full border border-white/10 bg-white/[0.035] px-1.5 text-[7px] font-semibold uppercase tracking-[0.14em] text-white/42">
+              Required
+            </span>
+          ) : null}
         </label>
         {compact && helper ? (
           <div
@@ -3990,18 +3997,20 @@ export default function BBLbpCreationReworkPreview() {
                 <div className="grid gap-5">
                   <div className="grid w-full gap-5 sm:grid-cols-2">
                     <Field
-                      label="Name *"
+                      label="Name"
                       placeholder="Name your token..."
                       value={name}
                       onChange={setName}
                       inputRef={nameRef}
+                      required
                     />
                     <Field
-                      label="Symbol *"
+                      label="Symbol"
                       placeholder="$SYMBOL"
                       value={symbol}
                       onChange={setSymbol}
                       inputRef={symbolRef}
+                      required
                     />
                   </div>
                   <div className="w-full">
@@ -4014,9 +4023,12 @@ export default function BBLbpCreationReworkPreview() {
                       <div className="mb-2.5 flex h-11 w-11 items-center justify-center rounded-lg border border-white/10 bg-[#151515] text-white/68">
                         <Upload className="h-[18px] w-[18px]" />
                       </div>
-                      <p className="text-xs font-medium text-white">
-                        {logo ? "Logo uploaded" : "Upload logo *"}
-                      </p>
+                      <div className="flex items-center gap-2 text-xs font-medium text-white">
+                        <span>{logo ? "Logo uploaded" : "Upload logo"}</span>
+                        <span className="inline-flex h-[17px] items-center rounded-full border border-white/10 bg-white/[0.035] px-1.5 text-[7px] font-semibold uppercase tracking-[0.14em] text-white/42">
+                          Required
+                        </span>
+                      </div>
                       <p className="mt-0.5 text-[11px] text-white/50">
                         {logo ? (
                           "Click to replace"

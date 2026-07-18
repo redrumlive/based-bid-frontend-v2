@@ -102,6 +102,32 @@ html[data-animation="off"] *::after {
   transition-duration: 0.001ms !important;
 }
 
+@keyframes bbPublishGradientFlow {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+@keyframes bbPublishSheen {
+  0%, 12% { opacity: 0; transform: translateX(-145%) skewX(-18deg); }
+  34% { opacity: 0.34; }
+  62%, 100% { opacity: 0; transform: translateX(310%) skewX(-18deg); }
+}
+
+.bb-publish-button-ready .bb-publish-button-gradient {
+  animation: bbPublishGradientFlow 5.8s ease-in-out infinite;
+}
+
+.bb-publish-button-ready .bb-publish-button-sheen {
+  animation: bbPublishSheen 3.25s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bb-publish-button-ready .bb-publish-button-gradient,
+  .bb-publish-button-ready .bb-publish-button-sheen {
+    animation: none;
+  }
+}
+
 section.mt-8 > .grid > button {
   transition-property: transform, border-color, background-color, box-shadow, filter;
   transition-duration: 240ms;
@@ -180,7 +206,7 @@ button[class*="bg-[#10B981]/90"][class*="text-[#03150D]"]::before {
   position: absolute;
   left: 50%;
   bottom: -18%;
-  z-index: -1;
+  z-index: 0;
   width: 78%;
   height: 64%;
   border-radius: inherit;
@@ -239,5 +265,3 @@ button[class*="bg-[#10B981]/90"][class*="text-[#03150D]"]:active {
     animation: none;
   }
 }
-
-

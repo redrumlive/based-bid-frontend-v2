@@ -208,7 +208,7 @@ function WalletMenu() {
               <div className="flex items-center justify-between text-[8px] font-semibold uppercase tracking-[0.15em] text-white/28"><span>Network</span><span className="normal-case tracking-normal text-white/50">{networkName(network)}</span></div>
               <div className="mt-2 grid grid-cols-2 gap-2">
                 {CHAINS.map((item) => (
-                  <button key={item} type="button" onClick={() => setNetwork(item)} className={cx("flex h-10 cursor-pointer items-center gap-2 rounded-md px-2.5 text-[10px] font-medium ring-1 transition-colors", item === network ? "bg-[#4ade80]/[0.055] text-[#4ade80] ring-[#4ade80]/40" : "bg-white/[0.012] text-white/54 ring-white/12 hover:bg-white/[0.04] hover:text-white/82")}>
+                  <button key={item} type="button" onClick={() => setNetwork(item)} className={cx("flex h-10 cursor-pointer items-center gap-2 rounded-md px-2.5 text-[10px] font-medium ring-1 transition-colors", item === network ? "bg-white/[0.065] text-white/88 ring-white/18" : "bg-white/[0.012] text-white/54 ring-white/12 hover:bg-white/[0.04] hover:text-white/82")}>
                     <NetworkIcon network={item} className="h-[18px] w-[18px]" />
                     <span className="min-w-0 flex-1 truncate text-left">{networkName(item)}</span>
                     {item === network ? <Check className="h-3.5 w-3.5 shrink-0" /> : null}
@@ -245,7 +245,9 @@ export default function AppTopBar() {
           <Image unoptimized src={BRAND_ICON} alt="Based Bid" width={36} height={36} className="h-9 w-9 rounded-2xl object-cover" priority />
           <span className="hidden flex-col leading-tight min-[470px]:flex">
             <span className="text-[15px] font-medium tracking-tight text-white">based.bid</span>
-            <span className="mt-0.5 text-[8.5px] font-medium uppercase tracking-[0.145em] text-white/38">Next-gen <span className="text-[#4ade80]/72">economies</span></span>
+            <span className="mt-0.5 text-[7.5px] font-semibold uppercase tracking-[0.225em] text-white/38">
+              Next-gen <span className="text-[#4ade80]/72">economies</span>
+            </span>
           </span>
         </Link>
       </div>

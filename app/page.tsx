@@ -264,14 +264,37 @@ const GLOBAL_CSS = `
   will-change: opacity, transform, filter;
 }
 
+.bb-creator-payout {
+  position: relative;
+  isolation: isolate;
+}
+
+.bb-creator-payout__art {
+  position: absolute;
+  left: -9px;
+  top: -14px;
+  z-index: 2;
+  width: 76px;
+  height: 48px;
+  max-width: none;
+  pointer-events: none;
+  object-fit: contain;
+  filter: saturate(1.04);
+}
+
+.bb-creator-payout__copy {
+  position: relative;
+  z-index: 1;
+}
+
 .bb-create-launch {
   --bb-create-spectrum: linear-gradient(
     102deg,
-    transparent 0%,
-    var(--bb-green) 22%,
+    var(--bb-green) 0%,
+    #7edb76 22%,
     #dfb858 50%,
     var(--bb-red) 78%,
-    transparent 100%
+    var(--bb-green) 100%
   );
   position: relative;
   overflow: visible;
@@ -305,7 +328,7 @@ const GLOBAL_CSS = `
   filter: blur(8px) saturate(1.04);
   opacity: 0.28;
   transform: translateZ(0);
-  animation: bbCreateBottomFlow 5.2s ease-in-out infinite, bbCreateBreathe 4.4s ease-in-out infinite;
+  animation: bbCreateColorFlow 6.8s ease-in-out infinite;
   transition: opacity 220ms ease, filter 220ms ease;
 }
 
@@ -325,33 +348,20 @@ const GLOBAL_CSS = `
   opacity: 0.86;
 }
 
-@property --bb-create-edge-angle {
-  syntax: "<angle>";
-  initial-value: 0deg;
-  inherits: false;
-}
-
 .bb-create-launch__edge::before {
   content: "";
   position: absolute;
   inset: 0;
   border-radius: inherit;
   padding: 2px;
-  background: conic-gradient(
-    from var(--bb-create-edge-angle),
-    transparent 0deg 70deg,
-    rgba(29, 217, 148, 0.16) 92deg,
-    var(--bb-green) 124deg,
-    #dfb858 160deg,
-    var(--bb-red) 196deg,
-    rgba(29, 217, 148, 0.12) 228deg,
-    transparent 254deg 360deg
-  );
+  background: linear-gradient(102deg, var(--bb-green) 0%, #7edb76 22%, #dfb858 50%, var(--bb-red) 78%, var(--bb-green) 100%);
+  background-position: 0% 50%;
+  background-size: 180% 100%;
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
-  animation: bbCreateEdgeOrbit 4.4s linear infinite;
-  will-change: background;
+  animation: bbCreateColorFlow 6.8s ease-in-out infinite;
+  will-change: background-position;
 }
 
 .bb-create-launch__wash {
@@ -378,8 +388,7 @@ const GLOBAL_CSS = `
   filter: blur(9px) saturate(1.08);
 }
 
-.bb-create-launch:hover .bb-create-launch__edge { opacity: 0.92; }
-.bb-create-launch:hover .bb-create-launch__edge::before { animation-duration: 2.6s; }
+.bb-create-launch:hover .bb-create-launch__edge { opacity: 0.96; }
 
 .bb-create-launch__plus {
   transform-origin: center;
@@ -392,18 +401,9 @@ const GLOBAL_CSS = `
   transform: rotate(90deg) scale(1.14);
 }
 
-@keyframes bbCreateEdgeOrbit {
-  to { --bb-create-edge-angle: 360deg; }
-}
-
-@keyframes bbCreateBottomFlow {
-  0%, 100% { background-position: 38% 50%; }
-  50% { background-position: 62% 50%; }
-}
-
-@keyframes bbCreateBreathe {
-  0%, 100% { opacity: 0.23; transform: scaleX(0.96); }
-  50% { opacity: 0.34; transform: scaleX(1.02); }
+@keyframes bbCreateColorFlow {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
 }
 
 @keyframes bbCreateIdleShake {
@@ -608,6 +608,8 @@ const GLOBAL_CSS = `
 [data-animation="off"] .bb-progress-dot-pulse::after,
 [data-animation="off"] .bb-status-dot-pulse::after,
 [data-animation="off"] .bb-chart-endpoint { animation: none; }
+
+[data-animation="off"] .bb-creator-payout__art { visibility: hidden; }
 
 @media (prefers-reduced-motion: reduce) {
   .bb-create-launch,
@@ -1208,7 +1210,7 @@ function MiniTokenChart({ card, idle = false }: { card: TokenCardData; idle?: bo
   const id = React.useId().replace(/:/g, "");
   const isUp = card.change >= 0;
   const variant = card.chartVariant ?? 0;
-  const chartEndX = 411;
+  const chartEndX = 410.25;
   const variants = isUp
     ? [
         `M0 62 C42 62 54 61 78 54 C104 46 122 48 146 41 C172 33 190 35 216 28 C250 19 274 25 302 17 C338 7 376 12 ${chartEndX} 4`,
@@ -1225,11 +1227,10 @@ function MiniTokenChart({ card, idle = false }: { card: TokenCardData; idle?: bo
   const fillStrong = idle ? "rgba(52,211,153,0.06)" : isUp ? "rgba(52,211,153,0.19)" : "rgba(255,55,113,0.16)";
   const fillMid = idle ? "rgba(52,211,153,0.025)" : isUp ? "rgba(52,211,153,0.085)" : "rgba(255,55,113,0.07)";
   const fillSoft = idle ? "rgba(52,211,153,0.01)" : isUp ? "rgba(52,211,153,0.025)" : "rgba(255,55,113,0.022)";
-  const fillTail = idle ? "rgba(52,211,153,0.003)" : isUp ? "rgba(52,211,153,0.007)" : "rgba(255,55,113,0.006)";
   const endY = isUp ? [4, 5, 4][variant] : [64, 65, 66][variant];
   const areaEndY = idle ? 52 : endY;
   const chartHeight = 128;
-  const areaD = `${d} L424 ${areaEndY} L424 ${chartHeight + 4} L-4 ${chartHeight + 4} L-4 104 Z`;
+  const areaD = `${d} L424 ${areaEndY} L424 ${chartHeight} L-4 ${chartHeight} Z`;
 
   return (
     <div className="relative -mx-5 mt-1 h-[84px] w-[calc(100%+40px)]">
@@ -1239,22 +1240,27 @@ function MiniTokenChart({ card, idle = false }: { card: TokenCardData; idle?: bo
             <linearGradient id={`card-fill-${id}`} x1="0%" y1="0%" x2="0%" y2="100%">
               <stop offset="0%" stopColor={fillStrong} />
               <stop offset="42%" stopColor={fillMid} />
-              <stop offset="74%" stopColor={fillSoft} />
-              <stop offset="100%" stopColor={fillTail} />
+              <stop offset="70%" stopColor={fillSoft} />
+              <stop offset="90%" stopColor="rgba(0,0,0,0)" />
+              <stop offset="100%" stopColor="rgba(0,0,0,0)" />
             </linearGradient>
-            <linearGradient id={`card-edge-fade-${id}`} gradientUnits="userSpaceOnUse" x1="390" y1="0" x2="414" y2="0">
-              <stop offset="0%" stopColor="white" stopOpacity="1" />
+            <linearGradient id={`card-vertical-fade-${id}`} gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2={chartHeight}>
+              <stop offset="0%" stopColor="white" stopOpacity="0" />
+              <stop offset="12%" stopColor="white" stopOpacity="1" />
+              <stop offset="82%" stopColor="white" stopOpacity="1" />
               <stop offset="100%" stopColor="white" stopOpacity="0" />
             </linearGradient>
-            <mask id={`card-edge-mask-${id}`} maskUnits="userSpaceOnUse" x="-4" y="-16" width="418" height={chartHeight + 32}>
-              <rect x="-4" y="-16" width="418" height={chartHeight + 32} fill={`url(#card-edge-fade-${id})`} />
+            <mask id={`card-vertical-mask-${id}`} maskUnits="userSpaceOnUse" x="-12" y="0" width="444" height={chartHeight}>
+              <rect x="-12" y="0" width="444" height={chartHeight} fill={`url(#card-vertical-fade-${id})`} />
             </mask>
             <filter id={`card-glow-wide-${id}`} x="-8%" y="-70%" width="116%" height="190%"><feGaussianBlur stdDeviation="4" /></filter>
             <filter id={`card-glow-${id}`} x="-5%" y="-50%" width="110%" height="160%"><feGaussianBlur stdDeviation="2.4" /></filter>
           </defs>
-          <path d={areaD} fill={`url(#card-fill-${id})`} mask={`url(#card-edge-mask-${id})`} />
-          <path d={d} fill="none" stroke={line} strokeWidth="11" strokeLinecap="round" strokeLinejoin="round" opacity="0.1" filter={`url(#card-glow-wide-${id})`} mask={`url(#card-edge-mask-${id})`} />
-          <path d={d} fill="none" stroke={line} strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" opacity="0.22" filter={`url(#card-glow-${id})`} mask={`url(#card-edge-mask-${id})`} />
+          <path d={areaD} fill={`url(#card-fill-${id})`} />
+          <g mask={`url(#card-vertical-mask-${id})`}>
+            <path d={d} fill="none" stroke={line} strokeWidth="11" strokeLinecap="round" strokeLinejoin="round" opacity="0.1" filter={`url(#card-glow-wide-${id})`} />
+            <path d={d} fill="none" stroke={line} strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" opacity="0.22" filter={`url(#card-glow-${id})`} />
+          </g>
           <path d={d} fill="none" stroke={line} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </div>
@@ -1263,7 +1269,7 @@ function MiniTokenChart({ card, idle = false }: { card: TokenCardData; idle?: bo
           aria-hidden="true"
           className="bb-chart-endpoint pointer-events-none absolute z-[2] h-[6px] w-[6px] rounded-full"
           style={{
-            right: "6px",
+            right: "6.75px",
             top: `calc(${(endY / chartHeight) * 100}% - 3px)`,
             backgroundColor: line,
             boxShadow: `0 0 8px ${isUp ? "rgba(52,211,153,0.46)" : "rgba(255,55,113,0.4)"}`,
@@ -1421,10 +1427,10 @@ function PrefToggle({ label, value, onChange, options }: ToggleProps) {
   );
 }
 
-function NavItem({ icon, label, href, tone = "emerald", onClick }: { icon: React.ReactNode; label: string; href: string; tone?: "emerald" | "gold" | "violet"; onClick?: React.MouseEventHandler<HTMLAnchorElement> }) {
+function NavItem({ icon, label, href, tone = "emerald", onClick, activeOverride }: { icon: React.ReactNode; label: string; href: string; tone?: "emerald" | "gold" | "violet"; onClick?: React.MouseEventHandler<HTMLAnchorElement>; activeOverride?: boolean }) {
   const ref = React.useRef<HTMLAnchorElement | null>(null);
   const pathname = usePathname();
-  const active = pathname === href || pathname.startsWith(`${href}/`);
+  const active = activeOverride ?? (pathname === href || pathname.startsWith(`${href}/`));
   const spotlight = tone === "gold"
     ? "radial-gradient(140px circle at var(--sx) var(--sy), rgba(234,179,8,0.22), transparent 55%)"
     : tone === "violet"
@@ -1453,10 +1459,10 @@ function NavItem({ icon, label, href, tone = "emerald", onClick }: { icon: React
         : "bg-white/[0.035] text-white/38 ring-white/10 group-hover:bg-[#4ade80]/[0.12] group-hover:text-[#dcffe7] group-hover:ring-[#4ade80]/22";
 
   const updateSpot = React.useCallback((x: string, y: string) => {
-    const el = ref.current;
-    if (!el) return;
-    el.style.setProperty("--sx", x);
-    el.style.setProperty("--sy", y);
+    const element = ref.current;
+    if (!element) return;
+    element.style.setProperty("--sx", x);
+    element.style.setProperty("--sy", y);
   }, []);
 
   return (
@@ -1465,10 +1471,10 @@ function NavItem({ icon, label, href, tone = "emerald", onClick }: { icon: React
       href={href}
       aria-current={active ? "page" : undefined}
       onClick={onClick}
-      onMouseMove={(e) => {
-        const r = ref.current?.getBoundingClientRect();
-        if (!r) return;
-        updateSpot(`${e.clientX - r.left}px`, `${e.clientY - r.top}px`);
+      onMouseMove={(event) => {
+        const bounds = ref.current?.getBoundingClientRect();
+        if (!bounds) return;
+        updateSpot(`${event.clientX - bounds.left}px`, `${event.clientY - bounds.top}px`);
       }}
       onMouseLeave={() => updateSpot("-999px", "-999px")}
       className={cx("group relative isolate flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-sm text-white/68 transition-[background-color,color,box-shadow] duration-300", active ? activeTone : hoverTone)}
@@ -1717,12 +1723,12 @@ function DropdownMotion({ children, direction, className, id }: { children: Reac
 
 function CreatorPayoutStat() {
   return (
-    <div className="group inline-flex h-8 items-center gap-2.5" data-ui-hint="Lifetime creator payouts" data-ui-hint-side="bottom">
-      <span className="relative -my-1 h-8 w-6 shrink-0 overflow-visible" aria-hidden="true">
-        <Image unoptimized src="/based-bid-coin-payout-animated.svg" alt="" width={36} height={24} className="absolute left-0 top-1 h-6 w-9 max-w-none object-contain" />
+    <div className="bb-creator-payout grid h-9 w-[188px] grid-cols-[30px_1fr] items-center gap-1.5">
+      <span className="relative h-9 w-[30px] shrink-0 overflow-visible" aria-hidden="true">
+        <Image unoptimized src="/based-bid-coin-payout-animated.svg" alt="" width={76} height={48} className="bb-creator-payout__art" />
       </span>
-      <span className="inline-flex items-baseline gap-1.5 whitespace-nowrap">
-        <span className="text-[14px] font-semibold tabular-nums tracking-[-0.025em] text-[#4ade80]">$2.84M</span>
+      <span className="bb-creator-payout__copy inline-flex items-baseline gap-1.5 whitespace-nowrap">
+        <span className="text-[14px] font-semibold tabular-nums tracking-[-0.025em] text-[#4ade80]">$2.84M+</span>
         <span className="text-[11px] font-medium tracking-[-0.01em] text-white/48">paid to creators</span>
       </span>
     </div>
@@ -1787,7 +1793,7 @@ function LiveChatMenu() {
   );
 }
 
-function SidebarPanel({ query, onQuery, searchRef, sortLabel, onCycleSort, boards, activeBoard, onSelectBoard, onTogglePin, onOpenCollectFees }: { query: string; onQuery: (v: string) => void; searchRef: React.RefObject<HTMLInputElement | null>; sortLabel: string; onCycleSort: () => void; boards: Board[]; activeBoard: string; onSelectBoard: (id: string) => void; onTogglePin: (id: string) => void; onOpenCollectFees: () => void }) {
+function SidebarPanel({ query, onQuery, searchRef, sortLabel, onCycleSort, boards, activeBoard, onSelectBoard, onTogglePin, onOpenCollectFees, collectFeesOpen }: { query: string; onQuery: (v: string) => void; searchRef: React.RefObject<HTMLInputElement | null>; sortLabel: string; onCycleSort: () => void; boards: Board[]; activeBoard: string; onSelectBoard: (id: string) => void; onTogglePin: (id: string) => void; onOpenCollectFees: () => void; collectFeesOpen: boolean }) {
   return (
     <aside className="relative flex h-full w-[272px] flex-col border-r border-white/[0.08] bg-[linear-gradient(180deg,#0b0c0c_0%,#090a0a_100%)] shadow-[8px_0_32px_rgba(0,0,0,0.12)]">
       <div className="bb-scroll min-h-0 flex-1 overflow-y-auto px-3 pr-[6px] pb-6 pt-3">
@@ -1797,9 +1803,9 @@ function SidebarPanel({ query, onQuery, searchRef, sortLabel, onCycleSort, board
           <input ref={searchRef} value={query} onChange={(e) => onQuery(e.target.value)} placeholder="Search tokens, boards..." className="w-full rounded-2xl bg-white/5 py-2.5 pl-10 pr-10 text-sm ring-1 ring-white/10 outline-none focus:ring-2 focus:ring-white/15" />
         </div>
         <div className="mt-3 space-y-2">
-          <NavItem icon={<Plus className="h-4 w-4" />} label="Create" href="/create" />
-          <NavItem icon={<Coins className="h-4 w-4" />} label="Collect Fees" href="#collect-fees" tone="gold" onClick={(event) => { event.preventDefault(); onOpenCollectFees(); }} />
-          <NavItem icon={<Code2 className="h-4 w-4" />} label="API / SDK / SKILL" href="/developers" tone="violet" />
+          <NavItem icon={<Plus className="h-4 w-4" />} label="Create" href="/create" tone="emerald" />
+          <NavItem icon={<Coins className="h-4 w-4" />} label="Collect Fees" href="#collect-fees" tone="gold" activeOverride={collectFeesOpen} onClick={(event) => { event.preventDefault(); onOpenCollectFees(); }} />
+          <NavItem icon={<Code2 className="h-4 w-4" />} label="OpenBid" href="/openbid" tone="violet" />
         </div>
         <div className="mt-5 flex items-center justify-between px-1">
           <div className="text-xs font-semibold uppercase text-white/45">Boards</div>
@@ -2047,6 +2053,22 @@ export default function BBLayout() {
   }, []);
 
   React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const requestedBoard = params.get("board");
+    const requestedQuery = params.get("q");
+
+    const handoff = window.setTimeout(() => {
+      if (requestedBoard && BOARDS.some((board) => board.id === requestedBoard)) {
+        setActiveBoard(requestedBoard);
+      }
+      if (requestedQuery) setQuery(requestedQuery);
+      if (params.get("collect") === "1") setCollectFeesOpen(true);
+    }, 0);
+
+    return () => window.clearTimeout(handoff);
+  }, []);
+
+  React.useEffect(() => {
     runSelfTests();
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "/" && !(e.metaKey || e.ctrlKey)) {
@@ -2084,6 +2106,7 @@ export default function BBLayout() {
             onSelectBoard={setActiveBoard}
             onTogglePin={togglePin}
             onOpenCollectFees={openCollectFees}
+            collectFeesOpen={collectFeesOpen}
           />
           <div className="flex min-h-0 flex-1 flex-col bg-[#090a0a]">
             <MainContentHeader contentSort={contentSort} onSetContentSort={setContentSort} selectedNetworks={selectedNetworks} onToggleNetwork={toggleNetworkFilter} onSelectAllNetworks={() => setSelectedNetworks(createAllNetworkSet())} onReset={resetContentFilters} />
