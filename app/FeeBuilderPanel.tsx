@@ -48,9 +48,7 @@ export type FeeWallet = {
   rwaAssets?: string[];
   rwaDistributionMode?: RwaDistributionMode;
   rewardGasPayer?: RewardGasPayer;
-  rewardDestination?: RewardDestination;
-  rewardRouteLabel?: string;
-  rewardRouteAddress?: string;
+  routeRewardMode?: RouteRewardMode;
   rwaAssetWeights?: Record<string, number>;
   rwaPinnedAssets?: string[];
 };
@@ -63,7 +61,7 @@ type PresetKey = 'mixed' | 'creator' | 'balanced' | 'rewards' | 'cto';
 type RwaCategory = 'token' | 'stock' | 'etf';
 type RwaDistributionMode = 'rotating' | 'all';
 type RewardGasPayer = 'project' | 'user';
-type RewardDestination = 'holders' | 'treasury' | 'custom';
+type RouteRewardMode = 'single' | 'basket';
 type RewardBasketAsset = { id?: string; symbol: string; name: string; category: RwaCategory; address: string; icon?: string };
 
 type ChipsProps<T extends string | number> = {
@@ -89,14 +87,16 @@ type RowProps = {
   onDrag?: (e: React.PointerEvent) => void;
   bind?: (el: HTMLDivElement | null) => void;
   attention?: boolean;
+  onExpand?: (id: string) => void;
 };
 
 const LOCKED = new Set(['creator', 'rewards', 'rwa', 'buybacks', 'liq', 'ops']);
 const ADDRESS_REQUIRED = new Set(['ops']);
-const ADD: FeeType[] = ['creator', 'buybacks', 'rwa', 'liq', 'ops', 'custom'];
+const ADD: FeeType[] = ['creator', 'rwa', 'ops', 'buybacks', 'liq', 'custom'];
 const RP = [0.01, 0.1, 1, 5] as const;
 const RWA_DISTRIBUTION_MODES = ['rotating', 'all'] as const;
 const REWARD_GAS_PAYERS = ['project', 'user'] as const;
+const ROUTE_REWARD_MODES = ['single', 'basket'] as const;
 const TRIGGER_PRESETS = [0.01, 0.05, 0.1, 0.25] as const;
 const CONTROL_REVEAL_TRANSITION = { duration: 0.24, ease: [0.22, 1, 0.36, 1] as const };
 const PRESETS: Array<{ key: PresetKey; label: string; mobileLabel: string; hint: string }> = [
@@ -207,6 +207,11 @@ const rewardBaskets = () => {
   ];
 };
 
+const routeRewardBaskets = (chain: ChainId) => [
+  { key: 'tokens', label: 'Tokens', assets: [nativeRewardAssetId(chain)] },
+  ...rewardBaskets().filter((basket) => basket.key !== 'tokens'),
+];
+
 const matchesAssetBasket = (value: readonly string[], basket: readonly string[]) =>
   value.length === basket.length && basket.every((symbol) => value.includes(symbol));
 
@@ -268,10 +273,8 @@ const needsAddress = (f: FeeWallet) =>
 export const isMissingAddr = (f: FeeWallet) =>
   f.id === 'rwa' && f.pct > 0
     ? !(f.rwaAssets?.length)
-      || ((f.rewardDestination ?? 'holders') !== 'holders'
-        && (!(f.rewardRouteAddress ?? '').trim()
-          || ((f.rewardDestination ?? 'holders') === 'custom' && !(f.rewardRouteLabel ?? '').trim())))
-    : !needsAddress(f) ? false : !(f.address ?? '').trim();
+    : (f.routeRewardMode && f.pct > 0 && !(f.rwaAssets?.length))
+      || (!needsAddress(f) ? false : !(f.address ?? '').trim());
 
 export const totalWarnLevel = (n: number): 'danger' | 'warn' | null => (n > 6.9 ? 'danger' : n >= 4.1 ? 'warn' : null);
 
@@ -463,12 +466,12 @@ const make = (chain: ChainId, t: Exclude<FeeType, 'custom'>): FeeWallet =>
     : t === 'rewards'
       ? { id: 'rewards', name: 'Holder Rewards', pct: 1, rewardAsset: rewardOf(chain), rewardThresholdPct: 0.1 }
       : t === 'rwa'
-        ? { id: 'rwa', name: 'Rewards Basket', pct: 1, rwaAssets: [...RWA_PRESET_ASSETS], rwaAssetWeights: equalAssetWeights(RWA_PRESET_ASSETS), rewardThresholdPct: 0.1, rwaDistributionMode: 'rotating', rewardGasPayer: 'user', rewardDestination: 'holders' }
+        ? { id: 'rwa', name: 'Rewards Basket', pct: 1, rwaAssets: [...RWA_PRESET_ASSETS], rwaAssetWeights: equalAssetWeights(RWA_PRESET_ASSETS), rewardThresholdPct: 0.1, rwaDistributionMode: 'rotating', rewardGasPayer: 'user' }
       : t === 'buybacks'
         ? { id: 'buybacks', name: 'Buybacks & Burns', pct: 1 }
         : t === 'liq'
           ? { id: 'liq', name: 'Liquidity', pct: 1 }
-          : { id: 'ops', name: 'Treasury', pct: 1, address: '' };
+          : { id: 'ops', name: 'Treasury', pct: 1, address: '', routeRewardMode: 'single', rwaAssets: [nativeRewardAssetId(chain)], rwaAssetWeights: { [nativeRewardAssetId(chain)]: 100 }, rwaDistributionMode: 'rotating' };
 
 const presetFees = (chain: ChainId, preset: PresetKey): FeeWallet[] => {
   const map: Record<PresetKey, Array<{ type: FeeType; pct: number }>> = {
@@ -480,7 +483,7 @@ const presetFees = (chain: ChainId, preset: PresetKey): FeeWallet[] => {
   };
 
   return map[preset].map(({ type, pct }) => {
-    if (type === 'custom') return { id: 'custom-routes', name: 'Custom Routes', pct, address: '' };
+    if (type === 'custom') return { id: 'custom-routes', name: 'Custom Routes', pct, address: '', routeRewardMode: 'single', rwaAssets: [nativeRewardAssetId(chain)], rwaAssetWeights: { [nativeRewardAssetId(chain)]: 100 }, rwaDistributionMode: 'rotating' };
     const fee = { ...make(chain, type), pct };
     if (type !== 'rwa') return fee;
     const rwaAssets = preset === 'rewards' ? [...RWA_PRESET_ASSETS] : [nativeRewardAssetId(chain)];
@@ -598,15 +601,16 @@ function DistributionTriggerControl({ value, onChange, disabled }: { value: numb
   );
 }
 
-function InfoHint({ label, children, maxWidth = 290 }: { label: string; children: React.ReactNode; maxWidth?: number }) {
+function InfoHint({ label, children, maxWidth = 290, desktopAlign = 'center', portal = false }: { label: string; children: React.ReactNode; maxWidth?: number; desktopAlign?: 'center' | 'start'; portal?: boolean }) {
   const buttonRef = useRef<HTMLButtonElement | null>(null);
   const tooltipRef = useRef<HTMLDivElement | null>(null);
   const [open, setOpen] = useState(false);
+  const [hovered, setHovered] = useState(false);
   const [mobile, setMobile] = useState(false);
   const [mobilePosition, setMobilePosition] = useState<React.CSSProperties | undefined>();
 
   const positionTooltip = useCallback(() => {
-    if (typeof window === 'undefined' || window.innerWidth >= 640) {
+    if (typeof window === 'undefined' || (window.innerWidth >= 640 && !portal)) {
       setMobilePosition(undefined);
       return;
     }
@@ -623,7 +627,7 @@ function InfoHint({ label, children, maxWidth = 290 }: { label: string; children
       ? below
       : Math.max(gutter, rect.top - tooltipHeight - 6);
     setMobilePosition({ left, top, width, bottom: 'auto' });
-  }, [maxWidth]);
+  }, [maxWidth, portal]);
 
   useEffect(() => {
     const update = () => {
@@ -639,7 +643,7 @@ function InfoHint({ label, children, maxWidth = 290 }: { label: string; children
   }, [positionTooltip]);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open && !hovered) return;
     const frame = window.requestAnimationFrame(positionTooltip);
     const close = (event: PointerEvent) => {
       const target = event.target as Node;
@@ -650,7 +654,7 @@ function InfoHint({ label, children, maxWidth = 290 }: { label: string; children
       window.cancelAnimationFrame(frame);
       document.removeEventListener('pointerdown', close);
     };
-  }, [open, positionTooltip]);
+  }, [hovered, open, positionTooltip]);
 
   const tooltipContent = (
     <div className='rounded-xl border border-white/16 bg-[#171719] px-3.5 py-3 text-[12px] font-normal leading-5 tracking-[0.01em] text-white/82 shadow-[0_22px_56px_rgba(0,0,0,0.64),0_0_0_1px_rgba(255,255,255,0.045)_inset] ring-1 ring-inset ring-white/8 backdrop-blur-xl'>
@@ -658,9 +662,11 @@ function InfoHint({ label, children, maxWidth = 290 }: { label: string; children
     </div>
   );
 
-  const mobileTooltip = mobile && typeof document !== 'undefined'
+  const usePortal = mobile || portal;
+  const tooltipVisible = open || hovered;
+  const mobileTooltip = usePortal && typeof document !== 'undefined'
     ? createPortal(
-      <div ref={tooltipRef} role='tooltip' style={{ width: `min(${maxWidth}px, calc(100vw - 24px))`, ...mobilePosition, pointerEvents: open ? 'auto' : 'none', opacity: open ? 1 : 0 }} className='fixed z-[100] text-left transition-opacity duration-150'>
+      <div ref={tooltipRef} role='tooltip' style={{ width: `min(${maxWidth}px, calc(100vw - 24px))`, ...mobilePosition, pointerEvents: open ? 'auto' : 'none', opacity: tooltipVisible ? 1 : 0 }} className='fixed z-[100] text-left transition-opacity duration-150'>
         {tooltipContent}
       </div>,
       document.body,
@@ -669,11 +675,11 @@ function InfoHint({ label, children, maxWidth = 290 }: { label: string; children
 
   return (
     <div className='group relative inline-flex shrink-0 items-center'>
-      <button ref={buttonRef} type='button' aria-label={label} aria-expanded={open} onMouseEnter={positionTooltip} onFocus={positionTooltip} onClick={(event) => { event.stopPropagation(); positionTooltip(); setOpen((current) => !current); }} className='inline-flex h-4 w-4 items-center justify-center rounded-full border border-white/12 bg-white/[0.035] text-[10px] font-semibold leading-none text-white/44 transition hover:border-white/18 hover:text-white/78 focus:border-white/22 focus:text-white focus:outline-none'>
+      <button ref={buttonRef} type='button' aria-label={label} aria-expanded={open} onMouseEnter={() => { setHovered(true); positionTooltip(); }} onMouseLeave={() => setHovered(false)} onFocus={positionTooltip} onClick={(event) => { event.stopPropagation(); positionTooltip(); setOpen((current) => !current); }} className='inline-flex h-4 w-4 items-center justify-center rounded-full border border-white/12 bg-white/[0.035] text-[10px] font-semibold leading-none text-white/44 transition hover:border-white/18 hover:text-white/78 focus:border-white/22 focus:text-white focus:outline-none'>
         i
       </button>
-      {mobile ? mobileTooltip : (
-        <div ref={tooltipRef} role='tooltip' style={{ width: `min(${maxWidth}px, calc(100vw - 32px))` }} className='pointer-events-none absolute left-1/2 top-[calc(100%-2px)] z-40 -translate-x-1/2 pt-2 text-left opacity-0 transition duration-150 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100'>
+      {usePortal ? mobileTooltip : (
+        <div ref={tooltipRef} role='tooltip' style={{ width: `min(${maxWidth}px, calc(100vw - 32px))` }} className={`pointer-events-none absolute top-[calc(100%-2px)] z-40 pt-2 text-left opacity-0 transition duration-150 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100 ${desktopAlign === 'start' ? 'left-0' : 'left-1/2 -translate-x-1/2'}`}>
           {tooltipContent}
         </div>
       )}
@@ -696,12 +702,12 @@ const Threshold = <T extends string | number,>({ labelText, mobileLabelText, suf
   </div>
 );
 
-function RwaDistributionModeControl({ value, onChange, disabled }: { value: RwaDistributionMode; onChange: (value: RwaDistributionMode) => void; disabled: boolean }) {
+function RwaDistributionModeControl({ value, onChange, disabled, portalHint = false }: { value: RwaDistributionMode; onChange: (value: RwaDistributionMode) => void; disabled: boolean; portalHint?: boolean }) {
   return (
     <div className='flex min-w-0 flex-wrap items-center gap-1 sm:flex-nowrap sm:gap-1.5' data-no-drag>
       <div className='flex shrink-0 items-center gap-1'>
         <span className='text-[8px] font-medium uppercase tracking-[0.10em] sm:text-[9px] sm:tracking-[0.13em]' style={{ color: T.muted }}><span className='sm:hidden'>Mode</span><span className='hidden sm:inline'>Basket mode</span></span>
-        <InfoHint label='Basket mode helper' maxWidth={340}>
+        <InfoHint label='Basket mode helper' maxWidth={340} portal={portalHint}>
           <div className='space-y-2'>
             <div>
               <div className='text-[9.5px] font-semibold uppercase leading-4 tracking-[0.12em] text-white/88'>Rotating</div>
@@ -751,40 +757,23 @@ function RewardGasPayerControl({ value, onChange, disabled }: { value: RewardGas
   );
 }
 
-function RewardDestinationControl({ value, onChange, disabled, accent }: { value: RewardDestination; onChange: (value: RewardDestination) => void; disabled: boolean; accent: string }) {
-  const options: Array<{ value: RewardDestination; label: string; mobileLabel?: string; icon: React.ComponentType<{ className?: string; strokeWidth?: number }> }> = [
-    { value: 'holders', label: 'Holders', icon: Crown },
-    { value: 'treasury', label: 'Treasury', icon: Landmark },
-    { value: 'custom', label: 'Custom route', mobileLabel: 'Custom', icon: Code2 },
-  ];
-
+function RouteRewardModeControl({ value, onChange, disabled }: { value: RouteRewardMode; onChange: (value: RouteRewardMode) => void; disabled: boolean }) {
   return (
-    <div className='grid min-w-0 grid-cols-3 gap-1.5 sm:gap-2' data-no-drag>
-      {options.map((option) => {
-        const active = option.value === value;
-        const Icon = option.icon;
-        return (
-          <button
-            key={option.value}
-            type='button'
-            disabled={disabled}
-            aria-pressed={active}
-            onClick={() => onChange(option.value)}
-            className='group/destination flex h-8 min-w-0 items-center justify-center gap-1.5 rounded-[10px] border px-2 text-[9px] font-semibold outline-none transition-[border-color,background-color,color,box-shadow] duration-200 disabled:cursor-not-allowed disabled:opacity-45 sm:h-9 sm:gap-2 sm:rounded-xl sm:px-3 sm:text-[11px]'
-            style={{
-              color: active ? rgba(accent, 0.96) : 'rgba(244,249,246,0.55)',
-              background: active ? rgba(accent, 0.075) : 'rgba(244,249,246,0.018)',
-              borderColor: active ? rgba(accent, 0.30) : 'rgba(244,249,246,0.09)',
-              boxShadow: active ? `inset 0 1px 0 rgba(255,255,255,0.035), 0 0 18px ${rgba(accent, 0.045)}` : 'inset 0 1px 0 rgba(255,255,255,0.018)',
-            }}
-          >
-            <Icon className='h-3 w-3 shrink-0 transition-colors group-hover/destination:text-white/80 sm:h-3.5 sm:w-3.5' strokeWidth={1.8} />
-            <span className='min-w-0 truncate'>
-              {option.mobileLabel ? <><span className='sm:hidden'>{option.mobileLabel}</span><span className='hidden sm:inline'>{option.label}</span></> : option.label}
-            </span>
-          </button>
-        );
-      })}
+    <div className='flex min-w-0 items-center gap-1.5' data-no-drag>
+      <div className='flex shrink-0 items-center gap-1'>
+        <span className='text-[8px] font-medium uppercase tracking-[0.10em] sm:text-[9px] sm:tracking-[0.13em]' style={{ color: T.muted }}>Format</span>
+        <InfoHint label='Asset payout format helper' maxWidth={230} desktopAlign='start'>
+          <span className='font-semibold text-white/88'>Single</span><span className='text-white/58'> distributes one selected asset. </span><span className='font-semibold text-white/88'>Basket</span><span className='text-white/58'> distributes multiple selected assets each cycle.</span>
+        </InfoHint>
+      </div>
+      <Pills
+        compact
+        disabled={disabled}
+        options={ROUTE_REWARD_MODES}
+        value={value}
+        onChange={onChange}
+        format={(mode) => mode === 'single' ? 'Single' : 'Basket'}
+      />
     </div>
   );
 }
@@ -807,13 +796,13 @@ function RewardAssetLogo({ asset, active, accent }: { asset: RewardBasketAsset; 
   );
 }
 
-function RewardBasketSelector({ value, onChange, distributionMode, weights, pinnedAssets, onWeightsChange, disabled, invalid, accent }: { value: string[]; onChange: (next: string[], preserveCustom?: boolean) => void; distributionMode: RwaDistributionMode; weights: Record<string, number>; pinnedAssets: string[]; onWeightsChange: (next: Record<string, number>, nextPinned?: string[]) => void; disabled: boolean; invalid: boolean; accent: string }) {
+function RewardBasketSelector({ chain, context = 'holders', selectionMode = 'basket', value, onChange, distributionMode, weights, pinnedAssets, onWeightsChange, disabled, invalid, accent }: { chain: ChainId; context?: 'holders' | 'route'; selectionMode?: RouteRewardMode; value: string[]; onChange: (next: string[], preserveCustom?: boolean) => void; distributionMode: RwaDistributionMode; weights: Record<string, number>; pinnedAssets: string[]; onWeightsChange: (next: Record<string, number>, nextPinned?: string[]) => void; disabled: boolean; invalid: boolean; accent: string }) {
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<'all' | RwaCategory>('all');
   const [showSelectedOnly, setShowSelectedOnly] = useState(false);
   const [weightDrafts, setWeightDrafts] = useState<Record<string, string>>({});
   const assets = useMemo(() => [...RWA_ASSETS, ...tokenAssets()], []);
-  const baskets = useMemo(() => rewardBaskets(), []);
+  const baskets = useMemo(() => context === 'route' ? routeRewardBaskets(chain) : rewardBaskets(), [chain, context]);
   const selected = useMemo(() => new Set(value), [value]);
   const categoryAssetIds = useMemo(
     () => assets.filter((asset) => category === 'all' || asset.category === category).map(assetId),
@@ -836,6 +825,10 @@ function RewardBasketSelector({ value, onChange, distributionMode, weights, pinn
 
   const toggleAsset = (id: string) => {
     if (disabled) return;
+    if (selectionMode === 'single') {
+      onChange(selected.has(id) ? [] : [id]);
+      return;
+    }
     onChange(selected.has(id) ? value.filter((item) => item !== id) : [...value, id]);
   };
 
@@ -893,7 +886,7 @@ function RewardBasketSelector({ value, onChange, distributionMode, weights, pinn
               aria-label={category === 'all' ? 'Select all reward assets' : `Select all ${category} reward assets`}
               title={category === 'all' ? 'Select every reward asset' : `Select every ${category === 'etf' ? 'ETF' : category} reward asset`}
               disabled={disabled || (value.length === categoryAssetIds.length && categoryAssetIds.every((id) => selected.has(id)))}
-              onClick={() => onChange(categoryAssetIds)}
+              onClick={() => onChange(categoryAssetIds, false)}
               className='whitespace-nowrap rounded-full border px-1.5 py-1 text-[8px] font-semibold transition hover:brightness-125 disabled:opacity-35 sm:px-2.5 sm:text-[9.5px]'
               style={{ color: rgba(accent, 0.86), background: rgba(accent, 0.035), borderColor: rgba(accent, 0.14) }}
             >
@@ -1222,29 +1215,31 @@ function ProtectionCard({ title, description, enabled, onToggle, children }: { t
   );
 }
 
-function Row({ fee, chain, max, disabled, dragging, ghost, patch, setPct, remove, onDrag, bind, attention }: RowProps) {
+function Row({ fee, chain, max, disabled, dragging, ghost, patch, setPct, remove, onDrag, bind, attention, onExpand }: RowProps) {
   const [hover, setHover] = useState(false);
-  const [rewardDestinationOpen, setRewardDestinationOpen] = useState(false);
+  const [routeRewardsOpen, setRouteRewardsOpen] = useState(false);
   const color = tint(fee.id, fee.name);
   const type = classify(fee.id, fee.name);
   const rewards = fee.id === 'rewards';
   const rwa = fee.id === 'rwa';
-  const rwaAssets = fee.rwaAssets ?? [];
+  const treasury = fee.id === 'ops';
+  const custom = !LOCKED.has(fee.id);
+  const rewardRoute = treasury || custom;
+  const routeRewardMode = fee.routeRewardMode ?? 'single';
+  const rwaAssets = fee.rwaAssets ?? (rewardRoute ? [nativeRewardAssetId(chain)] : []);
   const rwaDistributionMode = fee.rwaDistributionMode ?? 'rotating';
   const rewardGasPayer = fee.rewardGasPayer ?? 'user';
-  const rewardDestination = fee.rewardDestination ?? 'holders';
   const rwaAssetWeights = normalizeAssetWeights(rwaAssets, fee.rwaAssetWeights);
   const rwaPinnedAssets = fee.rwaPinnedAssets?.filter((id) => rwaAssets.includes(id)) ?? [];
   const asset = fee.rewardAsset ?? rewardOf(chain);
-  const treasury = fee.id === 'ops';
   const rwaAssetsInvalid = rwa && (fee.pct ?? 0) > 0 && !(fee.rwaAssets?.length);
-  const rewardRouteLabelInvalid = rwa && rewardDestination === 'custom' && !(fee.rewardRouteLabel ?? '').trim();
-  const rewardRouteAddressInvalid = rwa && rewardDestination !== 'holders' && !(fee.rewardRouteAddress ?? '').trim();
-  const rwaInvalid = rwaAssetsInvalid || rewardRouteLabelInvalid || rewardRouteAddressInvalid;
-  const addrInvalid = isMissingAddr(fee) && !rewards && !rwa;
-  const invalid = addrInvalid || rwaInvalid;
-  const custom = !LOCKED.has(fee.id);
+  const routeAssetsInvalid = Boolean(fee.routeRewardMode) && rewardRoute && (fee.pct ?? 0) > 0 && !(fee.rwaAssets?.length);
+  const addrInvalid = needsAddress(fee) && !(fee.address ?? '').trim();
+  const invalid = addrInvalid || rwaAssetsInvalid || routeAssetsInvalid;
   const routeTitle = rwa ? 'Rewards Basket' : fee.name;
+  const routeRewardSummary = routeRewardMode === 'single'
+    ? (rwaAssets[0]?.replace(/^TOKEN:/, '') ?? 'Choose asset')
+    : `${rwaAssets.length} asset${rwaAssets.length === 1 ? '' : 's'}`;
   const feeSlider = (
     <div className='mt-2 flex items-center gap-2 sm:mt-3'>
       <input data-no-drag disabled={disabled} className='bbRange h-5 flex-1 sm:h-8' type='range' min={0} max={max} step={0.1} value={fee.pct} onChange={(e) => setPct(fee.id, parseFloat(e.target.value))} style={{ '--feeColor': color, '--fillPct': fillPct(fee.pct, 0, max) } as CssVarStyle} />
@@ -1284,7 +1279,7 @@ function Row({ fee, chain, max, disabled, dragging, ghost, patch, setPct, remove
                       </div>
                     ) : null}
                   </div>
-                  <p className='bbRouteDesc mt-0.5 overflow-hidden text-[9.5px] leading-[13px] sm:text-[11px] sm:leading-5' style={{ color: 'rgba(244,249,246,0.56)' }}>{rwa && rewardDestination !== 'holders' ? 'Routes your selected tokens, stocks, and ETFs to the selected destination.' : desc(fee)}</p>
+                  <p className='bbRouteDesc mt-0.5 overflow-hidden text-[9.5px] leading-[13px] sm:text-[11px] sm:leading-5' style={{ color: 'rgba(244,249,246,0.56)' }}>{desc(fee)}</p>
                   {treasury ? (
                     <div className='mt-2.5'>
                       <TextField disabled={disabled} accent={color} invalid={addrInvalid} label='Recipient' value={fee.address ?? ''} onChange={(v) => patch(fee.id, { address: v })} placeholder='Paste treasury wallet address' className='w-full' />
@@ -1313,6 +1308,7 @@ function Row({ fee, chain, max, disabled, dragging, ghost, patch, setPct, remove
 
       {rwa ? (
         <RewardBasketSelector
+          chain={chain}
           disabled={disabled}
           accent={color}
           invalid={rwaAssetsInvalid}
@@ -1334,6 +1330,93 @@ function Row({ fee, chain, max, disabled, dragging, ghost, patch, setPct, remove
 
       {!rwa ? feeSlider : null}
 
+      {rewardRoute ? (
+        <motion.div layout className='mt-2.5 border-t pt-2' data-no-drag transition={CONTROL_REVEAL_TRANSITION} style={{ borderColor: rgba(color, 0.12) }}>
+          <button
+            type='button'
+            disabled={disabled}
+            aria-expanded={routeRewardsOpen}
+            onClick={() => {
+              const willOpen = !routeRewardsOpen;
+              setRouteRewardsOpen(willOpen);
+              if (willOpen) onExpand?.(fee.id);
+            }}
+            className='group flex w-full min-w-0 items-center justify-between gap-3 rounded-lg py-1 text-left outline-none transition-colors hover:bg-white/[0.018] disabled:cursor-not-allowed disabled:opacity-45'
+          >
+            <span className='flex min-w-0 items-center gap-2 px-1'>
+              <Coins size={12.5} strokeWidth={1.8} className='shrink-0' style={{ color: rgba(color, 0.82) }} />
+              <span className='min-w-0'>
+                <span className='block text-[9px] font-semibold uppercase tracking-[0.13em] sm:text-[10px]' style={{ color: rgba(color, 0.82) }}>Asset payout</span>
+                <span className='hidden truncate text-[9.5px] leading-4 text-white/42 sm:block'>Choose one asset or build a custom multi-asset basket.</span>
+              </span>
+            </span>
+            <span className='flex shrink-0 items-center gap-2 px-1'>
+              <span className='text-[9px] font-medium text-white/62 sm:text-[10.5px]'>{routeRewardMode === 'single' ? `Single / ${routeRewardSummary}` : `Basket / ${routeRewardSummary}`}</span>
+              <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-300 ${routeRewardsOpen ? 'rotate-180' : ''}`} style={{ color: routeRewardsOpen ? rgba(color, 0.76) : 'rgba(244,249,246,0.38)' }} strokeWidth={1.8} />
+            </span>
+          </button>
+
+          <div
+            className='grid transition-[grid-template-rows,opacity,transform] duration-500 ease-[cubic-bezier(.22,1,.36,1)]'
+            style={{ gridTemplateRows: routeRewardsOpen ? '1fr' : '0fr', opacity: routeRewardsOpen ? 1 : 0, transform: routeRewardsOpen ? 'translateY(0)' : 'translateY(-4px)' }}
+            aria-hidden={!routeRewardsOpen}
+            inert={!routeRewardsOpen}
+          >
+            <div className='min-h-0 overflow-hidden'>
+              <div className='px-1 pb-1 pt-2'>
+                <RouteRewardModeControl
+                  disabled={disabled}
+                  value={routeRewardMode}
+                  onChange={(mode) => {
+                    const nextAssets = mode === 'single' ? [rwaAssets[0] ?? nativeRewardAssetId(chain)] : rwaAssets;
+                    patch(fee.id, {
+                      routeRewardMode: mode,
+                      rwaAssets: nextAssets,
+                      rwaAssetWeights: equalAssetWeights(nextAssets),
+                      rwaPinnedAssets: [],
+                    });
+                  }}
+                />
+                <RewardBasketSelector
+                  chain={chain}
+                  context='route'
+                  selectionMode={routeRewardMode}
+                  disabled={disabled}
+                  accent={color}
+                  invalid={routeAssetsInvalid}
+                  value={rwaAssets}
+                  distributionMode={rwaDistributionMode}
+                  weights={rwaAssetWeights}
+                  pinnedAssets={rwaPinnedAssets}
+                  onWeightsChange={(next, nextPinned = rwaPinnedAssets) => patch(fee.id, { rwaAssetWeights: next, rwaPinnedAssets: nextPinned })}
+                  onChange={(next, preserveCustom = true) => {
+                    const nextMode = preserveCustom ? routeRewardMode : next.length <= 1 ? 'single' : 'basket';
+                    if (!preserveCustom) {
+                      patch(fee.id, { routeRewardMode: nextMode, rwaAssets: next, rwaAssetWeights: equalAssetWeights(next), rwaPinnedAssets: [] });
+                      return;
+                    }
+                    const reconciled = reconcileAssetWeights(next, rwaAssetWeights, rwaPinnedAssets);
+                    patch(fee.id, { routeRewardMode: nextMode, rwaAssets: next, rwaAssetWeights: reconciled.weights, rwaPinnedAssets: reconciled.pinnedIds });
+                  }}
+                />
+                <AnimatePresence initial={false} mode='popLayout'>
+                  {routeRewardMode === 'basket' && rwaAssets.length >= 2 ? (
+                    <motion.div key='route-basket-mode' layout initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -3 }} transition={CONTROL_REVEAL_TRANSITION} className='mt-2 flex justify-end'>
+                      <RwaDistributionModeControl
+                        disabled={disabled}
+                        value={rwaDistributionMode}
+                        portalHint
+                        onChange={(mode) => patch(fee.id, { rwaDistributionMode: mode, ...(mode === 'all' ? { rwaAssetWeights } : {}) })}
+                      />
+                    </motion.div>
+                  ) : null}
+                </AnimatePresence>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      ) : null}
+
       {rewards ? (
         <Threshold
           disabled={disabled}
@@ -1347,156 +1430,40 @@ function Row({ fee, chain, max, disabled, dragging, ghost, patch, setPct, remove
         />
       ) : null}
       {rwa ? (
-        <motion.div layout className='mt-2 space-y-2' data-no-drag transition={CONTROL_REVEAL_TRANSITION}>
-          <motion.div layout className='pt-0.5' transition={CONTROL_REVEAL_TRANSITION}>
-            <div className='grid w-full grid-cols-[minmax(14px,1fr)_auto_minmax(14px,1fr)] items-center gap-2 sm:grid-cols-[minmax(28px,1fr)_auto_minmax(28px,1fr)] sm:gap-3'>
-              <span className='h-px' style={{ background: `linear-gradient(90deg, transparent, ${rgba(color, 0.18)})` }} aria-hidden />
-              <span className='flex min-w-0 items-center justify-center gap-1.5'>
-                <span className='text-[9px] font-semibold uppercase tracking-[0.14em] sm:text-[11px] sm:tracking-[0.17em]' style={{ color: rgba(color, 0.84) }}>Destination</span>
-                <InfoHint label='Reward destination helper' maxWidth={340}>
-                  <div className='space-y-2'>
-                    <div><span className='font-semibold text-white/88'>Holders</span><span className='text-white/58'> distributes rewards to eligible wallets.</span></div>
-                    <div className='border-t border-white/8 pt-2'><span className='font-semibold text-white/88'>Rewards Basket</span><span className='text-white/58'> sends every cycle to the selected wallet or smart contract.</span></div>
-                    <div className='border-t border-white/8 pt-2'><span className='font-semibold text-white/88'>Custom Route</span><span className='text-white/58'> uses your own route label and recipient.</span></div>
-                  </div>
-                </InfoHint>
-                <span className='mx-0.5 h-3.5 w-px shrink-0' style={{ background: rgba(color, 0.16) }} aria-hidden />
-                <button
-                  type='button'
-                  disabled={disabled}
-                  aria-expanded={rewardDestinationOpen}
-                  onClick={() => setRewardDestinationOpen((open) => !open)}
-                  className='group flex w-[106px] shrink-0 items-center justify-center gap-1.5 rounded-lg px-1.5 py-1 transition hover:bg-white/[0.025] disabled:cursor-not-allowed disabled:opacity-45 sm:w-[126px] sm:gap-2 sm:px-2'
-                >
-                  <span className='min-w-0 flex-1 truncate text-center text-[10px] font-medium sm:text-[11px]' style={{ color: rewardDestinationOpen ? rgba(color, 0.92) : 'rgba(244,249,246,0.72)' }}>
-                    {rewardDestination === 'holders' ? 'Holders' : rewardDestination === 'treasury' ? 'Rewards Basket' : 'Custom Route'}
-                  </span>
-                  <ChevronDown className={`h-3.5 w-3.5 transition duration-300 group-hover:text-white/68 ${rewardDestinationOpen ? 'rotate-180' : ''}`} style={{ color: rewardDestinationOpen ? rgba(color, 0.72) : 'rgba(244,249,246,0.38)' }} strokeWidth={1.8} />
-                </button>
-              </span>
-              <span className='h-px' style={{ background: `linear-gradient(90deg, ${rgba(color, 0.18)}, transparent)` }} aria-hidden />
-            </div>
-
-            <div
-              className='grid transition-[grid-template-rows,opacity,transform] duration-500 ease-[cubic-bezier(.22,1,.36,1)]'
-              style={{ gridTemplateRows: rewardDestinationOpen ? '1fr' : '0fr', opacity: rewardDestinationOpen ? 1 : 0, transform: rewardDestinationOpen ? 'translateY(0)' : 'translateY(-4px)' }}
-              aria-hidden={!rewardDestinationOpen}
-              inert={!rewardDestinationOpen}
-            >
-              <div className='min-h-0 overflow-hidden'>
-                <div className='space-y-2 px-1.5 pb-1.5 pt-2'>
-                  <RewardDestinationControl
-                    disabled={disabled}
-                    value={rewardDestination}
-                    onChange={(destination) => patch(fee.id, { rewardDestination: destination })}
-                    accent={color}
-                  />
-
-                  <div
-                    className='grid transition-[grid-template-rows,opacity,transform] duration-300 ease-[cubic-bezier(.22,1,.36,1)]'
-                    style={{
-                      gridTemplateRows: rewardDestination === 'holders' ? '0fr' : '1fr',
-                      opacity: rewardDestination === 'holders' ? 0 : 1,
-                      transform: rewardDestination === 'holders' ? 'translateY(-3px)' : 'translateY(0)',
-                    }}
-                  >
-                    <div className='min-h-0 overflow-hidden'>
-                      <AnimatePresence initial={false} mode='popLayout'>
-                        {rewardDestination === 'treasury' ? (
-                          <motion.div layout key='treasury-destination' initial={{ opacity: 0, y: -3 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -2 }} transition={CONTROL_REVEAL_TRANSITION} className='grid min-w-0 gap-1.5 sm:grid-cols-2 sm:gap-2'>
-                            <div className='flex h-7 min-w-0 items-center gap-1.5 rounded-[10px] border px-2.5 sm:h-8 sm:gap-2 sm:rounded-xl sm:px-3' style={{ borderColor: rgba(color, 0.14), background: `linear-gradient(180deg, ${rgba(color, 0.055)}, rgba(244,249,246,0.016))`, boxShadow: `0 0 0 1px ${rgba(color, 0.035)} inset, 0 8px 18px rgba(0,0,0,0.10)` }}>
-                              <span className='shrink-0 text-[8px] font-semibold uppercase tracking-[0.10em] sm:text-[9px] sm:tracking-[0.12em]' style={{ color: rgba(color, 0.72) }}>Label</span>
-                              <span className='h-3.5 w-px shrink-0' style={{ background: rgba(color, 0.16) }} aria-hidden />
-                              <span className='truncate text-[11.5px] font-medium leading-none sm:text-[12.5px]' style={{ color: rgba(color, 0.92) }}>Rewards Basket</span>
-                            </div>
-                            <TextField
-                              disabled={disabled}
-                              accent={color}
-                              invalid={rewardRouteAddressInvalid}
-                              focusTarget={rewardRouteAddressInvalid}
-                              label='Recipient'
-                              value={fee.rewardRouteAddress ?? ''}
-                              onChange={(value) => patch(fee.id, { rewardRouteAddress: value })}
-                              placeholder='Paste wallet or smart contract address'
-                              className='min-w-0'
-                            />
-                          </motion.div>
-                        ) : rewardDestination === 'custom' ? (
-                          <motion.div layout key='custom-destination' initial={{ opacity: 0, y: -3 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -2 }} transition={CONTROL_REVEAL_TRANSITION} className='grid min-w-0 gap-1.5 sm:grid-cols-2 sm:gap-2'>
-                            <TextField
-                              disabled={disabled}
-                              accent={color}
-                              invalid={rewardRouteLabelInvalid}
-                              focusTarget={rewardRouteLabelInvalid}
-                              label='Label'
-                              value={fee.rewardRouteLabel ?? ''}
-                              onChange={(value) => patch(fee.id, { rewardRouteLabel: value })}
-                              placeholder='Route label'
-                              className='min-w-0'
-                            />
-                            <TextField
-                              disabled={disabled}
-                              accent={color}
-                              invalid={rewardRouteAddressInvalid}
-                              focusTarget={!rewardRouteLabelInvalid && rewardRouteAddressInvalid}
-                              label='Recipient'
-                              value={fee.rewardRouteAddress ?? ''}
-                              onChange={(value) => patch(fee.id, { rewardRouteAddress: value })}
-                              placeholder='Paste wallet or smart contract address'
-                              className='min-w-0'
-                            />
-                          </motion.div>
-                        ) : null}
-                      </AnimatePresence>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-
-          <motion.div layout className='flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1.5' transition={CONTROL_REVEAL_TRANSITION}>
+        <motion.div layout className='mt-2 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5 sm:flex-nowrap' data-no-drag transition={CONTROL_REVEAL_TRANSITION}>
+          <Threshold
+            className='min-w-0'
+            disabled={disabled}
+            labelText='Wallet threshold'
+            mobileLabelText='Wallet'
+            suffix=''
+            options={RP}
+            value={fee.rewardThresholdPct ?? 0.1}
+            onChange={(v) => patch(fee.id, { rewardThresholdPct: v })}
+            format={(n) => `${n}%`}
+            helperText={<>Wallets holding at least <span className='font-semibold text-white/86'>{fee.rewardThresholdPct ?? 0.1}%</span> of total supply receive the selected rewards.</>}
+          />
+          <motion.div layout className='ml-auto flex min-w-0 flex-wrap items-center justify-end gap-x-3 gap-y-1.5 sm:flex-nowrap' transition={CONTROL_REVEAL_TRANSITION}>
             <AnimatePresence initial={false} mode='popLayout'>
-              {rewardDestination === 'holders' ? (
-                <motion.div key='wallet-threshold' layout initial={{ opacity: 0, x: -6, filter: 'blur(2px)' }} animate={{ opacity: 1, x: 0, filter: 'blur(0px)' }} exit={{ opacity: 0, x: -4, filter: 'blur(2px)' }} transition={CONTROL_REVEAL_TRANSITION} className='min-w-0'>
-                  <Threshold
-                    className='min-w-0'
+              {rwaAssets.length >= 2 ? (
+                <motion.div key='basket-mode' layout initial={{ opacity: 0, x: 6, filter: 'blur(2px)' }} animate={{ opacity: 1, x: 0, filter: 'blur(0px)' }} exit={{ opacity: 0, x: 4, filter: 'blur(2px)' }} transition={CONTROL_REVEAL_TRANSITION} className='min-w-0'>
+                  <RwaDistributionModeControl
                     disabled={disabled}
-                    labelText='Wallet threshold'
-                    mobileLabelText='Wallet'
-                    suffix=''
-                    options={RP}
-                    value={fee.rewardThresholdPct ?? 0.1}
-                    onChange={(v) => patch(fee.id, { rewardThresholdPct: v })}
-                    format={(n) => `${n}%`}
-                    helperText={<>Wallets holding at least <span className='font-semibold text-white/86'>{fee.rewardThresholdPct ?? 0.1}%</span> of total supply receive the selected rewards.</>}
+                    value={rwaDistributionMode}
+                    onChange={(mode) => patch(fee.id, { rwaDistributionMode: mode, ...(mode === 'all' ? { rwaAssetWeights } : {}) })}
+                  />
+                </motion.div>
+              ) : null}
+              {rwaAssets.length >= 2 && rwaDistributionMode === 'all' ? (
+                <motion.div key='gas-payer' layout initial={{ opacity: 0, x: 8, filter: 'blur(3px)' }} animate={{ opacity: 1, x: 0, filter: 'blur(0px)' }} exit={{ opacity: 0, x: 6, filter: 'blur(3px)' }} transition={CONTROL_REVEAL_TRANSITION} className='min-w-0'>
+                  <RewardGasPayerControl
+                    disabled={disabled}
+                    value={rewardGasPayer}
+                    onChange={(payer) => patch(fee.id, { rewardGasPayer: payer })}
                   />
                 </motion.div>
               ) : null}
             </AnimatePresence>
-
-            <motion.div layout className='ml-auto flex min-w-0 flex-wrap items-center justify-end gap-x-4 gap-y-1.5' transition={CONTROL_REVEAL_TRANSITION}>
-              <AnimatePresence initial={false} mode='popLayout'>
-                {rwaAssets.length >= 2 ? (
-                  <motion.div key='basket-mode' layout initial={{ opacity: 0, x: 6, filter: 'blur(2px)' }} animate={{ opacity: 1, x: 0, filter: 'blur(0px)' }} exit={{ opacity: 0, x: 4, filter: 'blur(2px)' }} transition={CONTROL_REVEAL_TRANSITION} className='min-w-0'>
-                    <RwaDistributionModeControl
-                      disabled={disabled}
-                      value={rwaDistributionMode}
-                      onChange={(mode) => patch(fee.id, { rwaDistributionMode: mode, ...(mode === 'all' ? { rwaAssetWeights } : {}) })}
-                    />
-                  </motion.div>
-                ) : null}
-                {rewardDestination === 'holders' && rwaAssets.length >= 2 && rwaDistributionMode === 'all' ? (
-                  <motion.div key='gas-payer' layout initial={{ opacity: 0, x: 8, filter: 'blur(3px)' }} animate={{ opacity: 1, x: 0, filter: 'blur(0px)' }} exit={{ opacity: 0, x: 6, filter: 'blur(3px)' }} transition={CONTROL_REVEAL_TRANSITION} className='min-w-0'>
-                    <RewardGasPayerControl
-                      disabled={disabled}
-                      value={rewardGasPayer}
-                      onChange={(payer) => patch(fee.id, { rewardGasPayer: payer })}
-                    />
-                  </motion.div>
-                ) : null}
-              </AnimatePresence>
-            </motion.div>
           </motion.div>
         </motion.div>
       ) : null}
@@ -1568,17 +1535,13 @@ export function FeeStructureBuilder({ chain, fees, onChange, onAdvancedProtectio
   const missingSummary = useMemo(() => {
     if (!missing.length) return null;
     const issues = missing.map((fee) => {
-      if (fee.id !== 'rwa') return `Add a recipient for ${fee.name?.trim() || fee.id}`;
-      if (!(fee.rwaAssets?.length)) return 'Select at least one token, stock, or ETF';
-      const missingLabel = !(fee.rewardRouteLabel ?? '').trim();
-      const missingAddress = !(fee.rewardRouteAddress ?? '').trim();
-      if (missingLabel && missingAddress) return 'Add a label and recipient for the custom reward route';
-      return missingLabel ? 'Label the custom reward route' : 'Add a recipient for the custom reward route';
+      if ((fee.id === 'rwa' || fee.routeRewardMode) && !(fee.rwaAssets?.length)) return 'Select at least one token, stock, or ETF';
+      return `Add a recipient for ${fee.name?.trim() || fee.id}`;
     });
     return {
       id: missing[0].id,
       text: issues.length === 1 ? issues[0] : `Complete ${issues.length} route settings`,
-      title: issues.join(' • '),
+      title: issues.join(' | '),
     };
   }, [missing]);
   const hasRouteIssues = enabled && Boolean(missingSummary);
@@ -1684,7 +1647,9 @@ export function FeeStructureBuilder({ chain, fees, onChange, onAdvancedProtectio
     const cur = new Set(base.map((f) => f.id));
     if (!canAdd(t, cur)) return;
     const id = t === 'custom' ? `custom-${Date.now().toString(36)}` : make(chain, t as Exclude<FeeType, 'custom'>).id;
-    const added = t === 'custom' ? { id, name: 'Custom fee', pct: 1 } : make(chain, t as Exclude<FeeType, 'custom'>);
+    const added = t === 'custom'
+      ? { id, name: 'Custom fee', pct: 1, address: '', routeRewardMode: 'single' as const, rwaAssets: [nativeRewardAssetId(chain)], rwaAssetWeights: { [nativeRewardAssetId(chain)]: 100 }, rwaDistributionMode: 'rotating' as const }
+      : make(chain, t as Exclude<FeeType, 'custom'>);
     const next = equalize([...base, added], id, 1, maxTotal);
     pendingScrollId.current = id;
     if (draft) setDraft(next);
@@ -1863,10 +1828,10 @@ export function FeeStructureBuilder({ chain, fees, onChange, onAdvancedProtectio
                   };
                   return ghost && drag ? (
                     <div key={fee.id} style={{ height: drag.h }}>
-                      <Row fee={fee} chain={chain} max={maxTotal} disabled={!enabled} dragging ghost patch={patch} setPct={setPct} remove={remove} onDrag={start(fee.id)} bind={bind} attention={attentionId === fee.id} />
+                      <Row fee={fee} chain={chain} max={maxTotal} disabled={!enabled} dragging ghost patch={patch} setPct={setPct} remove={remove} onDrag={start(fee.id)} bind={bind} attention={attentionId === fee.id} onExpand={(id) => centerFeeRow(id, 70, 940)} />
                     </div>
                   ) : (
-                    <Row key={fee.id} fee={fee} chain={chain} max={maxTotal} disabled={!enabled} dragging={Boolean(drag)} patch={patch} setPct={setPct} remove={remove} onDrag={start(fee.id)} bind={bind} attention={attentionId === fee.id} />
+                    <Row key={fee.id} fee={fee} chain={chain} max={maxTotal} disabled={!enabled} dragging={Boolean(drag)} patch={patch} setPct={setPct} remove={remove} onDrag={start(fee.id)} bind={bind} attention={attentionId === fee.id} onExpand={(id) => centerFeeRow(id, 70, 940)} />
                   );
                 })}
                 {floating ? (
@@ -2049,16 +2014,20 @@ export default function FeeBuilderPanel({ chain: chainValue, onTotalChange, onAd
   useEffect(() => {
     if (previousChain.current === chain) return;
     const validTokens = new Set(tokenAssets().map(assetId));
+    const previousNative = nativeRewardAssetId(previousChain.current);
+    const nextNative = nativeRewardAssetId(chain);
     setFees((current) => current.map((fee) => {
       if (fee.id === 'rewards') {
         const rewardAsset = fee.rewardAsset && RW[chain].includes(fee.rewardAsset) ? fee.rewardAsset : rewardOf(chain);
         return { ...fee, rewardAsset };
       }
-      if (fee.id !== 'rwa') return fee;
+      if (fee.id !== 'rwa' && !fee.routeRewardMode) return fee;
       const currentAssets = fee.rwaAssets ?? [];
       const hadToken = currentAssets.some((id) => id.startsWith('TOKEN:'));
-      const nextAssets = currentAssets.filter((id) => !id.startsWith('TOKEN:') || validTokens.has(id));
-      if (hadToken && !nextAssets.some((id) => id.startsWith('TOKEN:'))) nextAssets.push(nativeRewardAssetId(chain));
+      const nextAssets = currentAssets
+        .map((id) => id === previousNative ? nextNative : id)
+        .filter((id) => !id.startsWith('TOKEN:') || validTokens.has(id));
+      if (hadToken && !nextAssets.some((id) => id.startsWith('TOKEN:'))) nextAssets.push(nextNative);
       return {
         ...fee,
         rwaAssets: nextAssets,
