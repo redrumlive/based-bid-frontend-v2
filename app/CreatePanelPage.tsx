@@ -296,6 +296,7 @@ const getDexOption = (name: string) =>
   DEX.find((x) => x.name === name) ?? DEX[0];
 const CSS = `.range-slider{height:24px}.range-slider::-webkit-slider-runnable-track{height:8px;background:transparent}.range-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:14px;height:14px;border:2px solid #0A0A0A;background:#10B981;box-shadow:0 0 0 2px rgba(16,185,129,.18);margin-top:-1px;transform:rotate(45deg);transform-origin:center}.range-slider::-moz-range-track{height:8px;background:transparent}.range-slider::-moz-range-thumb{width:14px;height:14px;border:2px solid #0A0A0A;background:#10B981;box-shadow:0 0 0 2px rgba(16,185,129,.18);border-radius:0;transform:rotate(45deg);transform-origin:center}.diamond-thumb::-webkit-slider-thumb,.diamond-thumb::-moz-range-thumb{border-radius:0}.diamond-thumb-gold::-webkit-slider-thumb,.diamond-thumb-gold::-moz-range-thumb{background:#F5C451;box-shadow:0 0 0 2px rgba(245,196,81,.2)}.dark-scrollbar{scrollbar-width:thin;scrollbar-color:#2B2B31 #0C0C0E}.dark-scrollbar::-webkit-scrollbar{width:10px}.dark-scrollbar::-webkit-scrollbar-track{background:#0C0C0E;border-left:1px solid rgba(255,255,255,.04)}.dark-scrollbar::-webkit-scrollbar-thumb{background:#2B2B31;border-radius:999px;border:2px solid #0C0C0E}.dark-scrollbar::-webkit-scrollbar-thumb:hover{background:#3A3A42}.fee-builder-trigger{position:relative;overflow:hidden}.fee-builder-trigger::after{content:"";position:absolute;inset:0;background:linear-gradient(135deg,rgba(245,217,122,.075),rgba(255,255,255,.035) 42%,rgba(16,185,129,.035));opacity:0;transition:opacity .28s ease;pointer-events:none}.fee-builder-trigger:hover::after{opacity:1}.fee-builder-trigger>*{position:relative;z-index:1}.smooth-reveal{display:grid;grid-template-rows:0fr;opacity:0;transform:translateY(-6px);transition:grid-template-rows .3s cubic-bezier(.22,1,.36,1),opacity .2s ease,transform .3s cubic-bezier(.22,1,.36,1);will-change:grid-template-rows,opacity,transform}.smooth-reveal[data-open="true"]{grid-template-rows:1fr;opacity:1;transform:translateY(0)}.smooth-reveal-inner{min-height:0;overflow:hidden}.smooth-pop{animation:smoothPop .22s cubic-bezier(.22,1,.36,1) both;transform-origin:top right}.smooth-pop-left{transform-origin:top left}.smooth-modal-bg{animation:smoothFade .18s ease-out both}.smooth-modal-panel{animation:smoothModal .28s cubic-bezier(.22,1,.36,1) both}@keyframes smoothPop{from{opacity:0;transform:translateY(-7px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}@keyframes smoothFade{from{opacity:0}to{opacity:1}}@keyframes smoothModal{from{opacity:0;transform:translateY(10px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}@keyframes milestonePulse{0%,100%{box-shadow:0 0 8px rgba(16,185,129,.20)}50%{box-shadow:0 0 14px rgba(16,185,129,.34)}}@keyframes launchGradientFlow{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}@keyframes launchSheen{0%,12%{opacity:0;transform:translateX(-145%) skewX(-18deg)}34%{opacity:.34}62%,100%{opacity:0;transform:translateX(310%) skewX(-18deg)}}.launchButtonReady .launchButtonGradient{animation:launchGradientFlow 5.8s ease-in-out infinite}.launchButtonReady .launchButtonSheen{animation:launchSheen 3.25s cubic-bezier(.22,1,.36,1) infinite}@media (max-width:640px){.smooth-modal-bg{align-items:stretch!important;padding:0!important}.smooth-modal-panel{display:flex!important;height:100dvh!important;max-height:100dvh!important;flex-direction:column!important;border-left:0!important;border-right:0!important;border-radius:0!important}.smooth-modal-panel>div:first-child{padding:16px!important}.smooth-modal-panel>div:first-child>div>div:first-child{font-size:23px!important;line-height:1.1!important}.smooth-modal-panel>div:first-child>div>div:nth-child(2){white-space:normal!important;overflow:hidden!important;text-overflow:clip!important;display:-webkit-box!important;-webkit-line-clamp:2;-webkit-box-orient:vertical}.smooth-modal-panel>div:first-child button{height:34px!important;width:34px!important}.smooth-modal-panel>div:nth-child(2){flex:1 1 auto!important;overflow:auto!important;padding:16px!important}.smooth-modal-panel>div:nth-child(2)>div:first-child button{height:32px!important;border-radius:11px!important;font-size:12px!important}.smooth-modal-panel textarea{min-height:42dvh!important;border-radius:14px!important;padding:12px!important;font-size:13px!important;line-height:1.6!important}.smooth-modal-panel>div:last-child{padding:12px 16px calc(12px + env(safe-area-inset-bottom))!important;gap:8px!important;flex-wrap:wrap!important}.smooth-modal-panel>div:last-child button{height:36px!important;border-radius:12px!important;font-size:13px!important}.smooth-modal-panel>div:last-child button:last-child{order:3;flex:1 0 100%!important}}@media (prefers-reduced-motion:reduce){.smooth-reveal,.smooth-pop,.smooth-pop-left,.smooth-modal-bg,.smooth-modal-panel,.launchButtonReady .launchButtonGradient,.launchButtonReady .launchButtonSheen{animation:none;transition:none;transform:none}}`;
 const WALLET_MODAL_CSS = `@media (max-width:900px){.wallet-modal-bg.wallet-modal-bg{align-items:stretch!important;background:#080809!important;padding:0!important;backdrop-filter:none!important}.wallet-modal-panel.wallet-modal-panel{display:flex!important;width:100vw!important;max-width:none!important;height:100dvh!important;max-height:100dvh!important;flex-direction:column!important;overflow:hidden!important;border:0!important;border-radius:0!important;background:#080809!important;box-shadow:none!important}.wallet-modal-panel .wallet-modal-header{border-bottom:1px solid rgba(255,255,255,.07)!important;padding:18px 16px 14px!important}.wallet-modal-panel .wallet-modal-title{font-size:24px!important;line-height:1.02!important;letter-spacing:-.03em}.wallet-modal-panel .wallet-modal-helper{white-space:normal!important;display:-webkit-box!important;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden!important;text-overflow:clip!important;font-size:11.5px!important;line-height:17px!important}.wallet-modal-panel .wallet-modal-close{height:34px!important;width:34px!important}.wallet-modal-panel .wallet-modal-body{display:flex!important;min-height:0!important;flex:1 1 auto!important;flex-direction:column!important;overflow:hidden!important;padding:14px 12px 8px!important}.wallet-modal-panel .wallet-modal-modes{margin-bottom:12px!important}.wallet-modal-panel .wallet-modal-modes button{height:31px!important;border-radius:10px!important;font-size:11px!important}.wallet-modal-panel .wallet-modal-textarea{min-height:0!important;flex:1 1 auto!important;border-radius:14px!important;padding:11px 12px!important;font-size:10px!important;line-height:18px!important;white-space:pre!important;overflow:auto!important}.wallet-modal-panel .wallet-modal-meta{margin-top:10px!important;gap:8px!important;font-size:11px!important}.wallet-modal-panel .wallet-modal-footer{border-top:1px solid rgba(255,255,255,.07)!important;background:#080809!important;padding:10px 12px calc(12px + env(safe-area-inset-bottom))!important;gap:8px!important;flex-wrap:wrap!important}.wallet-modal-panel .wallet-modal-footer button{height:34px!important;border-radius:12px!important;font-size:12px!important}.wallet-modal-panel .wallet-modal-footer .wallet-modal-primary{order:3;flex:1 0 100%!important}}`;
+const SMOOTH_REVEAL_OPEN_CSS = `.smooth-reveal[data-open="true"]>.smooth-reveal-inner{overflow:visible}`;
 
 const compactCapFormatter = new Intl.NumberFormat("en-US", {
   notation: "compact",
@@ -775,41 +776,38 @@ function SettingSurface({
   children: ReactNode;
 }) {
   return (
-    <>
-      <style>{`.smooth-reveal[data-open="true"]>.smooth-reveal-inner{overflow:visible}`}</style>
-      <div className="rounded-[18px] border border-white/10 bg-[#101010] shadow-[inset_0_1px_0_rgba(255,255,255,0.018)] transition-[border-color,background-color,box-shadow] duration-300">
-        <button
-          type="button"
-          onClick={onToggle}
-          className="flex w-full items-start gap-3 px-4 py-4 text-left"
+    <div className="rounded-[18px] border border-white/10 bg-[#101010] shadow-[inset_0_1px_0_rgba(255,255,255,0.018)] transition-[border-color,background-color,box-shadow] duration-300">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex w-full items-start gap-3 px-4 py-4 text-left"
+      >
+        <span
+          className={`mt-0.5 flex h-6 w-11 shrink-0 items-center rounded-full border p-0.5 transition ${enabled ? "border-[#10B981]/55 bg-[#10B981]/35" : "border-white/12 bg-white/[0.04]"}`}
+          aria-hidden="true"
         >
           <span
-            className={`mt-0.5 flex h-6 w-11 shrink-0 items-center rounded-full border p-0.5 transition ${enabled ? "border-[#10B981]/55 bg-[#10B981]/35" : "border-white/12 bg-white/[0.04]"}`}
-            aria-hidden="true"
-          >
-            <span
-              className={`h-[18px] w-[18px] rounded-full bg-white transition-transform duration-300 ${enabled ? "translate-x-5" : "translate-x-0"}`}
-            />
-          </span>
-          <div className="min-w-0">
-            <div className="text-sm font-semibold text-white">{title}</div>
-            <div className="mt-1 text-xs leading-5 text-white/52">
-              {description}
-            </div>
-          </div>
-        </button>
-        <div
-          className="smooth-reveal"
-          data-open={enabled}
-          aria-hidden={!enabled}
-          inert={!enabled}
-        >
-          <div className="smooth-reveal-inner">
-            <div className="px-4 pb-5 pt-0">{children}</div>
+            className={`h-[18px] w-[18px] rounded-full bg-white transition-transform duration-300 ${enabled ? "translate-x-5" : "translate-x-0"}`}
+          />
+        </span>
+        <div className="min-w-0">
+          <div className="text-sm font-semibold text-white">{title}</div>
+          <div className="mt-1 text-xs leading-5 text-white/52">
+            {description}
           </div>
         </div>
+      </button>
+      <div
+        className="smooth-reveal"
+        data-open={enabled}
+        aria-hidden={!enabled}
+        inert={!enabled}
+      >
+        <div className="smooth-reveal-inner">
+          <div className="px-4 pb-5 pt-0">{children}</div>
+        </div>
       </div>
-    </>
+    </div>
   );
 }
 
@@ -981,6 +979,20 @@ function LbpSettingsPanel({
   );
 }
 
+function RequiredPill({ complete }: { complete: boolean }) {
+  return (
+    <span
+      className={`inline-flex h-[17px] w-[58px] items-center justify-center rounded-full border text-[7px] font-semibold uppercase tracking-[0.12em] transition-[border-color,background-color,color] duration-300 ${
+        complete
+          ? "border-[#4ade80]/30 bg-[#4ade80]/[0.055] text-[#7bea9e]/88"
+          : "border-[#F5C451]/30 bg-[#F5C451]/[0.035] text-[#F5D97A]/76"
+      }`}
+    >
+      <span>Required</span>
+    </span>
+  );
+}
+
 function Field({
   label,
   placeholder,
@@ -1002,6 +1014,8 @@ function Field({
   invalid?: boolean;
   helper?: ReactNode;
 }) {
+  const complete = Boolean(value?.trim());
+
   return (
     <div>
       <div
@@ -1011,11 +1025,7 @@ function Field({
           className={`flex items-center gap-2 font-medium ${compact ? "text-[11px] text-white/70" : "mb-2 text-sm text-white"}`}
         >
           <span>{label}</span>
-          {required ? (
-            <span className="inline-flex h-[17px] items-center rounded-full border border-white/10 bg-white/[0.035] px-1.5 text-[7px] font-semibold uppercase tracking-[0.14em] text-white/42">
-              Required
-            </span>
-          ) : null}
+          {required ? <RequiredPill complete={complete} /> : null}
         </label>
         {compact && helper ? (
           <div
@@ -2967,19 +2977,16 @@ function MobileLaunchDock({
 
   return (
     <>
-      <style
-        suppressHydrationWarning
-        dangerouslySetInnerHTML={{
-          __html: `${mobileCompactCss}${initialBuyMobileCss}${launchPlanCss}${launchPlanMobileFixCss}`,
-        }}
-      />
+      <style suppressHydrationWarning>
+        {`${mobileCompactCss}${initialBuyMobileCss}${launchPlanCss}${launchPlanMobileFixCss}`}
+      </style>
       <button
         type="button"
         aria-label="Close applied settings"
         onClick={() => setSettingsOpen(false)}
         className={`fixed inset-0 z-40 bg-black/58 backdrop-blur-[2px] transition-[opacity,backdrop-filter] duration-400 ease-[cubic-bezier(.22,1,.36,1)] lg:hidden ${settingsOpen ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"}`}
       />
-      <div className="fixed inset-x-0 bottom-0 z-50 lg:hidden">
+      <div className="fixed inset-x-0 bottom-[44px] z-50 lg:hidden">
         <div
           className={`pointer-events-none absolute inset-x-0 bottom-full will-change-transform transition-[opacity,transform,filter] duration-500 ease-[cubic-bezier(.16,1,.3,1)] ${settingsOpen ? "translate-y-0 scale-100 opacity-100 blur-0" : "translate-y-[calc(100%+10px)] scale-[0.985] opacity-0 blur-[1px]"}`}
           aria-hidden={!settingsOpen}
@@ -3381,7 +3388,7 @@ function Sidebar({
       ?.label ?? "Live wallet";
 
   return (
-    <aside className="max-h-[calc(100vh-4rem)] space-y-4 overflow-y-auto overscroll-contain pr-1 [scrollbar-color:rgba(255,255,255,0.12)_transparent] [scrollbar-width:thin]">
+    <aside className="max-h-[calc(100vh-8rem)] space-y-4 overflow-y-auto overscroll-contain pr-1 [scrollbar-color:rgba(255,255,255,0.12)_transparent] [scrollbar-width:thin]">
       <div className="flex items-center justify-between gap-3 px-1">
         <div className="text-xs font-semibold uppercase tracking-[0.16em] text-white/46">
           Live Preview
@@ -3956,7 +3963,7 @@ export default function BBLbpCreationReworkPreview() {
   return (
     <>
       <div className="min-h-[calc(100vh-56px)] bg-[#0A0A0A] text-white">
-        <style>{CSS}</style>
+        <style>{`${CSS}${SMOOTH_REVEAL_OPEN_CSS}`}</style>
         <main className="mx-auto max-w-[88rem] px-6 py-8 pb-44 md:px-10 lg:px-12 lg:pb-32">
           <div className="mb-5">
             <CreateBackLink href="/create" />
@@ -3989,7 +3996,7 @@ export default function BBLbpCreationReworkPreview() {
                     Launch instantly with name, symbol and logo.
                   </div>
                   <div
-                    className={`hidden rounded-full border px-3 py-1 text-xs font-medium transition-colors sm:block ${ready ? "border-[#F5D97A]/28 bg-[#F5D97A]/[0.07] text-[#F5D97A]/90" : "border-white/10 bg-[#0C0C0D] text-white/42"}`}
+                    className={`hidden rounded-full border px-3 py-1 text-xs font-medium transition-colors duration-300 sm:block ${ready ? "border-[#4ade80]/30 bg-[#4ade80]/[0.055] text-[#7bea9e]/88" : "border-[#F5C451]/28 bg-[#F5C451]/[0.035] text-[#F5D97A]/74"}`}
                   >
                     {requiredPillText}
                   </div>
@@ -4025,9 +4032,7 @@ export default function BBLbpCreationReworkPreview() {
                       </div>
                       <div className="flex items-center gap-2 text-xs font-medium text-white">
                         <span>{logo ? "Logo uploaded" : "Upload logo"}</span>
-                        <span className="inline-flex h-[17px] items-center rounded-full border border-white/10 bg-white/[0.035] px-1.5 text-[7px] font-semibold uppercase tracking-[0.14em] text-white/42">
-                          Required
-                        </span>
+                        <RequiredPill complete={logo} />
                       </div>
                       <p className="mt-0.5 text-[11px] text-white/50">
                         {logo ? (
@@ -4205,7 +4210,7 @@ export default function BBLbpCreationReworkPreview() {
               />
             </div>
             <div className="hidden xl:block">
-              <div className="fixed top-8 right-[max(2rem,calc((100vw-88rem)/2+1.5rem))] z-30 w-[360px]">
+              <div className="fixed top-[76px] right-[max(3rem,calc((100vw-272px-88rem)/2+3rem))] z-30 w-[360px]">
                 <Sidebar
                   name={name}
                   symbol={symbol}
