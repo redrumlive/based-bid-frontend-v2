@@ -102,6 +102,21 @@ function SectionHeader({ icon: Icon, title, description, tag }: { icon: IconComp
   );
 }
 
+function RequiredPill({ complete }: { complete: boolean }) {
+  return (
+    <span
+      className={cx(
+        "inline-flex h-[17px] w-[58px] items-center justify-center rounded-full border text-[7px] font-semibold uppercase tracking-[0.12em] transition-[border-color,background-color,color] duration-300",
+        complete
+          ? "border-[#4ade80]/30 bg-[#4ade80]/[0.055] text-[#7bea9e]/88"
+          : "border-[#F5C451]/30 bg-[#F5C451]/[0.035] text-[#F5D97A]/76",
+      )}
+    >
+      <span>Required</span>
+    </span>
+  );
+}
+
 function Field({ label, value, onChange, placeholder, textarea, hint, required }: { label: string; value: string; onChange: (value: string) => void; placeholder: string; textarea?: boolean; hint?: string; required?: boolean }) {
   const complete = value.trim().length > 0;
   return (
@@ -109,12 +124,7 @@ function Field({ label, value, onChange, placeholder, textarea, hint, required }
       <span className="mb-2 flex items-center justify-between gap-3 text-[11px] font-medium text-white/64">
         <span className="inline-flex items-center gap-1.5">
           <span>{label}</span>
-          {required ? (
-            <span className="inline-flex h-[17px] items-center rounded-full border border-white/10 bg-white/[0.035] px-1.5 text-[7px] font-semibold uppercase tracking-[0.14em] text-white/42">
-              Required
-            </span>
-          ) : null}
-          {required && complete ? <Check className="h-3.5 w-3.5 text-[#4ade80]" strokeWidth={2.2} /> : null}
+          {required ? <RequiredPill complete={complete} /> : null}
         </span>
         {hint ? <span className="font-normal tabular-nums text-white/28">{hint}</span> : null}
       </span>
@@ -145,12 +155,7 @@ function AssetUpload({ kind, source, onChange, onClear, required }: { kind: "ban
         <div>
           <div className="flex items-center gap-1.5 text-[11px] font-medium capitalize text-white/64">
             <span>{kind}</span>
-            {required ? (
-              <span className="inline-flex h-[17px] items-center rounded-full border border-white/10 bg-white/[0.035] px-1.5 text-[7px] font-semibold uppercase tracking-[0.14em] text-white/42">
-                Required
-              </span>
-            ) : null}
-            {required && source ? <Check className="h-3.5 w-3.5 text-[#4ade80]" strokeWidth={2.2} /> : null}
+            {required ? <RequiredPill complete={Boolean(source)} /> : null}
           </div>
           <div className="mt-0.5 text-[9px] text-white/28">Recommended {isLogo ? "1:1" : "9:1"}</div>
         </div>
