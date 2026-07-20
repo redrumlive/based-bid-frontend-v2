@@ -19,16 +19,20 @@ const reveal = {
   visible: { opacity: 1, y: 0 },
 };
 
-function Tag({ children }: { children: ReactNode }) {
+function Tag({ children, tone }: { children: ReactNode; tone: "gold" | "blue" }) {
+  const toneClasses = tone === "gold"
+    ? "border-[#d9bd63]/28 group-hover:border-[#d9bd63]/46"
+    : "border-[#3975f6]/30 group-hover:border-[#3975f6]/48";
+
   return (
-    <span className="inline-flex h-6 items-center rounded-full border border-white/[0.075] bg-black/15 px-2.5 text-[9.5px] font-medium text-white/44 transition-colors duration-200 group-hover:border-white/[0.12] group-hover:text-white/66">
+    <span className={`inline-flex h-6 items-center rounded-full border bg-transparent px-2.5 text-[9.5px] font-medium text-white/44 transition-colors duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:text-white/66 ${toneClasses}`}>
       {children}
     </span>
   );
 }
 
 const launchCardClass =
-  "bb-ambient-surface group relative isolate flex min-h-[310px] cursor-pointer flex-col overflow-hidden rounded-[24px] border border-white/[0.075] bg-[#101111] p-6 shadow-[0_18px_48px_rgba(0,0,0,0.25),inset_0_1px_0_rgba(255,255,255,0.025)] transform-gpu transition-[background-color,border-color,transform,box-shadow] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] before:pointer-events-none before:absolute before:inset-0 before:z-0 before:bg-[radial-gradient(ellipse_at_46%_-12%,rgba(255,255,255,0.09),transparent_58%)] before:opacity-0 before:transition-opacity before:duration-500 after:pointer-events-none after:absolute after:-inset-y-1/4 after:-left-1/3 after:z-0 after:w-[18%] after:rotate-[12deg] after:bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.075),transparent)] after:opacity-0 after:blur-[5px] after:transition-[transform,opacity] after:duration-700 after:ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-1 hover:scale-[1.004] hover:border-white/[0.16] hover:bg-[#121313] hover:shadow-[0_28px_74px_rgba(0,0,0,0.46),0_0_0_1px_rgba(255,255,255,0.025),inset_0_1px_0_rgba(255,255,255,0.075)] hover:before:opacity-100 hover:after:translate-x-[760%] hover:after:opacity-100 active:translate-y-0 active:scale-[0.997] focus:outline-none focus-visible:ring-1 focus-visible:ring-white/25 sm:p-7";
+  "bb-ambient-surface group relative isolate flex min-h-[310px] cursor-pointer flex-col overflow-hidden rounded-[24px] border border-white/[0.075] bg-[#101111] p-6 shadow-[0_18px_48px_rgba(0,0,0,0.25),inset_0_1px_0_rgba(255,255,255,0.025)] transform-gpu will-change-transform transition-[background-color,border-color,transform,box-shadow] duration-[680ms] ease-[cubic-bezier(0.16,1,0.3,1)] before:pointer-events-none before:absolute before:inset-0 before:z-0 before:scale-[0.97] before:bg-[radial-gradient(ellipse_at_46%_-12%,rgba(255,255,255,0.085),transparent_60%)] before:opacity-0 before:transition-[opacity,transform] before:duration-[720ms] before:ease-[cubic-bezier(0.16,1,0.3,1)] after:pointer-events-none after:absolute after:-inset-8 after:z-0 after:bg-[radial-gradient(circle_at_84%_88%,rgba(255,255,255,0.055),transparent_38%)] after:opacity-0 after:transition-opacity after:duration-[820ms] after:ease-out hover:-translate-y-[3px] hover:scale-[1.002] hover:border-white/[0.15] hover:bg-[#121313] hover:shadow-[0_26px_68px_rgba(0,0,0,0.42),0_0_0_1px_rgba(255,255,255,0.02),inset_0_1px_0_rgba(255,255,255,0.07)] hover:before:scale-100 hover:before:opacity-100 hover:after:opacity-100 active:translate-y-0 active:scale-[0.998] focus:outline-none focus-visible:ring-1 focus-visible:ring-white/25 sm:p-7";
 
 export default function CreateSelectorPage() {
   return (
@@ -76,18 +80,18 @@ export default function CreateSelectorPage() {
         >
           <a href="https://www.based.bid/launch-flash" className={launchCardClass}>
             <span className="absolute -top-px left-6 z-20 rounded-b-[9px] bg-[#4ade80] px-3 py-1.5 text-[8px] font-bold uppercase tracking-[0.13em] text-[#071009] shadow-[0_5px_18px_rgba(74,222,128,0.16)]">Recommended</span>
-            <span aria-hidden="true" className="pointer-events-none absolute inset-x-8 bottom-0 z-[1] h-px bg-gradient-to-r from-transparent via-white/18 to-transparent opacity-0 blur-[0.4px] transition-opacity duration-500 group-hover:opacity-100" />
+            <span aria-hidden="true" className="pointer-events-none absolute inset-x-8 bottom-0 z-[1] h-px bg-gradient-to-r from-transparent via-white/18 to-transparent opacity-0 blur-[0.4px] transition-opacity duration-700 ease-out group-hover:opacity-100" />
             <Image
               unoptimized
-              src="/based-degen.png"
+              src="/based-crown.png"
               alt=""
               width={800}
               height={800}
-              className="pointer-events-none absolute bottom-0 right-1 z-[2] h-auto w-[148px] select-none object-contain opacity-32 grayscale-[0.1] transition-[opacity,transform,filter] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:-translate-x-1 group-hover:-translate-y-1.5 group-hover:-rotate-[0.6deg] group-hover:scale-[1.025] group-hover:opacity-54 group-hover:grayscale-0 sm:right-2 sm:w-[172px]"
+              className="pointer-events-none absolute bottom-0 right-1 z-[2] h-auto w-[148px] select-none object-contain opacity-32 grayscale-[0.1] transition-[opacity,transform,filter] duration-[900ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:-translate-x-0.5 group-hover:-translate-y-1 group-hover:-rotate-[0.35deg] group-hover:scale-[1.018] group-hover:opacity-54 group-hover:grayscale-0 sm:right-2 sm:w-[172px]"
             />
 
             <span className="relative z-10 mt-3 flex items-start justify-between gap-4">
-              <span className="grid h-10 w-10 place-items-center rounded-[12px] border border-white/[0.09] bg-white/[0.025] text-white/68 transition-[background-color,border-color,color,transform,box-shadow] duration-500 group-hover:-translate-y-0.5 group-hover:border-white/[0.16] group-hover:bg-white/[0.04] group-hover:text-white/92 group-hover:shadow-[0_8px_22px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.06)]">
+              <span className="grid h-10 w-10 place-items-center rounded-[12px] border border-white/[0.09] bg-white/[0.025] text-[#d9bd63]/82 transition-[background-color,border-color,color,transform,box-shadow] duration-[620ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:-translate-y-0.5 group-hover:border-[#d9bd63]/24 group-hover:bg-white/[0.04] group-hover:text-[#f0d77d] group-hover:shadow-[0_8px_22px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.06)]">
                 <Zap className="h-[18px] w-[18px]" strokeWidth={1.8} />
               </span>
               <span className="inline-flex h-6 items-center rounded-full border border-[#4ade80]/18 bg-[#4ade80]/[0.045] px-2.5 text-[9px] font-semibold uppercase tracking-[0.1em] text-[#4ade80]/82">Instant launch</span>
@@ -100,24 +104,24 @@ export default function CreateSelectorPage() {
             </span>
 
             <span className="relative z-10 mt-auto flex max-w-[72%] flex-wrap gap-1.5 pt-7">
-              <Tag>No upfront liquidity</Tag>
-              <Tag>Direct to DEX</Tag>
+              <Tag tone="gold">No upfront liquidity</Tag>
+              <Tag tone="gold">Direct to DEX</Tag>
             </span>
           </a>
 
           <Link href="/create/lbp" className={launchCardClass}>
-            <span aria-hidden="true" className="pointer-events-none absolute inset-x-8 bottom-0 z-[1] h-px bg-gradient-to-r from-transparent via-white/18 to-transparent opacity-0 blur-[0.4px] transition-opacity duration-500 group-hover:opacity-100" />
+            <span aria-hidden="true" className="pointer-events-none absolute inset-x-8 bottom-0 z-[1] h-px bg-gradient-to-r from-transparent via-white/18 to-transparent opacity-0 blur-[0.4px] transition-opacity duration-700 ease-out group-hover:opacity-100" />
             <Image
               unoptimized
-              src="/based-crown.png"
+              src="/based-degen.png"
               alt=""
               width={800}
               height={800}
-              className="pointer-events-none absolute bottom-0 right-1 z-[2] h-auto w-[150px] select-none object-contain opacity-30 grayscale-[0.12] transition-[opacity,transform,filter] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:-translate-x-1 group-hover:-translate-y-1.5 group-hover:rotate-[0.7deg] group-hover:scale-[1.02] group-hover:opacity-52 group-hover:grayscale-0 sm:right-2 sm:w-[174px]"
+              className="pointer-events-none absolute bottom-0 right-1 z-[2] h-auto w-[150px] select-none object-contain opacity-30 grayscale-[0.12] transition-[opacity,transform,filter] duration-[900ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:-translate-x-0.5 group-hover:-translate-y-1 group-hover:rotate-[0.4deg] group-hover:scale-[1.016] group-hover:opacity-52 group-hover:grayscale-0 sm:right-2 sm:w-[174px]"
             />
 
             <span className="relative z-10 flex items-start justify-between gap-4">
-              <span className="grid h-10 w-10 place-items-center rounded-[12px] border border-white/[0.09] bg-white/[0.025] text-white/68 transition-[background-color,border-color,color,transform,box-shadow] duration-500 group-hover:-translate-y-0.5 group-hover:border-white/[0.16] group-hover:bg-white/[0.04] group-hover:text-white/92 group-hover:shadow-[0_8px_22px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.06)]">
+              <span className="grid h-10 w-10 place-items-center rounded-[12px] border border-white/[0.09] bg-white/[0.025] text-[#7da4ff]/88 transition-[background-color,border-color,color,transform,box-shadow] duration-[620ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:-translate-y-0.5 group-hover:border-[#3975f6]/28 group-hover:bg-white/[0.04] group-hover:text-[#94b5ff] group-hover:shadow-[0_8px_22px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.06)]">
                 <Droplets className="h-[18px] w-[18px]" strokeWidth={1.75} />
               </span>
               <span className="inline-flex h-6 items-center rounded-full border border-[#3975f6]/22 bg-[#3975f6]/[0.055] px-2.5 text-[9px] font-semibold uppercase tracking-[0.1em] text-[#7da4ff]">Bonding curve</span>
@@ -130,8 +134,8 @@ export default function CreateSelectorPage() {
             </span>
 
             <span className="relative z-10 mt-auto flex max-w-[72%] flex-wrap gap-1.5 pt-7">
-              <Tag>Price discovery</Tag>
-              <Tag>Graduates to DEX</Tag>
+              <Tag tone="blue">Price discovery</Tag>
+              <Tag tone="blue">Graduates to DEX</Tag>
             </span>
           </Link>
         </motion.div>
