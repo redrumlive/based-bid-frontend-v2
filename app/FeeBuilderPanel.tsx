@@ -4,6 +4,13 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Image from 'next/image';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
+import FeeEngineCard, {
+  type FeeEngineAsset,
+  type FeeEngineRewardPayment,
+  type FeeEngineRoute,
+  type FeeEngineRouteKind,
+} from './FeeEngineCard';
+import { featheredFeeGradient } from './feeGradient';
 import {
   BriefcaseBusiness,
   Check,
@@ -37,6 +44,16 @@ const S = {
 
 export type ChainId = 'eth' | 'base' | 'bsc' | 'sol' | 'robinhood' | 'megaeth';
 export type RewardAsset = 'ETH' | 'BNB' | 'SOL' | 'USDC' | 'USDT' | 'USD1' | 'USDG';
+
+const ADDRESS_EXPLORERS: Record<ChainId, string> = {
+  eth: 'https://etherscan.io/address/',
+  base: 'https://basescan.org/address/',
+  bsc: 'https://bscscan.com/address/',
+  sol: 'https://solscan.io/account/',
+  robinhood: 'https://robinhoodchain.blockscout.com/address/',
+  megaeth: 'https://mega.etherscan.io/address/',
+};
+
 export type FeeWallet = {
   id: string;
   name: string;
@@ -77,6 +94,7 @@ type ChipsProps<T extends string | number> = {
 type RowProps = {
   fee: FeeWallet;
   chain: ChainId;
+  walletAddress?: string | null;
   max: number;
   disabled: boolean;
   dragging: boolean;
@@ -221,7 +239,7 @@ const META = {
   liq: { c: '#22D3EE', d: 'Strengthens the liquidity pool and market depth.', i: Droplets },
   rewards: { c: '#FBBF24', d: 'Distributes value back to holders.', i: Coins },
   rwa: { c: '#B7F34A', d: 'Rewards holders with your selected tokens, stocks, and ETFs.', i: BriefcaseBusiness },
-  buybacks: { c: '#8B7CF6', d: 'Automatically buys & burns.', i: Flame },
+  buybacks: { c: '#8B7CF6', d: 'Automatically buys & burns your token.', i: Flame },
   custom: { c: '#94A3B8', d: 'Sent to any custom wallet.', i: Code2 },
 } as const;
 
@@ -267,83 +285,71 @@ const noDragTarget = (t: EventTarget | null) =>
 
 const shortLabel = (t: FeeType) => ({ creator: 'Creator', rewards: 'Rewards', rwa: 'Rewards Basket', buybacks: 'Buybacks', liq: 'Liquidity', ops: 'Treasury', custom: 'Custom' }[t]);
 
+const feeEngineKind = (fee: FeeWallet): FeeEngineRouteKind => {
+  const type = classify(fee.id, fee.name);
+  return type === 'rwa' ? 'basket' : type === 'ops' ? 'treasury' : type === 'liq' ? 'liquidity' : type;
+};
+
+const feeEngineAsset = (id: string, weight?: number): FeeEngineAsset => {
+  const asset = [...TOKEN_CATALOG, ...RWA_ASSETS].find((candidate) => assetId(candidate) === id);
+  const symbol = asset?.symbol ?? id.replace(/^TOKEN:/, '');
+  return {
+    id,
+    symbol,
+    name: asset?.name ?? symbol,
+    icon: asset?.icon ?? (asset?.category === 'stock' || asset?.category === 'etf' ? `/rwa/${symbol.toLowerCase()}.png` : undefined),
+    weight,
+    address: asset?.address,
+    decimals: symbol === 'BTC' ? 8 : symbol === 'USDC' || symbol === 'USDT' ? 6 : 18,
+  };
+};
+
+const feeEngineDetail = (fee: FeeWallet, chain: ChainId) => {
+  const type = classify(fee.id, fee.name);
+  if (type === 'creator') return 'Trading fees paid directly to the creator.';
+  if (type === 'rewards') return `Pays eligible holders in ${fee.rewardAsset ?? rewardOf(chain)}.`;
+  if (type === 'rwa') return 'Pays eligible holders in the configured asset basket.';
+  if (type === 'buybacks') return 'Automatically buys & burns your token.';
+  if (type === 'liq') return 'Adds trading fees back to liquidity and market depth.';
+  if (type === 'ops') return 'Routes trading fees to the treasury wallet.';
+  return 'Routes trading fees to the custom recipient.';
+};
+
 const needsAddress = (f: FeeWallet) =>
   !(f.pct <= 0) && (ADDRESS_REQUIRED.has(f.id) || !LOCKED.has(f.id));
 
-export const isMissingAddr = (f: FeeWallet) =>
+const isEvmAddress = (value: string) => /^0x[\da-f]{40}$/i.test(value.trim());
+const isSolanaAddress = (value: string) => {
+  const address = value.trim();
+  const alphabet = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+  if (address.length < 32 || address.length > 44 || !/^[1-9A-HJ-NP-Za-km-z]+$/.test(address)) return false;
+  let decoded = 0n;
+  for (const character of address) {
+    const index = alphabet.indexOf(character);
+    if (index < 0) return false;
+    decoded = decoded * 58n + BigInt(index);
+  }
+  let byteLength = 0;
+  for (let current = decoded; current > 0n; current >>= 8n) byteLength += 1;
+  const leadingZeroBytes = address.match(/^1*/)?.[0].length ?? 0;
+  return byteLength + leadingZeroBytes === 32;
+};
+const isRecipientAddressValid = (value: string, chain: ChainId) => chain === 'sol' ? isSolanaAddress(value) : isEvmAddress(value);
+
+export const isMissingAddr = (f: FeeWallet, chain: ChainId = 'eth') =>
   f.id === 'rwa' && f.pct > 0
     ? !(f.rwaAssets?.length)
     : (f.routeRewardMode && f.pct > 0 && !(f.rwaAssets?.length))
-      || (!needsAddress(f) ? false : !(f.address ?? '').trim());
+      || (!needsAddress(f) ? false : !isRecipientAddressValid(f.address ?? '', chain));
 
 export const totalWarnLevel = (n: number): 'danger' | 'warn' | null => (n > 6.9 ? 'danger' : n >= 4.1 ? 'warn' : null);
-
-function mix(a: string, b: string, t: number) {
-  const norm = (v: string) => {
-    const r = v.startsWith('#') ? v.slice(1) : v;
-    return r.length === 3 ? r.split('').map((c) => c + c).join('') : r;
-  };
-  const x = norm(a);
-  const y = norm(b);
-  if (x.length !== 6 || y.length !== 6) return b;
-  const lerp = (m: number, n: number) => Math.round(m + (n - m) * clamp(t, 0, 1));
-  const hx = (n: number) => n.toString(16).padStart(2, '0');
-  const A = [parseInt(x.slice(0, 2), 16), parseInt(x.slice(2, 4), 16), parseInt(x.slice(4, 6), 16)];
-  const B = [parseInt(y.slice(0, 2), 16), parseInt(y.slice(2, 4), 16), parseInt(y.slice(4, 6), 16)];
-  return `#${hx(lerp(A[0], B[0]))}${hx(lerp(A[1], B[1]))}${hx(lerp(A[2], B[2]))}`;
-}
-
-function grad(parts: Array<{ w: number; c: string }>) {
-  if (!parts.length) return 'rgba(0,0,0,0)';
-  const steps = [0.06, 0.14, 0.24, 0.36, 0.5, 0.64, 0.76, 0.86, 0.94] as const;
-  const out: Array<{ c: string; p: number }> = [{ c: parts[0].c, p: 0 }];
-  const push = (c: string, p: number) => out.push({ c, p: clamp(p, 0, 100) });
-  let acc = 0;
-
-  for (let i = 0; i < parts.length; i++) {
-    const cur = parts[i];
-    const next = parts[i + 1];
-    const end = clamp(acc + cur.w, 0, 100);
-    if (!next) {
-      push(cur.c, end);
-      break;
-    }
-    const feather = clamp(Math.min(8.25, cur.w * 0.58, next.w * 0.58), 0, 8.25);
-    const left = clamp(end - feather, acc, 100);
-    const right = clamp(end + feather, 0, 100);
-    if (feather < 0.15) {
-      push(cur.c, end);
-      push(next.c, end);
-      acc = end;
-      continue;
-    }
-    push(cur.c, left);
-    steps.forEach((v) => push(mix(cur.c, next.c, v), left + (right - left) * v));
-    push(next.c, right);
-    acc = end;
-  }
-
-  const segs: string[] = [];
-  let last = -Infinity;
-  out.forEach((v, i) => {
-    const p = Math.max(v.p, last);
-    const done = i === out.length - 1;
-    if (segs.length && !done && p - last < 0.01) segs[segs.length - 1] = `${v.c} ${last.toFixed(4)}%`;
-    else {
-      last = p;
-      segs.push(`${v.c} ${last.toFixed(4)}%`);
-    }
-  });
-
-  return `linear-gradient(90deg, ${segs.join(', ')})`;
-}
 
 function totalBar(fees: FeeWallet[]) {
   const active = fees.filter((f) => (f.pct ?? 0) > 0);
   const t = active.reduce((s, f) => s + (f.pct ?? 0), 0);
   return !active.length || t <= 0
     ? { t, bg: 'rgba(0,0,0,0)' }
-    : { t, bg: grad(active.map((f) => ({ w: clamp(((f.pct ?? 0) / t) * 100, 0, 100), c: tint(f.id, f.name) }))) };
+    : { t, bg: featheredFeeGradient(active.map((f) => ({ weight: clamp(((f.pct ?? 0) / t) * 100, 0, 100), color: tint(f.id, f.name) }))) };
 }
 
 function equalize(list: FeeWallet[], id: string, nextPct: number, max: number) {
@@ -496,7 +502,7 @@ const Icon = ({ t, size = 12.5, y = -0.1, color = T.text }: { t: FeeType; size?:
   return <C size={size} strokeWidth={1.9} style={{ display: 'block', color, transform: `translateY(${t === 'creator' ? -0.15 : y}px)` }} aria-hidden />;
 };
 
-function TextField({ value, onChange, placeholder, label, className = '', disabled, accent = '#94A3B8', invalid = false, focusTarget = false }: { value: string; onChange: (v: string) => void; placeholder?: string; label?: string; className?: string; disabled?: boolean; accent?: string; invalid?: boolean; focusTarget?: boolean }) {
+function TextField({ value, onChange, placeholder, label, className = '', disabled, accent = '#94A3B8', invalid = false, invalidLabel = 'Required', focusTarget = false }: { value: string; onChange: (v: string) => void; placeholder?: string; label?: string; className?: string; disabled?: boolean; accent?: string; invalid?: boolean; invalidLabel?: string; focusTarget?: boolean }) {
   const fieldAccent = invalid ? '#FF7184' : accent;
   return (
     <div
@@ -525,11 +531,76 @@ function TextField({ value, onChange, placeholder, label, className = '', disabl
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
+        aria-invalid={invalid || undefined}
         className='bbFieldInput min-w-0 flex-1 bg-transparent text-[11.5px] font-medium leading-none outline-none sm:text-[12.5px]'
         style={{ color: T.text }}
       />
-      {invalid ? <span className='hidden shrink-0 rounded-full border px-1.5 py-[1px] text-[7.5px] font-semibold uppercase tracking-[0.09em] sm:inline-flex sm:text-[8.5px] sm:tracking-[0.10em]' style={{ color: rgba(fieldAccent, 0.90), background: rgba(fieldAccent, 0.075), borderColor: rgba(fieldAccent, 0.20) }}>Required</span> : null}
+      {invalid ? <span className='hidden shrink-0 rounded-full border px-1.5 py-[1px] text-[7.5px] font-semibold uppercase tracking-[0.09em] sm:inline-flex sm:text-[8.5px] sm:tracking-[0.10em]' style={{ color: rgba(fieldAccent, 0.90), background: rgba(fieldAccent, 0.075), borderColor: rgba(fieldAccent, 0.20) }}>{invalidLabel}</span> : null}
     </div>
+  );
+}
+
+function UseWalletPill({ chain, walletAddress, value, disabled, accent, className = '', onUse }: { chain: ChainId; walletAddress?: string | null; value: string; disabled?: boolean; accent: string; className?: string; onUse: (address: string) => void }) {
+  const [requestedAddress, setRequestedAddress] = useState<string | null>(null);
+  const [requesting, setRequesting] = useState(false);
+  const activeAddress = walletAddress?.trim() || requestedAddress;
+  const available = Boolean(activeAddress);
+  const selected = available && value.trim().toLowerCase() === activeAddress?.toLowerCase();
+
+  const useWallet = async () => {
+    if (selected || disabled || requesting) return;
+    if (activeAddress) {
+      onUse(activeAddress);
+      return;
+    }
+    setRequesting(true);
+    try {
+      if (chain === 'sol') {
+        const walletWindow = window as unknown as { solana?: { connect: () => Promise<{ publicKey?: { toString: () => string } }> }; phantom?: { solana?: { connect: () => Promise<{ publicKey?: { toString: () => string } }> } } };
+        const provider = walletWindow.solana ?? walletWindow.phantom?.solana;
+        if (!provider) return;
+        const connection = await provider.connect();
+        const address = connection.publicKey?.toString() ?? null;
+        if (address) {
+          setRequestedAddress(address);
+          onUse(address);
+        }
+        return;
+      }
+      const provider = (window as unknown as { ethereum?: { request: (args: { method: string }) => Promise<unknown> } }).ethereum;
+      if (!provider) return;
+      const accounts = await provider.request({ method: 'eth_requestAccounts' });
+      const address = Array.isArray(accounts) && typeof accounts[0] === 'string' ? accounts[0] : null;
+      if (address) {
+        setRequestedAddress(address);
+        onUse(address);
+      }
+    } catch {
+      // The wallet keeps control when the connection request is rejected.
+    } finally {
+      setRequesting(false);
+    }
+  };
+
+  return (
+    <button
+      type='button'
+      data-no-drag
+      disabled={disabled || selected || requesting}
+      onClick={() => void useWallet()}
+      aria-pressed={selected}
+      aria-label={selected ? 'My wallet is the recipient' : available ? 'Use my connected wallet as recipient' : 'Connect and use my wallet as recipient'}
+      className={`bbPill inline-flex h-6 shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-full border px-2 text-[9px] font-semibold outline-none disabled:cursor-default disabled:opacity-60 sm:h-6 sm:rounded-full sm:px-2 sm:text-[9.5px] ${className}`}
+      style={{
+        color: selected ? rgba(accent, 0.96) : 'rgba(244,249,246,0.60)',
+        background: selected ? rgba(accent, 0.085) : 'rgba(244,249,246,0.025)',
+        borderColor: selected ? rgba(accent, 0.30) : rgba(accent, 0.14),
+        boxShadow: `0 0 0 1px ${rgba(accent, 0.025)} inset`,
+      }}
+    >
+      {requesting ? <span className='h-2.5 w-2.5 animate-spin rounded-full border border-current border-r-transparent' aria-hidden /> : selected ? <Check size={10.5} strokeWidth={2.2} aria-hidden /> : null}
+      {requesting ? 'Connecting…' : selected ? 'Added' : 'My wallet'}
+    </button>
   );
 }
 
@@ -800,8 +871,10 @@ function RewardBasketSelector({ chain, context = 'holders', selectionMode = 'bas
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<'all' | RwaCategory>('all');
   const [showSelectedOnly, setShowSelectedOnly] = useState(false);
+  const [draggedAssetId, setDraggedAssetId] = useState<string | null>(null);
   const [weightDrafts, setWeightDrafts] = useState<Record<string, string>>({});
   const assets = useMemo(() => [...RWA_ASSETS, ...tokenAssets()], []);
+  const assetById = useMemo(() => new Map(assets.map((asset) => [assetId(asset), asset])), [assets]);
   const baskets = useMemo(() => context === 'route' ? routeRewardBaskets(chain) : rewardBaskets(), [chain, context]);
   const selected = useMemo(() => new Set(value), [value]);
   const categoryAssetIds = useMemo(
@@ -816,12 +889,13 @@ function RewardBasketSelector({ chain, context = 'holders', selectionMode = 'bas
   );
   const filtered = useMemo(() => {
     const normalized = query.trim().toLowerCase();
-    return assets.filter((asset) =>
-      (!showSelectedOnly || selected.has(assetId(asset)))
-      &&
+    const source = showSelectedOnly
+      ? value.map((id) => assetById.get(id)).filter((asset): asset is RewardBasketAsset => Boolean(asset))
+      : assets;
+    return source.filter((asset) =>
       (category === 'all' || asset.category === category)
       && (!normalized || asset.symbol.toLowerCase().includes(normalized) || asset.name.toLowerCase().includes(normalized)));
-  }, [assets, category, query, selected, showSelectedOnly]);
+  }, [assetById, assets, category, query, showSelectedOnly, value]);
 
   const toggleAsset = (id: string) => {
     if (disabled) return;
@@ -830,6 +904,14 @@ function RewardBasketSelector({ chain, context = 'holders', selectionMode = 'bas
       return;
     }
     onChange(selected.has(id) ? value.filter((item) => item !== id) : [...value, id]);
+  };
+
+  const moveSelectedAsset = (id: string, targetIndex: number) => {
+    const from = value.indexOf(id);
+    if (from < 0) return;
+    const to = clamp(targetIndex, 0, value.length - 1);
+    if (from === to) return;
+    onChange(reorder(value, from, to));
   };
 
   const withPinnedAsset = (id: string) => pinnedAssets.includes(id) ? pinnedAssets : [...pinnedAssets, id];
@@ -849,12 +931,23 @@ function RewardBasketSelector({ chain, context = 'holders', selectionMode = 'bas
       data-no-drag
       style={{ borderColor: invalid ? rgba('#FF7184', 0.34) : rgba(accent, 0.13) }}
     >
-      <div className='flex min-w-0 max-w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
-        <label className='flex h-9 min-w-0 w-full items-center gap-2 rounded-[10px] border px-2.5 sm:h-8 sm:w-[clamp(220px,38%,340px)] sm:flex-none' style={{ background: 'rgba(244,249,246,0.025)', borderColor: 'rgba(244,249,246,0.10)' }}>
+      <div className='flex min-w-0 max-w-full flex-col gap-2 2xl:flex-row 2xl:items-center 2xl:justify-between'>
+        <label className='flex h-9 min-w-0 w-full items-center gap-2 rounded-[10px] border px-2.5 sm:h-8 2xl:w-[clamp(220px,38%,340px)] 2xl:flex-none' style={{ background: 'rgba(244,249,246,0.025)', borderColor: 'rgba(244,249,246,0.10)' }}>
           <Search size={13.5} className='sm:h-[12.5px] sm:w-[12.5px]' style={{ color: 'rgba(244,249,246,0.46)' }} />
           <input data-focus-target value={query} onChange={(event) => setQuery(event.target.value)} placeholder='Search token, ticker or company' className='min-w-0 flex-1 bg-transparent text-[11.5px] font-medium outline-none placeholder:text-white/38 sm:text-[11.5px]' style={{ color: T.text }} />
         </label>
-        <div className='flex flex-nowrap items-center justify-between gap-1 sm:gap-2 sm:justify-end'>
+        <div className='grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-1 sm:gap-2'>
+          <button
+            type='button'
+            aria-label={category === 'all' ? 'Select all reward assets' : `Select all ${category} reward assets`}
+            title={category === 'all' ? 'Select every reward asset' : `Select every ${category === 'etf' ? 'ETF' : category} reward asset`}
+            disabled={disabled || (value.length === categoryAssetIds.length && categoryAssetIds.every((id) => selected.has(id)))}
+            onClick={() => onChange(categoryAssetIds, false)}
+            className='whitespace-nowrap rounded-full border px-1.5 py-1 text-[8px] font-semibold transition hover:brightness-125 disabled:opacity-35 sm:px-2.5 sm:text-[9.5px]'
+            style={{ color: rgba(accent, 0.86), background: rgba(accent, 0.035), borderColor: rgba(accent, 0.14) }}
+          >
+            Select all
+          </button>
           <div className='inline-flex min-w-0 rounded-[10px] border p-0.5' style={{ background: 'rgba(244,249,246,0.018)', borderColor: 'rgba(244,249,246,0.085)' }}>
             {(['all', 'stock', 'etf', 'token'] as const).map((item) => {
               const active = !showSelectedOnly && category === item;
@@ -880,22 +973,9 @@ function RewardBasketSelector({ chain, context = 'holders', selectionMode = 'bas
               <span className='inline-flex h-[13px] min-w-[14px] items-center justify-center rounded-full px-1 text-[7px] leading-none sm:h-[15px] sm:min-w-[16px] sm:text-[8px]' style={{ color: rgba(accent, 0.96), background: rgba(accent, showSelectedOnly ? 0.20 : 0.10) }}>{value.length}</span>
             </button>
           </div>
-          <div className='flex shrink-0 items-center gap-0.5 sm:gap-1'>
-            <button
-              type='button'
-              aria-label={category === 'all' ? 'Select all reward assets' : `Select all ${category} reward assets`}
-              title={category === 'all' ? 'Select every reward asset' : `Select every ${category === 'etf' ? 'ETF' : category} reward asset`}
-              disabled={disabled || (value.length === categoryAssetIds.length && categoryAssetIds.every((id) => selected.has(id)))}
-              onClick={() => onChange(categoryAssetIds, false)}
-              className='whitespace-nowrap rounded-full border px-1.5 py-1 text-[8px] font-semibold transition hover:brightness-125 disabled:opacity-35 sm:px-2.5 sm:text-[9.5px]'
-              style={{ color: rgba(accent, 0.86), background: rgba(accent, 0.035), borderColor: rgba(accent, 0.14) }}
-            >
-              Select all
-            </button>
-            <button type='button' aria-label='Reset rewards basket' title='Reset rewards basket' disabled={disabled || value.length === 0} onClick={() => { setShowSelectedOnly(false); onChange([]); }} className='inline-flex h-[22px] w-[22px] shrink-0 items-center justify-center text-white/38 outline-none transition-[color,transform] duration-200 hover:-rotate-12 hover:text-white/72 focus-visible:text-white focus-visible:ring-2 focus-visible:ring-white/15 active:rotate-[-35deg] disabled:opacity-25 sm:h-6 sm:w-6'>
-              <RotateCcw size={12.5} strokeWidth={1.8} />
-            </button>
-          </div>
+          <button type='button' aria-label='Reset rewards basket' title='Reset rewards basket' disabled={disabled || value.length === 0} onClick={() => { setShowSelectedOnly(false); onChange([]); }} className='inline-flex h-[22px] w-[22px] shrink-0 items-center justify-center text-white/38 outline-none transition-[color,transform] duration-200 hover:-rotate-12 hover:text-white/72 focus-visible:text-white focus-visible:ring-2 focus-visible:ring-white/15 active:rotate-[-35deg] disabled:opacity-25 sm:h-6 sm:w-6'>
+            <RotateCcw size={12.5} strokeWidth={1.8} />
+          </button>
         </div>
       </div>
 
@@ -928,14 +1008,35 @@ function RewardBasketSelector({ chain, context = 'holders', selectionMode = 'bas
         </div>
       </div>
 
-      <div className='mt-2.5 grid min-w-0 max-w-full grid-cols-2 border-y sm:grid-cols-4 lg:grid-cols-5' style={{ background: 'rgba(8,11,10,0.98)', borderColor: 'rgba(244,249,246,0.085)' }}>
+      <div className={`mt-2.5 grid min-w-0 max-w-full grid-cols-2 border-y sm:grid-cols-4 ${showSelectedOnly ? 'lg:grid-cols-4' : 'lg:grid-cols-5'}`} style={{ background: 'rgba(8,11,10,0.98)', borderColor: 'rgba(244,249,246,0.085)' }}>
         {filtered.map((asset) => {
           const id = assetId(asset);
           const active = selected.has(id);
           const weight = effectiveWeights[id] ?? 0;
           const maxWeight = round1(100 - (value.length - 1) * 0.1);
+          const selectedIndex = value.indexOf(id);
+          const draggingThisAsset = draggedAssetId === id;
           return (
-            <div key={id} className='group relative flex min-w-0 items-center justify-between gap-2 border-b border-r px-2.5 py-2 text-left transition-[background-color,box-shadow] duration-180' style={{ color: active ? T.text : 'rgba(244,249,246,0.68)', background: active ? `linear-gradient(110deg, ${rgba(accent, 0.105)}, rgba(8,12,10,0.98) 78%)` : 'rgba(8,11,10,0.98)', borderColor: 'rgba(244,249,246,0.075)', boxShadow: active ? `inset 2px 0 0 ${rgba(accent, 0.72)}` : 'none' }}>
+            <div
+              key={id}
+              onDragEnter={(event) => {
+                if (!showSelectedOnly || !draggedAssetId || draggedAssetId === id) return;
+                event.preventDefault();
+                moveSelectedAsset(draggedAssetId, selectedIndex);
+              }}
+              onDragOver={(event) => {
+                if (!showSelectedOnly || !draggedAssetId) return;
+                event.preventDefault();
+                event.dataTransfer.dropEffect = 'move';
+              }}
+              onDrop={(event) => {
+                if (!showSelectedOnly) return;
+                event.preventDefault();
+                setDraggedAssetId(null);
+              }}
+              className={`group relative flex min-w-0 items-center justify-between gap-2 border-b border-r px-2.5 py-2 text-left transition-[background-color,box-shadow,opacity,transform] duration-180 ${draggingThisAsset ? 'scale-[0.985] opacity-55' : ''}`}
+              style={{ color: active ? T.text : 'rgba(244,249,246,0.68)', background: active ? `linear-gradient(110deg, ${rgba(accent, 0.105)}, rgba(8,12,10,0.98) 78%)` : 'rgba(8,11,10,0.98)', borderColor: 'rgba(244,249,246,0.075)', boxShadow: draggingThisAsset ? `inset 2px 0 0 ${accent}, 0 0 20px ${rgba(accent, 0.12)}` : active ? `inset 2px 0 0 ${rgba(accent, 0.72)}` : 'none' }}
+            >
               <button type='button' aria-pressed={active} aria-label={`${active ? 'Remove' : 'Add'} ${asset.name} ${active ? 'from' : 'to'} rewards basket`} onClick={() => toggleAsset(id)} className='absolute inset-0 z-0 bg-transparent outline-none transition-colors duration-180 hover:bg-white/[0.045] focus-visible:bg-white/[0.055]' />
               <span className='pointer-events-none relative z-[1] flex min-w-0 items-center gap-2'>
                 <RewardAssetLogo asset={asset} active={active} accent={accent} />
@@ -1014,7 +1115,7 @@ function RewardBasketSelector({ chain, context = 'holders', selectionMode = 'bas
                     <Plus size={10.5} strokeWidth={2.4} />
                   </button>
                 </motion.div>
-              ) : (
+              ) : !showSelectedOnly ? (
                 <motion.span
                   key='selection'
                   layout
@@ -1027,8 +1128,48 @@ function RewardBasketSelector({ chain, context = 'holders', selectionMode = 'bas
                 >
                   <Check size={9.5} strokeWidth={2.5} />
                 </motion.span>
-              )}
+              ) : null}
               </AnimatePresence>
+              {showSelectedOnly && selectionMode === 'basket' && value.length > 1 ? (
+                <button
+                  type='button'
+                  draggable={!disabled}
+                  disabled={disabled}
+                  aria-label={`Drag ${asset.name} to change payout order. Position ${selectedIndex + 1} of ${value.length}`}
+                  onClick={(event) => event.stopPropagation()}
+                  onPointerDown={(event) => event.stopPropagation()}
+                  onDragStart={(event) => {
+                    event.stopPropagation();
+                    event.dataTransfer.effectAllowed = 'move';
+                    event.dataTransfer.setData('text/plain', id);
+                    setDraggedAssetId(id);
+                  }}
+                  onDragEnd={() => setDraggedAssetId(null)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'ArrowLeft') {
+                      event.preventDefault();
+                      moveSelectedAsset(id, selectedIndex - 1);
+                    }
+                    if (event.key === 'ArrowRight') {
+                      event.preventDefault();
+                      moveSelectedAsset(id, selectedIndex + 1);
+                    }
+                    if (event.key === 'Home') {
+                      event.preventDefault();
+                      moveSelectedAsset(id, 0);
+                    }
+                    if (event.key === 'End') {
+                      event.preventDefault();
+                      moveSelectedAsset(id, value.length - 1);
+                    }
+                  }}
+                  className='relative z-10 inline-flex h-7 w-5 shrink-0 cursor-grab items-center justify-center overflow-hidden rounded-[7px] border outline-none transition-[border-color,background-color,color,box-shadow,transform] active:cursor-grabbing active:scale-95 disabled:cursor-default disabled:opacity-35'
+                  style={{ color: rgba(accent, draggingThisAsset ? 0.98 : 0.64), background: `linear-gradient(180deg, ${rgba(accent, draggingThisAsset ? 0.14 : 0.065)}, rgba(244,249,246,0.018))`, borderColor: rgba(accent, draggingThisAsset ? 0.42 : 0.18), boxShadow: draggingThisAsset ? `0 0 16px ${rgba(accent, 0.16)}, inset 0 1px 0 rgba(255,255,255,0.06)` : 'inset 0 1px 0 rgba(255,255,255,0.035)' }}
+                >
+                  <span className='absolute inset-y-1 left-0 w-px bg-gradient-to-b from-transparent via-white/10 to-transparent' aria-hidden />
+                  <GripVertical size={11.5} strokeWidth={2} aria-hidden />
+                </button>
+              ) : null}
             </div>
           );
         })}
@@ -1215,9 +1356,10 @@ function ProtectionCard({ title, description, enabled, onToggle, children }: { t
   );
 }
 
-function Row({ fee, chain, max, disabled, dragging, ghost, patch, setPct, remove, onDrag, bind, attention, onExpand }: RowProps) {
+function Row({ fee, chain, walletAddress, max, disabled, dragging, ghost, patch, setPct, remove, onDrag, bind, attention, onExpand }: RowProps) {
   const [hover, setHover] = useState(false);
   const [routeRewardsOpen, setRouteRewardsOpen] = useState(false);
+  const [routeRewardsTouched, setRouteRewardsTouched] = useState(false);
   const color = tint(fee.id, fee.name);
   const type = classify(fee.id, fee.name);
   const rewards = fee.id === 'rewards';
@@ -1225,6 +1367,7 @@ function Row({ fee, chain, max, disabled, dragging, ghost, patch, setPct, remove
   const treasury = fee.id === 'ops';
   const custom = !LOCKED.has(fee.id);
   const rewardRoute = treasury || custom;
+  const routeRewardsNeedAttention = rewardRoute && !routeRewardsTouched && !routeRewardsOpen && !disabled && !dragging && !ghost;
   const routeRewardMode = fee.routeRewardMode ?? 'single';
   const rwaAssets = fee.rwaAssets ?? (rewardRoute ? [nativeRewardAssetId(chain)] : []);
   const rwaDistributionMode = fee.rwaDistributionMode ?? 'rotating';
@@ -1234,7 +1377,9 @@ function Row({ fee, chain, max, disabled, dragging, ghost, patch, setPct, remove
   const asset = fee.rewardAsset ?? rewardOf(chain);
   const rwaAssetsInvalid = rwa && (fee.pct ?? 0) > 0 && !(fee.rwaAssets?.length);
   const routeAssetsInvalid = Boolean(fee.routeRewardMode) && rewardRoute && (fee.pct ?? 0) > 0 && !(fee.rwaAssets?.length);
-  const addrInvalid = needsAddress(fee) && !(fee.address ?? '').trim();
+  const recipientAddress = (fee.address ?? '').trim();
+  const addrInvalid = needsAddress(fee) && !isRecipientAddressValid(recipientAddress, chain);
+  const addressErrorLabel = recipientAddress ? `Invalid ${chain === 'sol' ? 'SOL' : 'EVM'}` : 'Required';
   const invalid = addrInvalid || rwaAssetsInvalid || routeAssetsInvalid;
   const routeTitle = rwa ? 'Rewards Basket' : fee.name;
   const routeRewardSummary = routeRewardMode === 'single'
@@ -1248,7 +1393,7 @@ function Row({ fee, chain, max, disabled, dragging, ghost, patch, setPct, remove
 
   return (
     <div ref={bind} onMouseEnter={() => !dragging && setHover(true)} onMouseLeave={() => setHover(false)} className='w-full min-w-0 max-w-full rounded-[16px] px-2.5 py-2.5 sm:rounded-[22px] sm:px-4 sm:py-3.5' style={{ background: `linear-gradient(135deg, ${attention ? 'rgba(255,113,132,0.065)' : rgba(color, hover ? 0.078 : 0.038)}, ${S.row} 48%, rgba(255,255,255,0.018))`, border: ghost ? '1px dashed rgba(255,255,255,0.14)' : `1px solid ${attention ? 'rgba(255,113,132,0.58)' : hover && !dragging ? rgba(color, 0.30) : rgba(color, 0.16)}`, opacity: ghost ? 0.45 : 1, userSelect: 'none', transition: 'border-color 180ms ease, box-shadow 180ms ease, background 180ms ease', boxShadow: attention ? '0 0 0 1px rgba(255,113,132,0.14) inset, 0 0 30px rgba(255,113,132,0.12)' : hover && !dragging && !ghost ? `0 14px 30px rgba(0,0,0,0.24), 0 0 28px ${rgba(color, 0.08)}` : `0 0 0 1px ${rgba(color, 0.035)} inset` }}>
-      <div className='relative flex items-start justify-between gap-1.5 sm:static sm:gap-4'>
+      <div className='relative flex items-start justify-between gap-1.5'>
         <div className='min-w-0 flex-1'>
           <div className='flex items-start gap-1.5 sm:gap-3'>
             <div className='flex shrink-0 flex-col items-center gap-0.5 sm:block'>
@@ -1263,16 +1408,19 @@ function Row({ fee, chain, max, disabled, dragging, ghost, patch, setPct, remove
             <div className='min-w-0 flex-1'>
               {custom ? (
                 <>
-                  <div className='grid min-w-0 gap-1.5 sm:gap-2 lg:grid-cols-[minmax(170px,0.78fr)_minmax(260px,1.22fr)]'>
-                    <TextField disabled={disabled} accent={color} label='Route' value={fee.name} onChange={(v) => patch(fee.id, { name: v })} placeholder='Custom fee' className='min-w-0 max-sm:mr-14' />
-                    <TextField disabled={disabled} accent={color} invalid={addrInvalid} label='Recipient' value={fee.address ?? ''} onChange={(v) => patch(fee.id, { address: v })} placeholder='Paste receiving wallet address' className='min-w-0' />
+                  <div className='min-w-0 pr-[78px] sm:pr-[122px]'>
+                    <TextField disabled={disabled} accent={color} label='Route' value={fee.name} onChange={(v) => patch(fee.id, { name: v })} placeholder='Custom fee' className='min-w-0' />
                   </div>
                   <p className='bbRouteDesc mt-1 overflow-hidden text-[9.5px] leading-[13px] sm:text-[11px] sm:leading-5' style={{ color: 'rgba(244,249,246,0.56)' }}>{desc(fee)}</p>
+                  <div className='mt-2.5 flex min-w-0 items-center gap-1.5 sm:pr-6'>
+                    <TextField disabled={disabled} accent={color} invalid={addrInvalid} invalidLabel={addressErrorLabel} label='Recipient' value={fee.address ?? ''} onChange={(v) => patch(fee.id, { address: v })} placeholder={chain === 'sol' ? 'Paste Solana recipient address' : 'Paste EVM recipient address'} className='min-w-0 flex-1' />
+                    <UseWalletPill chain={chain} walletAddress={walletAddress} value={fee.address ?? ''} disabled={disabled} accent={color} className='w-[58px] sm:w-[66px]' onUse={(address) => patch(fee.id, { address })} />
+                  </div>
                 </>
               ) : (
                 <>
                   <div className='flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 sm:gap-x-2'>
-                    <p className='min-w-0 truncate pr-[60px] text-[12px] font-semibold leading-4 tracking-[-0.01em] sm:pr-0 sm:text-[15px] sm:leading-5' style={{ color: T.text }}>{routeTitle}</p>
+                    <p className='min-w-0 truncate pr-[60px] text-[12px] font-semibold leading-4 tracking-[-0.01em] sm:pr-[110px] sm:text-[15px] sm:leading-5' style={{ color: T.text }}>{routeTitle}</p>
                     {rewards ? (
                       <div className='w-full min-w-0 sm:w-auto sm:min-w-[120px] sm:max-w-[285px] sm:flex-none'>
                         <Pills className='bbAssetPills w-full sm:w-auto' disabled={disabled} options={RW[chain]} value={asset} onChange={(v) => patch(fee.id, { rewardAsset: v })} />
@@ -1281,8 +1429,9 @@ function Row({ fee, chain, max, disabled, dragging, ghost, patch, setPct, remove
                   </div>
                   <p className='bbRouteDesc mt-0.5 overflow-hidden text-[9.5px] leading-[13px] sm:text-[11px] sm:leading-5' style={{ color: 'rgba(244,249,246,0.56)' }}>{desc(fee)}</p>
                   {treasury ? (
-                    <div className='mt-2.5'>
-                      <TextField disabled={disabled} accent={color} invalid={addrInvalid} label='Recipient' value={fee.address ?? ''} onChange={(v) => patch(fee.id, { address: v })} placeholder='Paste treasury wallet address' className='w-full' />
+                    <div className='mt-2.5 flex min-w-0 items-center gap-1.5 sm:pr-6'>
+                      <TextField disabled={disabled} accent={color} invalid={addrInvalid} invalidLabel={addressErrorLabel} label='Recipient' value={fee.address ?? ''} onChange={(v) => patch(fee.id, { address: v })} placeholder={chain === 'sol' ? 'Paste Solana treasury address' : 'Paste EVM treasury address'} className='min-w-0 flex-1' />
+                      <UseWalletPill chain={chain} walletAddress={walletAddress} value={fee.address ?? ''} disabled={disabled} accent={color} className='w-[58px] sm:w-[66px]' onUse={(address) => patch(fee.id, { address })} />
                     </div>
                   ) : null}
                 </>
@@ -1291,7 +1440,7 @@ function Row({ fee, chain, max, disabled, dragging, ghost, patch, setPct, remove
           </div>
         </div>
 
-        <div className='absolute right-0 top-0 flex shrink-0 items-center gap-0.5 sm:relative sm:right-auto sm:top-auto sm:-mt-[1px] sm:gap-1.5' style={{ opacity: hover || !LOCKED.has(fee.id) ? 1 : 0.72, transition: 'opacity 160ms ease' }}>
+        <div className='absolute right-0 top-0 flex shrink-0 items-center gap-0.5 sm:gap-1.5' style={{ opacity: hover || !LOCKED.has(fee.id) ? 1 : 0.72, transition: 'opacity 160ms ease' }}>
           <div className='inline-flex h-5 items-center overflow-hidden rounded-full border sm:h-7' style={{ color: 'rgba(244,249,246,0.92)', background: 'rgba(244,249,246,0.04)', borderColor: rgba(color, 0.24), boxShadow: `0 0 0 1px ${rgba(color, 0.05)} inset` }}>
             <div className='flex h-5 w-[34px] items-center justify-center text-[9px] font-semibold leading-none tabular-nums sm:h-7 sm:w-[52px] sm:text-[12px]'>{fmtPct(fee.pct)}</div>
             <button data-no-drag disabled={disabled} onClick={() => remove(fee.id)} className='bbRemoveBtn flex h-5 w-[21px] items-center justify-center border-l sm:h-7 sm:w-[26px]' style={{ borderColor: rgba(color, 0.16), '--removeColor': color } as CssVarStyle} type='button' aria-label={`Remove ${fee.name}`}>
@@ -1336,15 +1485,22 @@ function Row({ fee, chain, max, disabled, dragging, ghost, patch, setPct, remove
             type='button'
             disabled={disabled}
             aria-expanded={routeRewardsOpen}
+            data-asset-payout-attention={routeRewardsNeedAttention ? 'true' : 'false'}
             onClick={() => {
+              setRouteRewardsTouched(true);
               const willOpen = !routeRewardsOpen;
               setRouteRewardsOpen(willOpen);
               if (willOpen) onExpand?.(fee.id);
             }}
-            className='group flex w-full min-w-0 items-center justify-between gap-3 rounded-lg py-1 text-left outline-none transition-colors hover:bg-white/[0.018] disabled:cursor-not-allowed disabled:opacity-45'
+            className={`group flex w-full min-w-0 items-center justify-between gap-3 rounded-lg py-1 text-left outline-none transition-colors hover:bg-white/[0.018] disabled:cursor-not-allowed disabled:opacity-45 ${routeRewardsNeedAttention ? 'bbAssetPayoutNotice' : ''}`}
+            style={{
+              '--assetPayoutTint': rgba(color, 0.055),
+            } as CssVarStyle}
           >
             <span className='flex min-w-0 items-center gap-2 px-1'>
-              <Coins size={12.5} strokeWidth={1.8} className='shrink-0' style={{ color: rgba(color, 0.82) }} />
+              <span className={routeRewardsNeedAttention ? 'bbAssetPayoutCue inline-flex shrink-0' : 'inline-flex shrink-0'}>
+                <Coins size={12.5} strokeWidth={1.8} style={{ color: rgba(color, 0.82) }} />
+              </span>
               <span className='min-w-0'>
                 <span className='block text-[9px] font-semibold uppercase tracking-[0.13em] sm:text-[10px]' style={{ color: rgba(color, 0.82) }}>Asset payout</span>
                 <span className='hidden truncate text-[9.5px] leading-4 text-white/42 sm:block'>Choose one asset or build a custom multi-asset basket.</span>
@@ -1471,7 +1627,7 @@ function Row({ fee, chain, max, disabled, dragging, ghost, patch, setPct, remove
   );
 }
 
-export function FeeStructureBuilder({ chain, fees, onChange, onAdvancedProtectionChange, onIssuesChange, focusIssueRequest = 0, maxTotal = 10, className = '' }: { chain: ChainId; fees: FeeWallet[]; onChange: (next: FeeWallet[]) => void; onAdvancedProtectionChange?: (count: number) => void; onIssuesChange?: (count: number) => void; focusIssueRequest?: number; maxTotal?: number; className?: string }) {
+export function FeeStructureBuilder({ chain, fees, onChange, walletAddress, onAdvancedProtectionChange, onIssuesChange, focusIssueRequest = 0, maxTotal = 10, className = '' }: { chain: ChainId; fees: FeeWallet[]; onChange: (next: FeeWallet[]) => void; walletAddress?: string | null; onAdvancedProtectionChange?: (count: number) => void; onIssuesChange?: (count: number) => void; focusIssueRequest?: number; maxTotal?: number; className?: string }) {
   const enabled = true;
   const [selectedPreset, setSelectedPreset] = useState<PresetKey | null>('creator');
   const [distributionTrigger, setDistributionTrigger] = useState<number>(0.05);
@@ -1514,7 +1670,49 @@ export function FeeStructureBuilder({ chain, fees, onChange, onAdvancedProtectio
   const nearCap = !atCap && available <= 0.5;
   const ids = useMemo(() => new Set(fees.map((f) => f.id)), [fees]);
   const bar = useMemo(() => (enabled ? totalBar(list) : { t: 0, bg: 'rgba(0,0,0,0)' }), [enabled, list]);
-  const missing = useMemo(() => fees.filter(isMissingAddr), [fees]);
+  const feeEngineRoutes = useMemo<FeeEngineRoute[]>(() => list.map((fee) => {
+    const selectedAssetIds = [...new Set(fee.id === 'rewards'
+      ? [`TOKEN:${fee.rewardAsset ?? rewardOf(chain)}`]
+      : (fee.id === 'rwa' || fee.routeRewardMode ? fee.rwaAssets ?? [] : []))];
+    const weights = selectedAssetIds.length
+      ? normalizeAssetWeights(selectedAssetIds, fee.rwaAssetWeights)
+      : {};
+    const kind = feeEngineKind(fee);
+    const configuredRecipient = (kind === 'treasury' || kind === 'custom') ? fee.address?.trim() ?? '' : '';
+    const recipientAddress = configuredRecipient && isRecipientAddressValid(configuredRecipient, chain) ? configuredRecipient : undefined;
+    return {
+      id: fee.id,
+      label: fee.id === 'rwa' ? 'Rewards Basket' : fee.name,
+      percent: fee.pct ?? 0,
+      color: tint(fee.id, fee.name),
+      kind,
+      detail: feeEngineDetail(fee, chain),
+      recipientAddress,
+      recipientExplorerUrl: recipientAddress ? `${ADDRESS_EXPLORERS[chain]}${encodeURIComponent(recipientAddress)}` : undefined,
+      distributionMode: fee.rwaDistributionMode ?? 'rotating',
+      minimumWalletShare: kind === 'basket' || kind === 'rewards' ? fee.rewardThresholdPct ?? 0.1 : undefined,
+      assets: selectedAssetIds.map((id) => feeEngineAsset(id, weights[id])),
+    };
+  }), [chain, list]);
+  const feeEngineRewardPayments = useMemo<FeeEngineRewardPayment[]>(() => {
+    const seen = new Set<string>();
+    const assets = feeEngineRoutes
+      .filter((route) => route.kind === 'basket' || route.kind === 'rewards')
+      .flatMap((route) => route.assets ?? [])
+      .filter((asset) => {
+        if (seen.has(asset.id)) return false;
+        seen.add(asset.id);
+        return true;
+      });
+    const sampleAmounts = [0.0184, 0.1126, 0.0382, 0.0841, 0.0067, 0.0248, 0.0513, 0.0096];
+    const sampleUsdValues = [31.42, 28.16, 24.83, 22.09, 18.61, 16.48, 14.72, 11.36];
+    return assets.map((asset, index) => ({
+      assetId: asset.id,
+      amount: sampleAmounts[index % sampleAmounts.length],
+      usdValue: sampleUsdValues[index % sampleUsdValues.length],
+    }));
+  }, [feeEngineRoutes]);
+  const missing = useMemo(() => fees.filter((fee) => isMissingAddr(fee, chain)), [chain, fees]);
   const addableOptions = useMemo(() => ADD.filter((t) => canAdd(t, ids)), [ids]);
   const routeCount = fees.length;
   const onlyCustomLeft = addableOptions.length === 1 && addableOptions[0] === 'custom';
@@ -1536,6 +1734,7 @@ export function FeeStructureBuilder({ chain, fees, onChange, onAdvancedProtectio
     if (!missing.length) return null;
     const issues = missing.map((fee) => {
       if ((fee.id === 'rwa' || fee.routeRewardMode) && !(fee.rwaAssets?.length)) return 'Select at least one token, stock, or ETF';
+      if ((fee.address ?? '').trim()) return `Enter a valid ${chain === 'sol' ? 'Solana' : 'EVM'} recipient for ${fee.name?.trim() || fee.id}`;
       return `Add a recipient for ${fee.name?.trim() || fee.id}`;
     });
     return {
@@ -1543,7 +1742,7 @@ export function FeeStructureBuilder({ chain, fees, onChange, onAdvancedProtectio
       text: issues.length === 1 ? issues[0] : `Complete ${issues.length} route settings`,
       title: issues.join(' | '),
     };
-  }, [missing]);
+  }, [chain, missing]);
   const hasRouteIssues = enabled && Boolean(missingSummary);
   const hasRouteNotice = enabled && Boolean(warnBadge);
   const showRouteFeedback = enabled && (routeCount === 0 || Boolean(missingSummary) || Boolean(warnBadge));
@@ -1786,7 +1985,7 @@ export function FeeStructureBuilder({ chain, fees, onChange, onAdvancedProtectio
 
   return (
     <section className={`w-full min-w-0 max-w-full ${className}`} aria-label='Fee builder'>
-        <style>{`input::placeholder{font-weight:400;color:rgba(244,249,246,0.40)}.bbAssetWeight{-moz-appearance:textfield;appearance:textfield}.bbAssetWeight::-webkit-inner-spin-button,.bbAssetWeight::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}.bbField{transition:border-color .18s ease,background .18s ease,box-shadow .18s ease;outline:none}.bbField:hover{background:linear-gradient(180deg,rgba(244,249,246,0.065),rgba(244,249,246,0.03))!important;border-color:color-mix(in srgb,var(--fieldAccent) 28%,rgba(255,255,255,0.12))!important}.bbField:focus-within{border-color:var(--fieldAccent)!important;box-shadow:0 0 0 1px color-mix(in srgb,var(--fieldAccent) 24%,transparent) inset,0 0 0 3px rgba(244,249,246,0.035),0 16px 32px rgba(0,0,0,0.20)!important}.bbFieldInput:disabled{opacity:.48;cursor:not-allowed}.bbPill{transition:filter .16s ease,background .16s ease,border-color .16s ease;outline:none}.bbPill:focus-visible{box-shadow:0 0 0 2px rgba(95,243,166,0.22)}.bbPill:hover:not(:disabled){filter:brightness(1.06);transform:none}.bbPill:active:not(:disabled){filter:brightness(1.03);transform:none}.bbPresetPill:hover:not(:disabled){filter:none!important;transform:none!important;background:rgba(244,249,246,0.075)!important;border-color:rgba(244,249,246,0.12)!important;color:rgba(244,249,246,0.86)!important}.bbPresetPill:active:not(:disabled){transform:none!important}.bbRouteAdd:hover:not(:disabled),.bbRouteAdd:active:not(:disabled){filter:none!important;transform:none!important}.bbPill:disabled{opacity:.42;cursor:default}.bbGrip{background:transparent;border:0;filter:none;touch-action:none}.bbGrip:hover{color:rgba(244,249,246,0.82)}.bbGrip:active{transform:scale(.96)}.bbRemoveBtn{color:rgba(244,249,246,0.42);background:rgba(244,249,246,0.018);transition:color .16s ease,background .16s ease,box-shadow .16s ease,transform .16s cubic-bezier(.22,1,.36,1)}.bbRemoveBtn:hover:not(:disabled){color:var(--removeColor);background:linear-gradient(135deg,color-mix(in srgb,var(--removeColor) 12%,rgba(244,249,246,0.025)),rgba(244,249,246,0.026));box-shadow:inset 1px 0 0 color-mix(in srgb,var(--removeColor) 10%,transparent)}.bbRemoveBtn:active:not(:disabled){transform:scale(.94)}.bbRouteIssue{transform:none!important;transition:color .18s ease,background .18s ease,border-color .18s ease,box-shadow .18s ease!important}.bbRouteIssue:hover{transform:none!important;border-color:rgba(255,113,132,0.46)!important;background:linear-gradient(135deg,rgba(255,113,132,0.16),rgba(255,113,132,0.055))!important;box-shadow:0 0 20px rgba(255,113,132,0.10)}.bbRouteDesc{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2}.bbAssetPills{justify-content:space-between}.bbAssetPills .bbPresetPill{flex:1 1 0;min-width:0}.bbFirstRouteNotice{background-size:220% 100%;animation:bbFirstRouteNotice 5.8s cubic-bezier(.22,1,.36,1) infinite}@keyframes bbFirstRouteNotice{0%,18%{background-position:0% 50%;box-shadow:0 0 0 rgba(16,185,129,0)}48%{background-position:100% 50%;box-shadow:0 0 22px rgba(16,185,129,0.060)}80%,100%{background-position:0% 50%;box-shadow:0 0 0 rgba(16,185,129,0)}}@media (prefers-reduced-motion:reduce){.bbFirstRouteNotice{animation:none}}input.bbRange[type='range']{--feeColor:rgba(244,249,246,0.6);--fillPct:0%;-webkit-appearance:none;appearance:none;background:transparent;height:20px}input.bbRange[type='range']:focus{outline:none}input.bbRange[type='range']::-webkit-slider-runnable-track{height:5px;border-radius:999px;background:linear-gradient(90deg,var(--feeColor) var(--fillPct),rgba(244,249,246,0.12) var(--fillPct))}input.bbRange[type='range']::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:13px;height:13px;border-radius:999px;background:var(--feeColor);border:2px solid #07100C;box-shadow:0 0 0 3px rgba(0,0,0,0.18),0 0 14px rgba(95,243,166,0.18);margin-top:-4px}input.bbRange[type='range']::-moz-range-track{height:5px;border-radius:999px;background:linear-gradient(90deg,var(--feeColor) var(--fillPct),rgba(244,249,246,0.12) var(--fillPct))}input.bbRange[type='range']::-moz-range-thumb{width:13px;height:13px;border-radius:999px;background:var(--feeColor);border:2px solid #07100C;box-shadow:0 0 0 3px rgba(0,0,0,0.18)}@media(min-width:640px){.bbAssetPills{justify-content:flex-start}.bbAssetPills .bbPresetPill{flex:0 0 auto}input.bbRange[type='range']{height:24px}input.bbRange[type='range']::-webkit-slider-runnable-track{height:6px}input.bbRange[type='range']::-webkit-slider-thumb{width:16px;height:16px;box-shadow:0 0 0 4px rgba(0,0,0,0.18),0 0 14px rgba(95,243,166,0.18);margin-top:-5px}input.bbRange[type='range']::-moz-range-track{height:6px}input.bbRange[type='range']::-moz-range-thumb{width:16px;height:16px;box-shadow:0 0 0 4px rgba(0,0,0,0.18)}}`}</style>
+        <style>{`input::placeholder{font-weight:400;color:rgba(244,249,246,0.40)}.bbAssetWeight{-moz-appearance:textfield;appearance:textfield}.bbAssetWeight::-webkit-inner-spin-button,.bbAssetWeight::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}.bbField{transition:border-color .18s ease,background .18s ease,box-shadow .18s ease;outline:none}.bbField:hover{background:linear-gradient(180deg,rgba(244,249,246,0.065),rgba(244,249,246,0.03))!important;border-color:color-mix(in srgb,var(--fieldAccent) 28%,rgba(255,255,255,0.12))!important}.bbField:focus-within{border-color:var(--fieldAccent)!important;box-shadow:0 0 0 1px color-mix(in srgb,var(--fieldAccent) 24%,transparent) inset,0 0 0 3px rgba(244,249,246,0.035),0 16px 32px rgba(0,0,0,0.20)!important}.bbFieldInput:disabled{opacity:.48;cursor:not-allowed}.bbPill{transition:filter .16s ease,background .16s ease,border-color .16s ease;outline:none}.bbPill:focus-visible{box-shadow:0 0 0 2px rgba(95,243,166,0.22)}.bbPill:hover:not(:disabled){filter:brightness(1.06);transform:none}.bbPill:active:not(:disabled){filter:brightness(1.03);transform:none}.bbPresetPill:hover:not(:disabled){filter:none!important;transform:none!important;background:rgba(244,249,246,0.075)!important;border-color:rgba(244,249,246,0.12)!important;color:rgba(244,249,246,0.86)!important}.bbPresetPill:active:not(:disabled){transform:none!important}.bbRouteAdd:hover:not(:disabled),.bbRouteAdd:active:not(:disabled){filter:none!important;transform:none!important}.bbPill:disabled{opacity:.42;cursor:default}.bbGrip{background:transparent;border:0;filter:none;touch-action:none}.bbGrip:hover{color:rgba(244,249,246,0.82)}.bbGrip:active{transform:scale(.96)}.bbRemoveBtn{color:rgba(244,249,246,0.42);background:rgba(244,249,246,0.018);transition:color .16s ease,background .16s ease,box-shadow .16s ease,transform .16s cubic-bezier(.22,1,.36,1)}.bbRemoveBtn:hover:not(:disabled){color:var(--removeColor);background:linear-gradient(135deg,color-mix(in srgb,var(--removeColor) 12%,rgba(244,249,246,0.025)),rgba(244,249,246,0.026));box-shadow:inset 1px 0 0 color-mix(in srgb,var(--removeColor) 10%,transparent)}.bbRemoveBtn:active:not(:disabled){transform:scale(.94)}.bbRouteIssue{transform:none!important;transition:color .18s ease,background .18s ease,border-color .18s ease,box-shadow .18s ease!important}.bbRouteIssue:hover{transform:none!important;border-color:rgba(255,113,132,0.46)!important;background:linear-gradient(135deg,rgba(255,113,132,0.16),rgba(255,113,132,0.055))!important;box-shadow:0 0 20px rgba(255,113,132,0.10)}.bbRouteDesc{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2}.bbAssetPills{justify-content:space-between}.bbAssetPills .bbPresetPill{flex:1 1 0;min-width:0}.bbAssetPayoutNotice{animation:bbAssetPayoutNotice 2.8s ease-in-out infinite}.bbAssetPayoutCue{transform-origin:center;animation:bbAssetPayoutCue 2.8s ease-in-out infinite}@keyframes bbAssetPayoutNotice{0%,100%{background-color:transparent}50%{background-color:var(--assetPayoutTint)}}@keyframes bbAssetPayoutCue{0%,100%{opacity:.70;transform:scale(1)}50%{opacity:1;transform:scale(1.045)}}.bbFirstRouteNotice{background-size:220% 100%;animation:bbFirstRouteNotice 5.8s cubic-bezier(.22,1,.36,1) infinite}@keyframes bbFirstRouteNotice{0%,18%{background-position:0% 50%;box-shadow:0 0 0 rgba(16,185,129,0)}48%{background-position:100% 50%;box-shadow:0 0 22px rgba(16,185,129,0.060)}80%,100%{background-position:0% 50%;box-shadow:0 0 0 rgba(16,185,129,0)}}@media (prefers-reduced-motion:reduce){.bbFirstRouteNotice,.bbAssetPayoutNotice,.bbAssetPayoutCue{animation:none}.bbAssetPayoutNotice{background:var(--assetPayoutTint)}}input.bbRange[type='range']{--feeColor:rgba(244,249,246,0.6);--fillPct:0%;-webkit-appearance:none;appearance:none;background:transparent;height:20px}input.bbRange[type='range']:focus{outline:none}input.bbRange[type='range']::-webkit-slider-runnable-track{height:5px;border-radius:999px;background:linear-gradient(90deg,var(--feeColor) var(--fillPct),rgba(244,249,246,0.12) var(--fillPct))}input.bbRange[type='range']::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:13px;height:13px;border-radius:999px;background:var(--feeColor);border:2px solid #07100C;box-shadow:0 0 0 3px rgba(0,0,0,0.18),0 0 14px rgba(95,243,166,0.18);margin-top:-4px}input.bbRange[type='range']::-moz-range-track{height:5px;border-radius:999px;background:linear-gradient(90deg,var(--feeColor) var(--fillPct),rgba(244,249,246,0.12) var(--fillPct))}input.bbRange[type='range']::-moz-range-thumb{width:13px;height:13px;border-radius:999px;background:var(--feeColor);border:2px solid #07100C;box-shadow:0 0 0 3px rgba(0,0,0,0.18)}@media(min-width:640px){.bbAssetPills{justify-content:flex-start}.bbAssetPills .bbPresetPill{flex:0 0 auto}input.bbRange[type='range']{height:24px}input.bbRange[type='range']::-webkit-slider-runnable-track{height:6px}input.bbRange[type='range']::-webkit-slider-thumb{width:16px;height:16px;box-shadow:0 0 0 4px rgba(0,0,0,0.18),0 0 14px rgba(95,243,166,0.18);margin-top:-5px}input.bbRange[type='range']::-moz-range-track{height:6px}input.bbRange[type='range']::-moz-range-thumb{width:16px;height:16px;box-shadow:0 0 0 4px rgba(0,0,0,0.18)}}`}</style>
 
         <style>{`.bbProtectionPill,.bbProtectionQuickPill{outline:none}.bbProtectionPill:hover:not(:disabled){color:#D8FFEA!important;background:rgba(16,185,129,0.075)!important;border-color:rgba(16,185,129,0.30)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,0.025),0 0 18px rgba(16,185,129,0.045)!important}.bbProtectionPill[data-active="true"]:hover:not(:disabled){color:#7CFFC0!important;background:rgba(16,185,129,0.17)!important;border-color:rgba(16,185,129,0.58)!important}.bbProtectionQuickPill:hover:not(:disabled){color:#D8FFEA!important;background:rgba(16,185,129,0.075)!important;border-color:rgba(16,185,129,0.30)!important}.bbProtectionQuickPill[data-active="true"]:hover:not(:disabled){color:#7CFFC0!important;background:rgba(16,185,129,0.17)!important;border-color:rgba(16,185,129,0.58)!important}.bbProtectionPill:focus-visible,.bbProtectionQuickPill:focus-visible{box-shadow:0 0 0 2px rgba(16,185,129,0.22)!important}`}</style>
 
@@ -1828,15 +2027,15 @@ export function FeeStructureBuilder({ chain, fees, onChange, onAdvancedProtectio
                   };
                   return ghost && drag ? (
                     <div key={fee.id} style={{ height: drag.h }}>
-                      <Row fee={fee} chain={chain} max={maxTotal} disabled={!enabled} dragging ghost patch={patch} setPct={setPct} remove={remove} onDrag={start(fee.id)} bind={bind} attention={attentionId === fee.id} onExpand={(id) => centerFeeRow(id, 70, 940)} />
+                      <Row fee={fee} chain={chain} walletAddress={walletAddress} max={maxTotal} disabled={!enabled} dragging ghost patch={patch} setPct={setPct} remove={remove} onDrag={start(fee.id)} bind={bind} attention={attentionId === fee.id} onExpand={(id) => centerFeeRow(id, 70, 940)} />
                     </div>
                   ) : (
-                    <Row key={fee.id} fee={fee} chain={chain} max={maxTotal} disabled={!enabled} dragging={Boolean(drag)} patch={patch} setPct={setPct} remove={remove} onDrag={start(fee.id)} bind={bind} attention={attentionId === fee.id} onExpand={(id) => centerFeeRow(id, 70, 940)} />
+                    <Row key={fee.id} fee={fee} chain={chain} walletAddress={walletAddress} max={maxTotal} disabled={!enabled} dragging={Boolean(drag)} patch={patch} setPct={setPct} remove={remove} onDrag={start(fee.id)} bind={bind} attention={attentionId === fee.id} onExpand={(id) => centerFeeRow(id, 70, 940)} />
                   );
                 })}
                 {floating ? (
                   <div style={{ position: 'absolute', left: 0, right: 0, top: floating.top, zIndex: 40, pointerEvents: 'none', transform: 'scale(1.01)', filter: 'drop-shadow(0 22px 42px rgba(0,0,0,0.58))' }} aria-hidden>
-                    <Row fee={floating.fee} chain={chain} max={maxTotal} disabled={!enabled} dragging patch={patch} setPct={setPct} remove={remove} attention={attentionId === floating.fee.id} />
+                    <Row fee={floating.fee} chain={chain} walletAddress={walletAddress} max={maxTotal} disabled={!enabled} dragging patch={patch} setPct={setPct} remove={remove} attention={attentionId === floating.fee.id} />
                   </div>
                 ) : null}
               </div>
@@ -1910,6 +2109,28 @@ export function FeeStructureBuilder({ chain, fees, onChange, onAdvancedProtectio
                 </div>
               </div>
             </div>
+
+        <div className='mt-5 border-t border-white/[0.075] pt-5' data-no-drag>
+          <div className='mb-3 flex items-end justify-between gap-3 px-1'>
+            <div className='min-w-0'>
+              <p className='text-[10px] font-semibold uppercase tracking-[0.18em] text-[#9dffd0]/62'>Token page preview</p>
+              <p className='mt-1 text-[10px] text-white/38 sm:text-[11px]'>Preview how configured routes, basket sequencing, and sample payout activity appear after launch.</p>
+            </div>
+          </div>
+          <FeeEngineCard
+            routes={feeEngineRoutes}
+            maxTotal={maxTotal}
+            accruedAmount={distributionTrigger * 0.64}
+            distributionThreshold={distributionTrigger}
+            settlementAsset={rewardOf(chain)}
+            totalPaidOut={4.82}
+            lastPayoutAt='18 min ago'
+            lastPayoutExact='Example activity: most recent automatic distribution was 18 minutes ago.'
+            payoutCount={27}
+            viewerRewardPayments={feeEngineRewardPayments}
+            className='mx-auto max-w-[560px]'
+          />
+        </div>
 
         <div ref={advancedProtectionRef} className='mt-5 pt-1' data-no-drag>
           <div className={`grid grid-cols-[auto_minmax(0,1fr)] items-center gap-2 transition-[margin] duration-300 ease-[cubic-bezier(.22,1,.36,1)] sm:grid-cols-[auto_minmax(24px,1fr)_auto_minmax(24px,1fr)_auto] sm:gap-3 ${advancedProtectionOpen ? 'mb-4' : 'mb-0'}`}>
@@ -2005,7 +2226,7 @@ export function FeeStructureBuilder({ chain, fees, onChange, onAdvancedProtectio
   );
 }
 
-export default function FeeBuilderPanel({ chain: chainValue, onTotalChange, onAdvancedProtectionChange, onIssuesChange, focusIssueRequest }: { chain?: string; onTotalChange?: (total: number) => void; onAdvancedProtectionChange?: (count: number) => void; onIssuesChange?: (count: number) => void; focusIssueRequest?: number }) {
+export default function FeeBuilderPanel({ chain: chainValue, walletAddress, onTotalChange, onAdvancedProtectionChange, onIssuesChange, focusIssueRequest }: { chain?: string; walletAddress?: string | null; onTotalChange?: (total: number) => void; onAdvancedProtectionChange?: (count: number) => void; onIssuesChange?: (count: number) => void; focusIssueRequest?: number }) {
   const chain = normalizeChain(chainValue);
   const previousChain = useRef(chain);
   const [fees, setFees] = useState<FeeWallet[]>(() => presetFees(chain, 'creator'));
@@ -2042,5 +2263,5 @@ export default function FeeBuilderPanel({ chain: chainValue, onTotalChange, onAd
     onTotalChange?.(total);
   }, [onTotalChange, total]);
 
-  return <FeeStructureBuilder chain={chain} fees={fees} onChange={setFees} onAdvancedProtectionChange={onAdvancedProtectionChange} onIssuesChange={onIssuesChange} focusIssueRequest={focusIssueRequest} />;
+  return <FeeStructureBuilder chain={chain} fees={fees} onChange={setFees} walletAddress={walletAddress} onAdvancedProtectionChange={onAdvancedProtectionChange} onIssuesChange={onIssuesChange} focusIssueRequest={focusIssueRequest} />;
 }
