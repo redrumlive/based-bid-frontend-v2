@@ -33,7 +33,7 @@ type FeeState = Record<PlanKey, Record<FeeKey, number>>;
 type SocialState = Record<SocialKey, string>;
 type IconComponent = React.ComponentType<{ className?: string; strokeWidth?: number }>;
 
-const GREEN = "#4ade80";
+const GREEN = "#18c98e";
 const VIOLET = "#a78bfa";
 const GOLD = "#e7be67";
 
@@ -82,7 +82,7 @@ const countFilled = (values: string[]) => values.filter((value) => value.trim().
 
 const UI = {
   panel: "rounded-2xl border border-white/10 bg-[#101111] shadow-[inset_0_1px_0_rgba(255,255,255,0.018)]",
-  input: "rounded-xl border border-white/10 bg-[#141515] text-white/86 outline-none ring-1 ring-inset ring-white/[0.025] transition placeholder:text-white/28 focus:border-[#4ade80]/45 focus:ring-[#4ade80]/10",
+  input: "rounded-xl border border-white/10 bg-[#141515] text-white/86 outline-none ring-1 ring-inset ring-white/[0.025] transition placeholder:text-white/28 focus:border-[#18c98e]/45 focus:ring-[#18c98e]/10",
 } as const;
 
 function SectionHeader({ icon: Icon, title, description, tag }: { icon: IconComponent; title: string; description: string; tag?: string }) {
@@ -108,7 +108,7 @@ function RequiredPill({ complete }: { complete: boolean }) {
       className={cx(
         "inline-flex h-[17px] w-[58px] items-center justify-center rounded-full border text-[7px] font-semibold uppercase tracking-[0.12em] transition-[border-color,background-color,color] duration-300",
         complete
-          ? "border-[#4ade80]/30 bg-[#4ade80]/[0.055] text-[#7bea9e]/88"
+          ? "border-[#18c98e]/30 bg-[#18c98e]/[0.055] text-[#7bea9e]/88"
           : "border-[#F5C451]/30 bg-[#F5C451]/[0.035] text-[#F5D97A]/76",
       )}
     >
@@ -165,7 +165,7 @@ function AssetUpload({ kind, source, onChange, onClear, required }: { kind: "ban
           </button>
         ) : null}
       </div>
-      <label className="group relative flex h-[113px] w-full cursor-pointer items-center justify-center overflow-hidden rounded-2xl border border-dashed border-white/12 bg-[#0d0e0e] transition hover:border-[#4ade80]/36 hover:bg-[#101412]">
+      <label className="group relative flex h-[113px] w-full cursor-pointer items-center justify-center overflow-hidden rounded-2xl border border-dashed border-white/12 bg-[#0d0e0e] transition hover:border-[#18c98e]/36 hover:bg-[#101412]">
         <input
           type="file"
           accept="image/png,image/jpeg,image/webp,image/svg+xml"
@@ -179,7 +179,7 @@ function AssetUpload({ kind, source, onChange, onClear, required }: { kind: "ban
           <Image unoptimized src={source} alt={`${kind} preview`} fill sizes="360px" className={cx("object-cover transition duration-500 group-hover:scale-[1.015]", isLogo && "object-contain p-4")} />
         ) : (
           <span className="flex flex-col items-center text-center">
-            <span className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 bg-white/[0.025] text-white/42 transition group-hover:border-[#4ade80]/25 group-hover:text-[#7bea9e]">
+            <span className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 bg-white/[0.025] text-white/42 transition group-hover:border-[#18c98e]/25 group-hover:text-[#7bea9e]">
               <Upload className="h-4 w-4" strokeWidth={1.7} />
             </span>
             <span className="mt-2 text-[11px] font-medium text-white/56">Upload {kind}</span>
@@ -226,8 +226,8 @@ function Accordion({ title, description, icon: Icon, meta, open, onToggle, child
 function VisibilityCard({ item, active, onClick }: { item: (typeof VISIBILITY_OPTIONS)[number]; active: boolean; onClick: () => void }) {
   const Icon = item.icon;
   return (
-    <button type="button" onClick={onClick} className={cx("flex cursor-pointer items-start gap-3 rounded-2xl border p-4 text-left transition duration-200", active ? "border-[#4ade80]/38 bg-[#4ade80]/[0.075]" : "border-white/10 bg-[#0d0e0e] hover:border-white/18 hover:bg-white/[0.025]")}>
-      <span className={cx("grid h-8 w-8 shrink-0 place-items-center rounded-[10px] border", active ? "border-[#4ade80]/26 text-[#7bea9e]" : "border-white/10 text-white/40")}><Icon className="h-3.5 w-3.5" strokeWidth={1.8} /></span>
+    <button type="button" onClick={onClick} className={cx("flex cursor-pointer items-start gap-3 rounded-2xl border p-4 text-left transition duration-200", active ? "border-[#18c98e]/38 bg-[#18c98e]/[0.075]" : "border-white/10 bg-[#0d0e0e] hover:border-white/18 hover:bg-white/[0.025]")}>
+      <span className={cx("grid h-8 w-8 shrink-0 place-items-center rounded-[10px] border", active ? "border-[#18c98e]/26 text-[#7bea9e]" : "border-white/10 text-white/40")}><Icon className="h-3.5 w-3.5" strokeWidth={1.8} /></span>
       <span>
         <span className="block text-[12px] font-semibold text-white/82">{item.title}</span>
         <span className="mt-1 block text-[10.5px] leading-4 text-white/36">{item.description}</span>
@@ -300,14 +300,14 @@ export default function OpenBidPage() {
 
         <header className="mt-3 flex flex-col gap-5 border-b border-white/[0.075] pb-6 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <div className="mb-3 inline-flex items-center gap-2 text-[9px] font-semibold uppercase tracking-[0.2em] text-[#4ade80]/82">
+            <div className="mb-3 inline-flex items-center gap-2 text-[9px] font-semibold uppercase tracking-[0.2em] text-[#18c98e]/82">
               <Code2 className="h-3.5 w-3.5" strokeWidth={1.8} />
               OpenBid infrastructure
             </div>
             <h1 className="text-[28px] font-semibold tracking-[-0.045em] text-white/94 sm:text-[34px]">Create a programmable launch board</h1>
             <p className="mt-2 max-w-2xl text-[12.5px] leading-5 text-white/42 sm:text-[13px]">Configure a white-label launch environment with permissions, revenue settings, participation rules and API access.</p>
           </div>
-          <a href="https://basedinc.gitbook.io/basedbid/projects-how-to-guides" target="_blank" rel="noreferrer" className="inline-flex h-9 w-fit cursor-pointer items-center gap-2 rounded-xl border border-white/10 bg-white/[0.02] px-3 text-[10px] font-medium text-white/46 transition hover:border-[#4ade80]/24 hover:bg-[#4ade80]/[0.045] hover:text-white/78">
+          <a href="https://basedinc.gitbook.io/basedbid/projects-how-to-guides" target="_blank" rel="noreferrer" className="inline-flex h-9 w-fit cursor-pointer items-center gap-2 rounded-xl border border-white/10 bg-white/[0.02] px-3 text-[10px] font-medium text-white/46 transition hover:border-[#18c98e]/24 hover:bg-[#18c98e]/[0.045] hover:text-white/78">
             <BookOpen className="h-3.5 w-3.5" strokeWidth={1.8} />
             Open documentation
           </a>
@@ -367,8 +367,8 @@ export default function OpenBidPage() {
                 {PLAN_OPTIONS.map((plan) => {
                   const selected = apiPlan === plan.key;
                   return (
-                    <button key={plan.key} type="button" onClick={() => setApiPlan(plan.key)} className={cx("cursor-pointer rounded-2xl border p-4 text-left transition duration-200", selected ? "border-[#4ade80]/40 bg-[#4ade80]/[0.075] shadow-[inset_0_1px_rgba(255,255,255,0.035)]" : "border-white/10 bg-[#0d0e0e] hover:border-white/18 hover:bg-white/[0.025]")}>
-                      <div className="flex items-start justify-between gap-3"><span className="text-[13px] font-semibold text-white/84">{plan.title}</span>{selected ? <Check className="h-3.5 w-3.5 text-[#4ade80]" /> : null}</div>
+                    <button key={plan.key} type="button" onClick={() => setApiPlan(plan.key)} className={cx("cursor-pointer rounded-2xl border p-4 text-left transition duration-200", selected ? "border-[#18c98e]/40 bg-[#18c98e]/[0.075] shadow-[inset_0_1px_rgba(255,255,255,0.035)]" : "border-white/10 bg-[#0d0e0e] hover:border-white/18 hover:bg-white/[0.025]")}>
+                      <div className="flex items-start justify-between gap-3"><span className="text-[13px] font-semibold text-white/84">{plan.title}</span>{selected ? <Check className="h-3.5 w-3.5 text-[#18c98e]" /> : null}</div>
                       <div className="mt-2 text-[10.5px] text-white/36">{plan.rps} requests / second</div>
                       <div className="mt-5 text-[13px] font-semibold tabular-nums text-white/72">{plan.price}<span className="ml-1 text-[9px] font-normal text-white/28">/ month</span></div>
                     </button>
@@ -384,7 +384,7 @@ export default function OpenBidPage() {
               <div className="p-4">
                 <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#0c0d0d]">
                   <div className="relative h-[106px] overflow-hidden border-b border-white/[0.07] bg-[linear-gradient(135deg,#181a20_0%,#10131a_48%,#0d0e10_100%)]">
-                    {banner ? <Image unoptimized src={banner} alt="Board banner" fill sizes="350px" className="object-cover" /> : <><span className="absolute -left-16 top-7 h-px w-[150%] rotate-[-8deg] bg-white/[0.055]" /><span className="absolute -left-16 top-14 h-px w-[150%] rotate-[-8deg] bg-[#4ade80]/12" /></>}
+                    {banner ? <Image unoptimized src={banner} alt="Board banner" fill sizes="350px" className="object-cover" /> : <><span className="absolute -left-16 top-7 h-px w-[150%] rotate-[-8deg] bg-white/[0.055]" /><span className="absolute -left-16 top-14 h-px w-[150%] rotate-[-8deg] bg-[#18c98e]/12" /></>}
                     <span className="absolute inset-0 bg-gradient-to-t from-[#0c0d0d] via-transparent to-transparent" />
                   </div>
                   <div className="relative px-4 pb-4">
@@ -392,7 +392,7 @@ export default function OpenBidPage() {
                       <div className="relative h-16 w-16 overflow-hidden rounded-2xl border border-white/12 bg-[#111313] shadow-[0_8px_24px_rgba(0,0,0,0.35)] ring-4 ring-[#0c0d0d]">
                         {logo ? <Image unoptimized src={logo} alt="Board logo" fill sizes="64px" className="object-contain p-1.5" /> : <ImagePlus className="absolute left-1/2 top-1/2 h-5 w-5 -translate-x-1/2 -translate-y-1/2 text-white/20" />}
                       </div>
-                      <span className="mb-1 inline-flex items-center gap-1.5 rounded-full border border-[#4ade80]/22 bg-[#4ade80]/[0.065] px-2.5 py-1 text-[9px] font-medium text-[#7bea9e]"><VisibilityIcon className="h-3 w-3" />{visibilityMeta.title}</span>
+                      <span className="mb-1 inline-flex items-center gap-1.5 rounded-full border border-[#18c98e]/22 bg-[#18c98e]/[0.065] px-2.5 py-1 text-[9px] font-medium text-[#7bea9e]"><VisibilityIcon className="h-3 w-3" />{visibilityMeta.title}</span>
                     </div>
                     <h3 className="mt-4 truncate text-[19px] font-semibold tracking-[-0.035em] text-white/90">{name || "Untitled board"}</h3>
                     <p className="mt-2 line-clamp-3 min-h-[48px] text-[10.5px] leading-4 text-white/42">{description || "Your board description will appear here."}</p>
@@ -407,7 +407,7 @@ export default function OpenBidPage() {
 
                 <div className="mt-4 flex items-center justify-between gap-4 border-t border-white/[0.07] pt-4">
                   <div className="flex min-w-0 items-center gap-3">
-                    <span className={cx("grid h-8 w-8 shrink-0 place-items-center rounded-[10px] border", complete === 100 ? "border-[#4ade80]/28 bg-[#4ade80]/[0.065] text-[#4ade80]" : "border-white/10 text-white/28")}><ShieldCheck className="h-4 w-4" strokeWidth={1.8} /></span>
+                    <span className={cx("grid h-8 w-8 shrink-0 place-items-center rounded-[10px] border", complete === 100 ? "border-[#18c98e]/28 bg-[#18c98e]/[0.065] text-[#18c98e]" : "border-white/10 text-white/28")}><ShieldCheck className="h-4 w-4" strokeWidth={1.8} /></span>
                     <div className="min-w-0"><div className="text-[11.5px] font-semibold text-white/78">{complete === 100 ? "Ready to publish" : "Complete core setup"}</div><div className="mt-0.5 text-[9.5px] text-white/30">{planMeta.title} API · {visibilityMeta.title}</div></div>
                   </div>
                   <span className="text-[10px] font-semibold tabular-nums text-white/44">{complete}%</span>
@@ -415,9 +415,9 @@ export default function OpenBidPage() {
               </div>
 
               <div className="border-t border-white/[0.075] p-4">
-                <button type="button" disabled={complete !== 100} className={cx("group relative flex h-12 w-full items-center justify-center overflow-hidden rounded-full border px-4 text-sm font-semibold transition-[border-color,box-shadow,color,transform] duration-500 ease-[cubic-bezier(.22,1,.36,1)]", complete === 100 ? "bb-publish-button-ready cursor-pointer border-[#10B981]/70 text-[#07331F] shadow-[0_18px_38px_rgba(16,185,129,0.24)] hover:shadow-[0_20px_44px_rgba(16,185,129,0.30)] active:scale-[0.99]" : "cursor-not-allowed border-white/12 text-white/58")}>
+                <button type="button" disabled={complete !== 100} className={cx("group relative flex h-12 w-full items-center justify-center overflow-hidden rounded-full border px-4 text-sm font-semibold transition-[border-color,box-shadow,color,transform] duration-500 ease-[cubic-bezier(.22,1,.36,1)]", complete === 100 ? "bb-publish-button-ready cursor-pointer border-[#18C98E]/70 text-[#07331F] shadow-[0_18px_38px_rgba(24,201,142,0.24)] hover:shadow-[0_20px_44px_rgba(24,201,142,0.30)] active:scale-[0.99]" : "cursor-not-allowed border-white/12 text-white/58")}>
                   <span aria-hidden className={cx("absolute inset-0 bg-[linear-gradient(180deg,rgba(24,27,26,0.98),rgba(14,16,15,0.96))] transition-opacity duration-500", complete === 100 ? "opacity-0" : "opacity-100")} />
-                  <span aria-hidden className={cx("bb-publish-button-gradient absolute inset-0 bg-[linear-gradient(110deg,#0EDB86_0%,#36EBA6_38%,#F5D97A_78%,#10B981_100%)] bg-[length:220%_100%] transition-opacity duration-700", complete === 100 ? "opacity-100" : "opacity-0")} />
+                  <span aria-hidden className={cx("bb-publish-button-gradient absolute inset-0 bg-[linear-gradient(110deg,#0EDB86_0%,#36EBA6_38%,#F5D97A_78%,#18C98E_100%)] bg-[length:220%_100%] transition-opacity duration-700", complete === 100 ? "opacity-100" : "opacity-0")} />
                   <span aria-hidden className={cx("bb-publish-button-sheen absolute inset-y-[-30%] left-0 w-1/3 bg-white/30 blur-lg", complete === 100 ? "" : "opacity-0")} />
                   <span className="relative inline-flex items-center justify-center gap-2">
                     <span className={cx("transition-colors duration-500", complete === 100 ? "text-[13px] font-semibold tracking-[-0.006em] text-[#07331F]" : "text-[12.5px] font-medium text-white/62")}>Publish Board</span>

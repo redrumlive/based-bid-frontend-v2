@@ -4,6 +4,8 @@ import AppFooter from './AppFooter';
 import { AppPreferencesProvider } from './AppPreferences';
 import AppShell from './AppShell';
 import AppTopBar from './AppTopBar';
+import ChunkLoadRecovery from './ChunkLoadRecovery';
+import { TerminalSidebarProvider } from './TerminalSidebarContext';
 import './globals.css';
 
 const spaceGrotesk = Space_Grotesk({
@@ -27,9 +29,12 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="en" data-animation="on" data-ambient="on" suppressHydrationWarning className={`${spaceGrotesk.className} ${spaceGrotesk.variable}`}>
       <body>
         <AppPreferencesProvider>
-          <AppTopBar />
-          <AppShell>{children}</AppShell>
-          <AppFooter />
+          <ChunkLoadRecovery />
+          <TerminalSidebarProvider>
+            <AppTopBar />
+            <AppShell>{children}</AppShell>
+            <AppFooter />
+          </TerminalSidebarProvider>
         </AppPreferencesProvider>
       </body>
     </html>

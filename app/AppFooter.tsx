@@ -3,11 +3,14 @@
 import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
+import { useTerminalSidebar } from "./TerminalSidebarContext";
 import React from "react";
 import { useAppPreferences, type AmbientPreference, type AnimationPreference } from "./AppPreferences";
+import { LIVE_CHAT_CONTACTS, usesSharedAppShell } from "./appConfig";
 import { FaXTwitter } from "react-icons/fa6";
 import {
   ArrowUpRight,
+  Calculator,
   ChevronDown,
   CircleHelp,
   Cookie,
@@ -20,17 +23,12 @@ import {
 
 const cx = (...values: Array<string | false | null | undefined>) => values.filter(Boolean).join(" ");
 
-const LIVE_CHAT_CONTACTS = [
-  { name: "Michael", handle: "@BasedBidMichael", href: "https://t.me/BasedBidMichael", avatar: "/team/michael.jpg" },
-  { name: "Lumi", handle: "@BasedLumi", href: "https://t.me/BasedLumi", avatar: "/team/lumi.jpg" },
-  { name: "Dante", handle: "@BasedDante", href: "https://t.me/BasedDante", avatar: "/team/dante.jpg" },
-] as const;
-
 type FooterBarProps = {
   settings: React.ReactNode;
   cookiesEnabled: boolean;
   onToggleCookies: () => void;
   fixed?: boolean;
+  compactTerminalSidebar?: boolean;
 };
 
 function FooterDropdown({ children, className, id }: { children: React.ReactNode; className: string; id?: string }) {
@@ -83,7 +81,7 @@ function LiveChatMenu() {
             : "border-white/[0.08] bg-white/[0.018] text-white/46 hover:border-white/[0.14] hover:bg-white/[0.04] hover:text-white/78",
         )}
       >
-        <MessageCircleMore className="h-3 w-3 text-[#4ade80]/62 transition-colors group-hover:text-[#4ade80]" />
+        <MessageCircleMore className="h-3 w-3 text-[#18c98e]/62 transition-colors group-hover:text-[#18c98e]" />
         <span>Live chat</span>
         <ChevronDown className={cx("h-3 w-3 text-white/28 transition-transform duration-200", open && "rotate-180")} />
       </button>
@@ -97,7 +95,7 @@ function LiveChatMenu() {
             <div className="border-t border-white/[0.08] p-1.5">
               {LIVE_CHAT_CONTACTS.map((contact) => (
                 <a key={contact.handle} href={contact.href} target="_blank" rel="noreferrer" onClick={() => setOpen(false)} className="group/contact flex items-center gap-2.5 rounded-lg px-2 py-2 transition-colors hover:bg-white/[0.045]">
-                  <Image unoptimized src={contact.avatar} alt="" width={28} height={28} className="h-7 w-7 shrink-0 rounded-full object-cover ring-1 ring-white/[0.12] transition-[filter,box-shadow] group-hover/contact:brightness-110 group-hover/contact:shadow-[0_0_12px_rgba(74,222,128,0.12)]" />
+                  <Image unoptimized src={contact.avatar} alt="" width={28} height={28} className="h-7 w-7 shrink-0 rounded-full object-cover ring-1 ring-white/[0.12] transition-[filter,box-shadow] group-hover/contact:brightness-110 group-hover/contact:shadow-[0_0_12px_rgba(24,201,142,0.12)]" />
                   <span className="min-w-0 flex-1">
                     <span className="block text-[11px] font-medium text-white/76 group-hover/contact:text-white/92">{contact.name}</span>
                     <span className="block truncate text-[9px] text-white/34">{contact.handle}</span>
@@ -138,10 +136,10 @@ function CookieControl({ enabled, onToggle }: { enabled: boolean; onToggle: () =
         <span aria-hidden="true" className="absolute -bottom-[5px] left-5 h-2.5 w-2.5 rotate-45 border-b border-r border-white/[0.10] bg-[#0c0d0d]" />
       </div>
       <button type="button" onClick={onToggle} aria-pressed={enabled} aria-describedby="app-footer-cookie-help" className="inline-flex h-7 cursor-pointer items-center gap-2 rounded-lg bg-white/[0.018] px-2 text-[10px] font-medium text-white/44 ring-1 ring-white/[0.075] transition-[background-color,color,box-shadow] hover:bg-white/[0.045] hover:text-white/72 hover:ring-white/[0.14] focus-visible:bg-white/[0.045] focus-visible:text-white/72 focus-visible:outline-none focus-visible:ring-white/[0.18]">
-        <Cookie className={cx("h-3 w-3 transition-colors", enabled ? "text-[#4ade80]/68 group-hover/cookies:text-[#4ade80]" : "text-white/30 group-hover/cookies:text-white/62")} />
+        <Cookie className={cx("h-3 w-3 transition-colors", enabled ? "text-[#18c98e]/68 group-hover/cookies:text-[#18c98e]" : "text-white/30 group-hover/cookies:text-white/62")} />
         <span>Cookies</span>
-        <span className={cx("relative h-[16px] w-[29px] rounded-full border transition-colors duration-300", enabled ? "border-[#4ade80]/25 bg-[#4ade80]/20" : "border-white/10 bg-white/[0.035]")}>
-          <span className={cx("absolute top-[2px] h-[10px] w-[10px] rounded-full transition-[left,background-color,box-shadow] duration-300", enabled ? "left-[15px] bg-[#4ade80] shadow-[0_0_8px_rgba(74,222,128,0.52)]" : "left-[2px] bg-white/38")} />
+        <span className={cx("relative h-[16px] w-[29px] rounded-full border transition-colors duration-300", enabled ? "border-[#18c98e]/25 bg-[#18c98e]/20" : "border-white/10 bg-white/[0.035]")}>
+          <span className={cx("absolute top-[2px] h-[10px] w-[10px] rounded-full transition-[left,background-color,box-shadow] duration-300", enabled ? "left-[15px] bg-[#18c98e] shadow-[0_0_8px_rgba(24,201,142,0.52)]" : "left-[2px] bg-white/38")} />
         </span>
       </button>
     </div>
@@ -154,12 +152,14 @@ function PlatformLinks() {
     <div className="inline-flex h-7 items-center rounded-lg bg-black/15 p-0.5 ring-1 ring-white/[0.09] shadow-[inset_0_1px_0_rgba(255,255,255,0.025)]">
       <a href="/how-it-works" className={linkClass}><CircleHelp className="h-3 w-3" />How it works</a>
       <span className="h-3.5 w-px bg-white/[0.08]" aria-hidden="true" />
-      <a href="/deck" className={linkClass}><Presentation className="h-3 w-3" />Pitch deck</a>
+      <a href="/calculator" className={linkClass}><Calculator className="h-3 w-3" />Fee calculator</a>
+      <span className="h-3.5 w-px bg-white/[0.08]" aria-hidden="true" />
+      <a href="/deck" target="_blank" rel="noreferrer" className={linkClass}><Presentation className="h-3 w-3" />Pitch deck</a>
     </div>
   );
 }
 
-export function FooterBar({ settings, cookiesEnabled, onToggleCookies, fixed = false }: FooterBarProps) {
+function FooterBar({ settings, cookiesEnabled, onToggleCookies, fixed = false, compactTerminalSidebar = false }: FooterBarProps) {
   return (
     <footer
       data-app-footer="true"
@@ -168,22 +168,23 @@ export function FooterBar({ settings, cookiesEnabled, onToggleCookies, fixed = f
         fixed ? "fixed inset-x-0 bottom-0" : "relative",
       )}
     >
-      <div className="hidden h-full w-[272px] shrink-0 border-r border-white/[0.08] md:block">
-        <div className="relative flex h-full items-center px-3 pr-[6px]">
+      <div className={cx("hidden h-full shrink-0 border-r border-white/[0.08] transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] md:block", compactTerminalSidebar ? "w-[66px] min-[1800px]:w-[272px]" : "w-[272px]")}>
+        <div className={cx("relative flex h-full items-center", compactTerminalSidebar ? "justify-center px-0 min-[1800px]:justify-start min-[1800px]:px-3 min-[1800px]:pr-[6px]" : "px-3 pr-[6px]")}>
           {settings}
-          <div className="absolute left-[55%] top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center gap-2"><SocialLinks /></div>
+          <div className={cx("absolute left-[55%] top-1/2 -translate-x-1/2 -translate-y-1/2 items-center gap-2", compactTerminalSidebar ? "hidden min-[1800px]:flex" : "flex")}><SocialLinks /></div>
         </div>
       </div>
       <div className="relative flex h-full min-w-0 flex-1 items-center px-3 sm:px-4">
-        <CookieControl enabled={cookiesEnabled} onToggle={onToggleCookies} />
-        <div className="absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 lg:block"><PlatformLinks /></div>
-        <div className="ml-auto flex items-center gap-3 sm:gap-4">
-          <LiveChatMenu />
-          <div className="hidden items-center gap-3 text-[9px] text-white/30 2xl:flex">
+        <div className="flex items-center gap-3">
+          <CookieControl enabled={cookiesEnabled} onToggle={onToggleCookies} />
+          <div className="hidden items-center gap-3 text-[9px] text-white/30 sm:flex">
             <a href="/privacy" className="transition hover:text-white/62">Privacy</a>
             <a href="/terms" className="transition hover:text-white/62">ToS</a>
-            <span className="text-white/20">© 2026 based.bid</span>
           </div>
+        </div>
+        <div className="absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 lg:block"><PlatformLinks /></div>
+        <div className="ml-auto flex items-center">
+          <LiveChatMenu />
         </div>
       </div>
     </footer>
@@ -247,16 +248,16 @@ function GlobalFooterSettings() {
 export default function AppFooter() {
   const pathname = usePathname();
   const [cookiesEnabled, setCookiesEnabled] = React.useState(true);
-  const isCreationFlow = pathname.startsWith("/create/");
-  const isVisible = pathname !== "/" && !isCreationFlow;
+  const { expanded: sidebarExpanded } = useTerminalSidebar();
 
-  if (!isVisible) return null;
+  if (!usesSharedAppShell(pathname)) return null;
 
   return (
     <>
       <div aria-hidden="true" className="h-[44px] shrink-0" />
       <FooterBar
         fixed
+        compactTerminalSidebar={!sidebarExpanded}
         settings={<GlobalFooterSettings />}
         cookiesEnabled={cookiesEnabled}
         onToggleCookies={() => setCookiesEnabled((value) => !value)}

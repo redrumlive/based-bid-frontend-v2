@@ -79,7 +79,7 @@ export default function CreateSelectorPage() {
           className="mt-10 grid gap-4 md:grid-cols-[1.06fr_0.94fr]"
         >
           <a href="https://www.based.bid/launch-flash" className={launchCardClass}>
-            <span className="absolute -top-px left-6 z-20 rounded-b-[9px] bg-[#4ade80] px-3 py-1.5 text-[8px] font-bold uppercase tracking-[0.13em] text-[#071009] shadow-[0_5px_18px_rgba(74,222,128,0.16)]">Recommended</span>
+            <span className="absolute -top-px left-6 z-20 rounded-b-[9px] bg-[#18c98e] px-3 py-1.5 text-[8px] font-bold uppercase tracking-[0.13em] text-[#071009] shadow-[0_5px_18px_rgba(24,201,142,0.16)]">Recommended</span>
             <span aria-hidden="true" className="pointer-events-none absolute inset-x-8 bottom-0 z-[1] h-px bg-gradient-to-r from-transparent via-white/18 to-transparent opacity-0 blur-[0.4px] transition-opacity duration-700 ease-out group-hover:opacity-100" />
             <Image
               unoptimized
@@ -94,7 +94,7 @@ export default function CreateSelectorPage() {
               <span className="grid h-10 w-10 place-items-center rounded-[12px] border border-white/[0.09] bg-white/[0.025] text-[#d9bd63]/82 transition-[background-color,border-color,color,transform,box-shadow] duration-[620ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:-translate-y-0.5 group-hover:border-[#d9bd63]/24 group-hover:bg-white/[0.04] group-hover:text-[#f0d77d] group-hover:shadow-[0_8px_22px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.06)]">
                 <Zap className="h-[18px] w-[18px]" strokeWidth={1.8} />
               </span>
-              <span className="inline-flex h-6 items-center rounded-full border border-[#4ade80]/18 bg-[#4ade80]/[0.045] px-2.5 text-[9px] font-semibold uppercase tracking-[0.1em] text-[#4ade80]/82">Instant launch</span>
+              <span className="inline-flex h-6 items-center rounded-full border border-[#18c98e]/18 bg-[#18c98e]/[0.045] px-2.5 text-[9px] font-semibold uppercase tracking-[0.1em] text-[#18c98e]/82">Instant launch</span>
             </span>
 
             <span className="relative z-10 mt-8 block max-w-[68%]">
@@ -158,7 +158,7 @@ export default function CreateSelectorPage() {
             <span className="mt-1 block text-[10.5px] leading-relaxed text-white/40">Route creator revenue, rewards, buybacks, liquidity, and custom fees from either launch path.</span>
           </span>
           <span className="hidden items-center gap-1.5 text-[9px] font-medium uppercase tracking-[0.12em] text-white/30 sm:inline-flex">
-            <ShieldCheck className="h-3.5 w-3.5 text-[#4ade80]/64" /> Included
+            <ShieldCheck className="h-3.5 w-3.5 text-[#18c98e]/64" /> Included
           </span>
         </motion.section>
 

@@ -1,7 +1,7 @@
 .backdrop {
   position: fixed;
   inset: 0;
-  z-index: 100;
+  z-index: 400;
   display: grid;
   place-items: center;
   padding: 24px;
@@ -266,7 +266,7 @@
   padding: 3px 6px;
   border: 1px solid rgba(57, 223, 144, 0.2);
   border-radius: 999px;
-  background: rgba(16, 185, 129, 0.09);
+  background: rgba(24, 201, 142, 0.09);
   color: rgba(133, 238, 186, 0.88);
   font-size: 8.5px;
   font-weight: 700;

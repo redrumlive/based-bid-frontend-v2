@@ -4,12 +4,15 @@ import React from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { FaXTwitter } from "react-icons/fa6";
 import { useAppPreferences, type AmbientPreference, type AnimationPreference } from "./AppPreferences";
+import { LIVE_CHAT_CONTACTS } from "./appConfig";
+import SharedCollectFeesModal, { type FeeCollectTarget as SharedFeeCollectTarget } from "./CollectFeesModal";
 import {
   ArrowLeftRight,
   ArrowUpRight,
+  Calculator,
   Check,
   ChevronDown,
   CircleHelp,
@@ -21,7 +24,6 @@ import {
   Flame,
   Globe,
   Hash,
-  HandCoins,
   LayoutGrid,
   MessageCircleMore,
   Pin,
@@ -35,7 +37,6 @@ import {
   ShieldCheck,
   Sparkles,
   TrendingUp,
-  Wallet,
   X,
 } from "lucide-react";
 
@@ -93,19 +94,6 @@ type TokenCardData = {
   socials?: Partial<Record<"x" | "telegram" | "website" | "discord", string>>;
 };
 
-type FeeCollectTarget = {
-  id: string;
-  project: string;
-  symbol: string;
-  network: Network;
-  contract: string;
-  usdValue: number;
-  nativeAmount: string;
-  tokenAmount: string;
-  avatar: string;
-  accent: string;
-};
-
 type AppToast = {
   id: number;
   title: string;
@@ -141,8 +129,8 @@ const createAllNetworkSet = () => new Set<Network>(CHAINS);
 
 const GLOBAL_CSS = `
 .bb-app {
-  --bb-green: #4ade80;
-  --bb-green-rgb: 74, 222, 128;
+  --bb-green: #18c98e;
+  --bb-green-rgb: 24, 201, 142;
   --bb-red: #ff3771;
   --bb-red-rgb: 255, 55, 113;
 }
@@ -645,7 +633,7 @@ const BOARDS: Board[] = [
 
 const TOKEN_CARDS: TokenCardData[] = [
   {
-    id: "gradient", accent: "#4ade80", palette: ["#4ade80", "#22d3ee", "#3975f6"], network: "base", kind: "lbp", title: "Gradient", ticker: "GRAD", by: "milo", board: "based",
+    id: "gradient", accent: "#18c98e", palette: ["#18c98e", "#22d3ee", "#3975f6"], network: "base", kind: "lbp", title: "Gradient", ticker: "GRAD", by: "milo", board: "based",
     desc: "Experimental social token for builders shipping clean UI and fast loops.", avatar: "G", change: 12.4, txs: 1320, volume: 284000, comments: 84,
     mcCurrent: 780000, mcGoal: 1000000, createdAt: now - 1000 * 60 * 34,
     socials: { x: "https://x.com/basedbid", telegram: "https://t.me/basedbid", website: "https://based.bid" },
@@ -657,7 +645,7 @@ const TOKEN_CARDS: TokenCardData[] = [
     socials: { x: "https://x.com/basedbid", telegram: "https://t.me/basedbid" },
   },
   {
-    id: "cashcat", accent: "#ccff00", palette: ["#ccff00", "#4ade80", "#f8fafc"], network: "robinhood", kind: "token", title: "Cashcat", ticker: "CASHCAT", by: "robin", board: "digital",
+    id: "cashcat", accent: "#ccff00", palette: ["#ccff00", "#18c98e", "#f8fafc"], network: "robinhood", kind: "token", title: "Cashcat", ticker: "CASHCAT", by: "robin", board: "digital",
     desc: "A high-tempo community economy built for onchain culture and rewards.", avatar: "C", change: 34.6, txs: 4820, volume: 1180000, comments: 319,
     mcCurrent: 2300000, mcGoal: 0, createdAt: now - 1000 * 60 * 12, graduatedAt: now - 1000 * 5, chartVariant: 2,
     socials: { x: "https://x.com/basedbid", website: "https://based.bid" },
@@ -681,13 +669,13 @@ const TOKEN_CARDS: TokenCardData[] = [
     socials: { x: "https://x.com/basedbid", website: "https://based.bid" },
   },
   {
-    id: "mega-mode", accent: "#e5e7eb", palette: ["#e5e7eb", "#94a3b8", "#4ade80"], network: "megaeth", kind: "token", title: "Mega Mode", ticker: "MODE", by: "nova", board: "prempad",
+    id: "mega-mode", accent: "#e5e7eb", palette: ["#e5e7eb", "#94a3b8", "#18c98e"], network: "megaeth", kind: "token", title: "Mega Mode", ticker: "MODE", by: "nova", board: "prempad",
     desc: "Realtime coordination for teams operating at the edge of high-speed execution.", avatar: "M", change: 27.1, txs: 6310, volume: 940000, comments: 204,
     mcCurrent: 3100000, mcGoal: 0, createdAt: now - 1000 * 12, chartVariant: 2,
     socials: { x: "https://x.com/basedbid", telegram: "https://t.me/basedbid" },
   },
   {
-    id: "robin-index", accent: "#b8f33d", palette: ["#b8f33d", "#4ade80", "#facc15"], network: "robinhood", kind: "lbp", title: "Robin Index", ticker: "RDX", by: "cass", board: "sigma",
+    id: "robin-index", accent: "#b8f33d", palette: ["#b8f33d", "#18c98e", "#facc15"], network: "robinhood", kind: "lbp", title: "Robin Index", ticker: "RDX", by: "cass", board: "sigma",
     desc: "A community-curated basket tracking the strongest tokenized market themes.", avatar: "RI", change: 6.5, txs: 958, volume: 338000, comments: 91,
     mcCurrent: 1320000, mcGoal: 1500000, createdAt: now - 1000 * 60 * 60 * 3,
     socials: { website: "https://based.bid", discord: "https://discord.com" },
@@ -715,45 +703,6 @@ const TOKEN_CARDS: TokenCardData[] = [
     desc: "Curated market intelligence for teams navigating serious onchain liquidity.", avatar: "MS", change: 7.4, txs: 1540, volume: 890000, comments: 112,
     mcCurrent: 4200000, mcGoal: 0, createdAt: now - 1000 * 60 * 60 * 5, chartVariant: 2,
     socials: { x: "https://x.com/basedbid", website: "https://based.bid", discord: "https://discord.com" },
-  },
-];
-
-const FEE_COLLECT_TARGETS: FeeCollectTarget[] = [
-  {
-    id: "aero-pool",
-    project: "Aero Pool",
-    symbol: "AERO",
-    network: "base",
-    contract: "0x09d4...af12",
-    usdValue: 763.04,
-    nativeAmount: "0.182 ETH",
-    tokenAmount: "1,540.88 AERO",
-    avatar: "A",
-    accent: "#4ade80",
-  },
-  {
-    id: "morpho-vault",
-    project: "Morpho Vault",
-    symbol: "MORPHO",
-    network: "base",
-    contract: "0x87a2...91be",
-    usdValue: 428.36,
-    nativeAmount: "0.071 ETH",
-    tokenAmount: "184.22 MORPHO",
-    avatar: "M",
-    accent: "#74a7ff",
-  },
-  {
-    id: "based-pepe",
-    project: "Based Pepe",
-    symbol: "BPEPE",
-    network: "eth",
-    contract: "0x4fa1...77ce",
-    usdValue: 92.17,
-    nativeAmount: "0.019 ETH",
-    tokenAmount: "12,402 BPEPE",
-    avatar: "BP",
-    accent: "#d8f36c",
   },
 ];
 
@@ -897,8 +846,8 @@ function NetworkFilter({ selected, onToggle, onSelectAll }: { selected: Readonly
         aria-haspopup="dialog"
         onClick={() => setOpen((value) => !value)}
         className={cx(
-          "group inline-flex h-[30px] w-[138px] cursor-pointer items-center gap-1.5 rounded-full px-2.5 text-[11px] font-medium tracking-[0.01em] ring-1 ring-inset transition-[background-color,color,box-shadow] duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4ade80]/45",
-          allSelected ? "bg-white/[0.018] text-white/58 ring-white/[0.075] hover:bg-white/[0.045] hover:text-white/86 hover:ring-white/[0.13]" : "bg-[#4ade80]/[0.045] text-white/88 ring-[#4ade80]/25 hover:bg-[#4ade80]/[0.075] hover:ring-[#4ade80]/38",
+          "group inline-flex h-[30px] w-[138px] cursor-pointer items-center gap-1.5 rounded-full px-2.5 text-[11px] font-medium tracking-[0.01em] ring-1 ring-inset transition-[background-color,color,box-shadow] duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#18c98e]/45",
+          allSelected ? "bg-white/[0.018] text-white/58 ring-white/[0.075] hover:bg-white/[0.045] hover:text-white/86 hover:ring-white/[0.13]" : "bg-[#18c98e]/[0.045] text-white/88 ring-[#18c98e]/25 hover:bg-[#18c98e]/[0.075] hover:ring-[#18c98e]/38",
         )}
       >
         <NetworkCycleMark selected={selected} />
@@ -922,7 +871,7 @@ function NetworkFilter({ selected, onToggle, onSelectAll }: { selected: Readonly
                 <div className="text-[11px] font-semibold text-white/84">Networks</div>
                 <div className="mt-0.5 text-[9px] text-white/34">{selected.size} of {CHAINS.length} selected</div>
               </div>
-              <button type="button" onClick={onSelectAll} disabled={allSelected} className={cx("text-[10px] font-medium transition", allSelected ? "cursor-default text-white/22" : "cursor-pointer text-[#4ade80]/72 hover:text-[#4ade80]")}>Select all</button>
+              <button type="button" onClick={onSelectAll} disabled={allSelected} className={cx("text-[10px] font-medium transition", allSelected ? "cursor-default text-white/22" : "cursor-pointer text-[#18c98e]/72 hover:text-[#18c98e]")}>Select all</button>
             </div>
             <div className="grid grid-cols-2 gap-1 p-2">
               {CHAINS.map((chain) => {
@@ -935,12 +884,12 @@ function NetworkFilter({ selected, onToggle, onSelectAll }: { selected: Readonly
                     onClick={() => onToggle(chain)}
                     className={cx(
                       "flex h-10 min-w-0 cursor-pointer items-center gap-2 rounded-[8px] px-2.5 text-left text-[10.5px] font-medium ring-1 ring-inset transition-[background-color,color,box-shadow]",
-                      active ? "bg-[#4ade80]/[0.045] text-white/88 ring-[#4ade80]/10 hover:bg-[#4ade80]/[0.075]" : "text-white/38 ring-transparent hover:bg-white/[0.035] hover:text-white/70",
+                      active ? "bg-[#18c98e]/[0.045] text-white/88 ring-[#18c98e]/10 hover:bg-[#18c98e]/[0.075]" : "text-white/38 ring-transparent hover:bg-white/[0.035] hover:text-white/70",
                     )}
                   >
                     <span className={cx("transition-[filter,opacity]", !active && "grayscale opacity-40")}><NetworkIcon network={chain} className="h-[19px] w-[19px]" /></span>
                     <span className="min-w-0 flex-1 truncate">{networkName(chain)}</span>
-                    <Check className={cx("h-3 w-3 shrink-0 text-[#4ade80] transition-opacity", active ? "opacity-100" : "opacity-0")} />
+                    <Check className={cx("h-3 w-3 shrink-0 text-[#18c98e] transition-opacity", active ? "opacity-100" : "opacity-0")} />
                   </button>
                 );
               })}
@@ -1062,7 +1011,7 @@ function ContractAddress({ card }: { card: TokenCardData }) {
         {short}
       </a>
       <button type="button" onClick={copy} aria-label={`Copy ${card.title} contract address`} data-ui-hint={copied ? "Copied" : "Copy address"} className="inline-flex h-3.5 w-3.5 cursor-pointer items-center justify-center text-white/25 transition-colors hover:text-white/68">
-        {copied ? <Check className="h-2.5 w-2.5 text-[#4ade80]" /> : <Copy className="h-2.5 w-2.5" />}
+        {copied ? <Check className="h-2.5 w-2.5 text-[#18c98e]" /> : <Copy className="h-2.5 w-2.5" />}
       </button>
     </span>
   );
@@ -1160,7 +1109,6 @@ function LbpSparks({ progress }: { progress: number }) {
 
 function MarketProgress({ card, upcoming = false }: { card: TokenCardData; upcoming?: boolean }) {
   const progress = Math.max(0, Math.min(100, card.mcGoal > 0 ? (card.mcCurrent / card.mcGoal) * 100 : 0));
-  const liveEmpty = !upcoming && progress <= 0;
   return (
     <div className="mt-2.5">
       <div className="flex items-end gap-4">
@@ -1175,12 +1123,12 @@ function MarketProgress({ card, upcoming = false }: { card: TokenCardData; upcom
       </div>
       <div className="mt-2.5 flex items-center gap-2.5">
         <div className="relative h-[3px] flex-1 overflow-visible rounded-full bg-white/[0.075]">
-          <span className="absolute inset-y-0 left-0 rounded-full bg-[#4ade80] shadow-[0_0_12px_rgba(74,222,128,0.24)]" style={{ width: `${progress}%` }} />
+          <span className="absolute inset-y-0 left-0 rounded-full bg-[#18c98e] shadow-[0_0_12px_rgba(24,201,142,0.24)]" style={{ width: `${progress}%` }} />
           {progress > 0 ? (
             <span
               aria-hidden="true"
               className={cx(
-                "absolute top-1/2 z-[11] h-[7px] w-[7px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#4ade80] shadow-[0_0_9px_rgba(74,222,128,0.54)]",
+                "absolute top-1/2 z-[11] h-[7px] w-[7px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#18c98e] shadow-[0_0_9px_rgba(24,201,142,0.54)]",
                 progress < 77 && "bb-progress-dot-pulse",
               )}
               style={{ left: `clamp(5px, ${progress}%, calc(100% - 5px))` }}
@@ -1195,8 +1143,6 @@ function MarketProgress({ card, upcoming = false }: { card: TokenCardData; upcom
               data-ui-hint="Scheduled"
               className="bb-status-dot-pulse bb-status-dot-pulse--scheduled h-2 w-2 rounded-full border border-amber-100/40 bg-amber-100/[0.08] shadow-[0_0_7px_rgba(253,230,138,0.16)]"
             />
-          ) : liveEmpty ? (
-            <span className="text-[8px] uppercase tracking-[0.12em] text-[#4ade80]/72">Live</span>
           ) : (
             <span className="text-[10px]">{Math.min(99, Math.floor(progress))}%</span>
           )}
@@ -1223,10 +1169,10 @@ function MiniTokenChart({ card, idle = false }: { card: TokenCardData; idle?: bo
         `M0 15 C44 18 74 20 108 34 C142 48 170 44 204 50 C240 57 264 53 298 60 C340 67 380 64 ${chartEndX} 66`,
       ];
   const d = idle ? `M0 52 C92 52 148 52 214 52 C286 52 356 52 ${chartEndX} 52` : variants[variant];
-  const line = idle ? "rgba(74,222,128,0.38)" : isUp ? "#4ade80" : "#ff3771";
-  const fillStrong = idle ? "rgba(52,211,153,0.06)" : isUp ? "rgba(52,211,153,0.19)" : "rgba(255,55,113,0.16)";
-  const fillMid = idle ? "rgba(52,211,153,0.025)" : isUp ? "rgba(52,211,153,0.085)" : "rgba(255,55,113,0.07)";
-  const fillSoft = idle ? "rgba(52,211,153,0.01)" : isUp ? "rgba(52,211,153,0.025)" : "rgba(255,55,113,0.022)";
+  const line = idle ? "rgba(24,201,142,0.38)" : isUp ? "#18c98e" : "#ff3771";
+  const fillStrong = idle ? "rgba(82,223,178,0.06)" : isUp ? "rgba(82,223,178,0.19)" : "rgba(255,55,113,0.16)";
+  const fillMid = idle ? "rgba(82,223,178,0.025)" : isUp ? "rgba(82,223,178,0.085)" : "rgba(255,55,113,0.07)";
+  const fillSoft = idle ? "rgba(82,223,178,0.01)" : isUp ? "rgba(82,223,178,0.025)" : "rgba(255,55,113,0.022)";
   const endY = isUp ? [4, 5, 4][variant] : [64, 65, 66][variant];
   const areaEndY = idle ? 52 : endY;
   const chartHeight = 128;
@@ -1272,7 +1218,7 @@ function MiniTokenChart({ card, idle = false }: { card: TokenCardData; idle?: bo
             right: "6.75px",
             top: `calc(${(endY / chartHeight) * 100}% - 3px)`,
             backgroundColor: line,
-            boxShadow: `0 0 8px ${isUp ? "rgba(52,211,153,0.46)" : "rgba(255,55,113,0.4)"}`,
+            boxShadow: `0 0 8px ${isUp ? "rgba(82,223,178,0.46)" : "rgba(255,55,113,0.4)"}`,
           }}
         />
       ) : null}
@@ -1281,10 +1227,16 @@ function MiniTokenChart({ card, idle = false }: { card: TokenCardData; idle?: bo
 }
 
 function TokenFeedCard({ card, spotlight, currentTime }: { card: TokenCardData; spotlight?: SmartSpotlightKind; currentTime: number }) {
+  const router = useRouter();
   const isUp = card.change >= 0;
   const upcoming = typeof card.startsAt === "number" && card.startsAt > currentTime;
   const liveEmpty = card.kind === "lbp" && !upcoming && card.mcCurrent <= 0;
   const upcomingCountdown = card.startsAt ? formatCountdown(card.startsAt - currentTime) : "";
+  const detailHref = card.kind === "lbp" ? `/token/${encodeURIComponent(card.id)}` : null;
+  const openDetail = (event: React.MouseEvent<HTMLElement>) => {
+    if (!detailHref || (event.target as HTMLElement).closest("a, button")) return;
+    router.push(detailHref);
+  };
   return (
     <motion.article
       layout
@@ -1294,7 +1246,17 @@ function TokenFeedCard({ card, spotlight, currentTime }: { card: TokenCardData; 
       transition={{ duration: 0.26, ease: [0.22, 1, 0.36, 1] }}
       whileHover={{ y: -2 }}
       data-smart-event={spotlight}
-      className={cx("group relative h-[210px] min-w-0 overflow-hidden rounded-[22px] border border-white/[0.055] bg-[#0f1111] p-3.5 shadow-[0_12px_34px_rgba(0,0,0,0.25)] transition-[border-color,box-shadow] duration-300 hover:border-white/[0.11] hover:shadow-[0_18px_44px_rgba(0,0,0,0.34)]", spotlight && "bb-smart-spotlight")}
+      onClick={openDetail}
+      onKeyDown={(event) => {
+        if (detailHref && (event.key === "Enter" || event.key === " ")) {
+          event.preventDefault();
+          router.push(detailHref);
+        }
+      }}
+      role={detailHref ? "link" : undefined}
+      tabIndex={detailHref ? 0 : undefined}
+      aria-label={detailHref ? `Open ${card.title} LBP terminal` : undefined}
+      className={cx("group relative h-[210px] min-w-0 overflow-hidden rounded-[22px] border border-white/[0.055] bg-[#0f1111] p-3.5 shadow-[0_12px_34px_rgba(0,0,0,0.25)] transition-[border-color,box-shadow] duration-300 hover:border-white/[0.11] hover:shadow-[0_18px_44px_rgba(0,0,0,0.34)] focus-visible:border-[#18c98e]/28 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#18c98e]/18", detailHref && "cursor-pointer", spotlight && "bb-smart-spotlight")}
     >
       <span
         aria-hidden="true"
@@ -1314,7 +1276,7 @@ function TokenFeedCard({ card, spotlight, currentTime }: { card: TokenCardData; 
           </div>
           <div className="mt-1 flex min-w-0 items-center gap-1.5 text-[10px] text-white/38">
             <ContractAddress card={card} />
-            <span className="shrink-0 text-white/20">by</span><a href={`/u/${card.by}`} className="shrink-0 whitespace-nowrap text-white/60 hover:text-white/84">{card.by}</a>
+            <span className="shrink-0 text-white/20">by</span><Link href={`/u/${encodeURIComponent(card.by)}`} className="shrink-0 whitespace-nowrap text-white/60 hover:text-white/84">{card.by}</Link>
             <span className="shrink-0 text-white/20">on</span><a href={`/b/${card.board}`} className="min-w-0 truncate text-white/60 hover:text-white/84">b/{card.board}</a>
           </div>
         </div>
@@ -1328,12 +1290,12 @@ function TokenFeedCard({ card, spotlight, currentTime }: { card: TokenCardData; 
           <span className="tabular-nums tracking-normal text-white/68">{upcomingCountdown}</span>
         </span>
       ) : liveEmpty ? (
-        <span className="absolute right-3.5 top-3.5 z-10 inline-flex items-center gap-1.5 rounded-full border border-[#4ade80]/12 bg-[#4ade80]/[0.045] px-2 py-0.5 text-[8px] font-semibold uppercase tracking-[0.08em] text-[#4ade80]/82">
-          <span aria-hidden="true" className="bb-status-dot-pulse bb-status-dot-pulse--live h-1.5 w-1.5 rounded-full bg-[#4ade80]/80" />
+        <span className="absolute right-3.5 top-3.5 z-10 inline-flex items-center gap-1.5 rounded-full border border-[#18c98e]/12 bg-[#18c98e]/[0.045] px-2 py-0.5 text-[8px] font-semibold uppercase tracking-[0.08em] text-[#18c98e]/82">
+          <span aria-hidden="true" className="bb-status-dot-pulse bb-status-dot-pulse--live h-1.5 w-1.5 rounded-full bg-[#18c98e]/80" />
           Live
         </span>
       ) : (
-        <span className={cx("absolute right-3.5 top-3.5 z-10 rounded-full border px-2 py-0.5 text-[9px] font-semibold tabular-nums", isUp ? "border-[#4ade80]/10 bg-[#4ade80]/[0.045] text-[#4ade80]" : "border-[#ff3771]/10 bg-[#ff3771]/[0.04] text-[#ff3771]/88")}>{isUp ? "ATH " : ""}{Math.abs(card.change).toFixed(1)}%</span>
+        <span className={cx("absolute right-3.5 top-3.5 z-10 rounded-full border px-2 py-0.5 text-[9px] font-semibold tabular-nums", isUp ? "border-[#18c98e]/10 bg-[#18c98e]/[0.045] text-[#18c98e]" : "border-[#ff3771]/10 bg-[#ff3771]/[0.04] text-[#ff3771]/88")}>{isUp ? "ATH " : ""}{Math.abs(card.change).toFixed(1)}%</span>
       )}
 
       <p className="relative z-10 mt-2 line-clamp-2 min-h-[32px] text-[11.5px] leading-[1.42] text-white/48">{card.desc}</p>
@@ -1383,9 +1345,9 @@ function getVisibleTokenCards(selectedNetworks: ReadonlySet<Network>, contentSor
 
 function TokenCardGrid({ cards, currentTime }: { cards: TokenCardData[]; currentTime: number }) {
   return (
-    <div className="bb-scroll min-h-0 flex-1 overflow-y-auto">
+    <div className="bb-scroll min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto">
       {cards.length ? (
-        <motion.div layout className="grid grid-cols-1 gap-5 px-8 py-5 lg:grid-cols-2 2xl:grid-cols-3">
+        <motion.div layout className="grid w-full grid-cols-1 gap-x-8 gap-y-6 px-6 pb-5 pt-7 md:px-8 lg:grid-cols-2 xl:grid-cols-3 min-[2360px]:grid-cols-4 min-[3000px]:grid-cols-5">
           <AnimatePresence mode="popLayout" initial={false}>
             {cards.map((card) => <TokenFeedCard key={card.id} card={card} currentTime={currentTime} spotlight={getSmartSpotlight(card, currentTime)} />)}
           </AnimatePresence>
@@ -1435,28 +1397,23 @@ function NavItem({ icon, label, href, tone = "emerald", onClick, activeOverride 
     ? "radial-gradient(140px circle at var(--sx) var(--sy), rgba(234,179,8,0.22), transparent 55%)"
     : tone === "violet"
       ? "radial-gradient(150px circle at var(--sx) var(--sy), rgba(139,92,246,0.25), transparent 58%)"
-      : "radial-gradient(140px circle at var(--sx) var(--sy), rgba(74,222,128,0.18), transparent 55%)";
+      : "radial-gradient(140px circle at var(--sx) var(--sy), rgba(24,201,142,0.18), transparent 55%)";
   const hoverTone = tone === "violet"
     ? "hover:bg-violet-500/[0.055] hover:text-white"
     : tone === "gold"
       ? "hover:bg-amber-400/[0.045] hover:text-white"
-      : "hover:bg-[#4ade80]/[0.045] hover:text-white";
-  const activeTone = tone === "violet"
-    ? "bg-violet-500/[0.11] text-violet-100 ring-1 ring-violet-400/24 shadow-[inset_0_1px_0_rgba(255,255,255,0.035),0_8px_20px_rgba(76,29,149,0.12)]"
-    : tone === "gold"
-      ? "bg-amber-400/[0.09] text-amber-50 ring-1 ring-amber-300/22 shadow-[inset_0_1px_0_rgba(255,255,255,0.035),0_8px_20px_rgba(120,80,0,0.10)]"
-      : "bg-[#4ade80]/[0.09] text-[#dcffe7] ring-1 ring-[#4ade80]/22 shadow-[inset_0_1px_0_rgba(255,255,255,0.035),0_8px_20px_rgba(0,100,70,0.10)]";
+      : "hover:bg-[#18c98e]/[0.045] hover:text-white";
   const iconTone = tone === "violet"
     ? active
-      ? "bg-violet-500/[0.18] text-violet-200 ring-violet-400/30"
+      ? "bg-white/[0.035] text-violet-300 ring-white/10"
       : "bg-white/[0.035] text-white/38 ring-white/10 group-hover:bg-violet-500/[0.14] group-hover:text-violet-200 group-hover:ring-violet-400/24"
     : tone === "gold"
       ? active
-        ? "bg-amber-400/[0.16] text-amber-100 ring-amber-300/28"
+        ? "bg-white/[0.035] text-amber-300 ring-white/10"
         : "bg-white/[0.035] text-white/38 ring-white/10 group-hover:bg-amber-400/[0.12] group-hover:text-amber-100 group-hover:ring-amber-300/22"
       : active
-        ? "bg-[#4ade80]/[0.15] text-[#dcffe7] ring-[#4ade80]/28"
-        : "bg-white/[0.035] text-white/38 ring-white/10 group-hover:bg-[#4ade80]/[0.12] group-hover:text-[#dcffe7] group-hover:ring-[#4ade80]/22";
+        ? "bg-white/[0.035] text-[#18c98e] ring-white/10"
+        : "bg-white/[0.035] text-white/38 ring-white/10 group-hover:bg-[#18c98e]/[0.12] group-hover:text-[#dcffe7] group-hover:ring-[#18c98e]/22";
 
   const updateSpot = React.useCallback((x: string, y: string) => {
     const element = ref.current;
@@ -1477,198 +1434,13 @@ function NavItem({ icon, label, href, tone = "emerald", onClick, activeOverride 
         updateSpot(`${event.clientX - bounds.left}px`, `${event.clientY - bounds.top}px`);
       }}
       onMouseLeave={() => updateSpot("-999px", "-999px")}
-      className={cx("group relative isolate flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-sm text-white/68 transition-[background-color,color,box-shadow] duration-300", active ? activeTone : hoverTone)}
+      className={cx("group relative isolate flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-sm text-white/68 transition-[background-color,color,box-shadow] duration-300", active ? "" : hoverTone)}
       style={{ "--sx": "-999px", "--sy": "-999px" } as React.CSSProperties}
     >
-      <span aria-hidden="true" className={cx("pointer-events-none absolute inset-0 -z-10 rounded-lg transition-opacity duration-300", active ? "opacity-55" : "opacity-0 group-hover:opacity-100")} style={{ background: spotlight }} />
+      <span aria-hidden="true" className={cx("pointer-events-none absolute inset-0 -z-10 rounded-lg opacity-0 transition-opacity duration-300", active ? "" : "group-hover:opacity-100")} style={{ background: spotlight }} />
       <span className={cx("grid h-8 w-8 place-items-center rounded-lg ring-1 transition-colors duration-300", iconTone)}>{icon}</span>
       <span className="truncate">{label}</span>
     </Link>
-  );
-}
-
-function CollectFeeTargetRow({ target, selected, onSelect }: { target: FeeCollectTarget; selected: boolean; onSelect: () => void }) {
-  return (
-    <button
-      type="button"
-      aria-pressed={selected}
-      onClick={onSelect}
-      className={cx(
-        "group relative flex w-full min-w-0 flex-wrap items-center gap-3 px-4 py-3 text-left transition-[background-color,box-shadow] duration-200 sm:flex-nowrap sm:px-5",
-        selected ? "bg-[#4ade80]/[0.045] shadow-[inset_2px_0_0_rgba(74,222,128,0.78)]" : "hover:bg-white/[0.028]",
-      )}
-    >
-      <span
-        aria-hidden="true"
-        className="grid h-9 w-9 shrink-0 place-items-center rounded-[11px] border bg-[#101212] text-[10px] font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]"
-        style={{ borderColor: tokenTint(target.accent, selected ? 38 : 20), color: target.accent }}
-      >
-        {target.avatar}
-      </span>
-
-      <span className="min-w-0 flex-1">
-        <span className="flex min-w-0 items-baseline gap-2">
-          <span className="truncate text-[12.5px] font-semibold tracking-[-0.015em] text-white/88">{target.project}</span>
-          <span className="shrink-0 text-[8px] font-semibold uppercase tracking-[0.11em] text-white/30">{target.symbol}</span>
-        </span>
-        <span className="mt-1 flex min-w-0 items-center gap-1.5 text-[9.5px] text-white/34">
-          <NetworkIcon network={target.network} className="h-3 w-3" />
-          <span className="shrink-0">{networkName(target.network)}</span>
-          <span className="text-white/16">·</span>
-          <span className="truncate tabular-nums">{target.contract}</span>
-        </span>
-      </span>
-
-      <span className="ml-auto flex min-w-0 basis-full items-center justify-between gap-2.5 pl-12 sm:basis-auto sm:min-w-[244px] sm:justify-end sm:pl-0">
-        <span className="text-right">
-          <span className="block text-[13px] font-semibold tabular-nums tracking-[-0.02em] text-[#4ade80]/90">{formatUsd(target.usdValue)}</span>
-          <span className="mt-0.5 block max-w-[188px] truncate text-[9.5px] tabular-nums text-white/38">
-            {target.nativeAmount} <span className="px-0.5 text-white/18">+</span> {target.tokenAmount}
-          </span>
-        </span>
-        <span className={cx("grid h-5 w-5 shrink-0 place-items-center rounded-full border transition-colors", selected ? "border-[#4ade80]/28 bg-[#4ade80]/[0.11] text-[#4ade80]" : "border-white/[0.08] text-transparent group-hover:border-white/16")}>
-          <Check className="h-3 w-3" strokeWidth={2.2} />
-        </span>
-      </span>
-    </button>
-  );
-}
-
-function CollectFeesModal({ open, walletAddress, onClose, onCollected }: { open: boolean; walletAddress: string; onClose: () => void; onCollected: (target: FeeCollectTarget) => void }) {
-  const [selectedId, setSelectedId] = React.useState(FEE_COLLECT_TARGETS[0].id);
-  const [collectionState, setCollectionState] = React.useState<"idle" | "collecting" | "success">("idle");
-  const collectionTimerRef = React.useRef<number | null>(null);
-  const selectedTarget = FEE_COLLECT_TARGETS.find((target) => target.id === selectedId) ?? FEE_COLLECT_TARGETS[0];
-
-  const clearCollectionTimer = React.useCallback(() => {
-    if (collectionTimerRef.current !== null) {
-      window.clearTimeout(collectionTimerRef.current);
-      collectionTimerRef.current = null;
-    }
-  }, []);
-
-  const closeModal = React.useCallback(() => {
-    clearCollectionTimer();
-    setCollectionState("idle");
-    onClose();
-  }, [clearCollectionTimer, onClose]);
-
-  React.useEffect(() => {
-    if (!open) return;
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") closeModal();
-    };
-    window.addEventListener("keydown", closeOnEscape);
-    return () => window.removeEventListener("keydown", closeOnEscape);
-  }, [closeModal, open]);
-
-  React.useEffect(() => () => clearCollectionTimer(), [clearCollectionTimer]);
-
-  const selectTarget = (targetId: string) => {
-    clearCollectionTimer();
-    setSelectedId(targetId);
-    setCollectionState("idle");
-  };
-
-  const collectSelectedFees = () => {
-    clearCollectionTimer();
-    setCollectionState("collecting");
-    const collectedTarget = selectedTarget;
-    collectionTimerRef.current = window.setTimeout(() => {
-      setCollectionState("success");
-      onCollected(collectedTarget);
-      collectionTimerRef.current = null;
-    }, 720);
-  };
-
-  return (
-    <AnimatePresence>
-      {open ? (
-        <motion.div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/72 p-3 backdrop-blur-[6px] sm:p-6"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.2 }}
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) closeModal();
-          }}
-        >
-          <motion.section
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="collect-fees-title"
-            initial={{ opacity: 0, y: 14, scale: 0.985 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 10, scale: 0.99 }}
-            transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
-            className="flex max-h-[calc(100vh-24px)] w-full max-w-[680px] flex-col overflow-hidden rounded-[22px] border border-white/[0.095] bg-[linear-gradient(180deg,#101212_0%,#0a0c0b_100%)] shadow-[0_34px_110px_rgba(0,0,0,0.68),inset_0_1px_0_rgba(255,255,255,0.03)] sm:max-h-[calc(100vh-48px)]"
-          >
-            <header className="flex items-start gap-3.5 border-b border-white/[0.065] px-4 py-4 sm:px-5 sm:py-5">
-              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[11px] border border-white/[0.095] bg-white/[0.028] text-[#4ade80]/72 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]">
-                <HandCoins className="h-4 w-4" strokeWidth={1.7} />
-              </span>
-              <div className="min-w-0 flex-1">
-                <div className="text-[8px] font-semibold uppercase tracking-[0.17em] text-white/30">Creator earnings</div>
-                <h2 id="collect-fees-title" className="mt-1 text-[19px] font-semibold tracking-[-0.035em] text-white/92">Collect fees</h2>
-                <p className="mt-1 text-[10.5px] leading-relaxed text-white/40">Choose an eligible pool and claim its accrued DEX fees.</p>
-              </div>
-              <button type="button" onClick={closeModal} aria-label="Close fee collection" className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-white/34 ring-1 ring-white/[0.08] transition hover:bg-white/[0.045] hover:text-white/72 hover:ring-white/[0.14]">
-                <X className="h-3.5 w-3.5" />
-              </button>
-            </header>
-
-            <div className="bb-scroll min-h-0 overflow-y-auto px-4 py-4 sm:px-5">
-              <div className="mb-2.5 flex items-center justify-between gap-3 px-0.5">
-                <div className="flex items-center gap-2 text-[9px] uppercase tracking-[0.13em] text-white/30">
-                  <span>Eligible pools</span>
-                  <span className="rounded-full bg-[#4ade80]/[0.06] px-1.5 py-0.5 text-[8px] font-semibold tracking-normal text-[#4ade80]/66 ring-1 ring-[#4ade80]/12">{FEE_COLLECT_TARGETS.length} ready</span>
-                </div>
-                <div className="flex min-w-0 items-center gap-1.5 text-[9px] text-white/28">
-                  <Wallet className="h-3 w-3 shrink-0" />
-                  <span className="truncate tabular-nums">{shortAddr(walletAddress)}</span>
-                </div>
-              </div>
-
-              <div className="overflow-hidden rounded-[15px] border border-white/[0.075] bg-black/10 divide-y divide-white/[0.055]">
-                {FEE_COLLECT_TARGETS.map((target) => (
-                  <CollectFeeTargetRow key={target.id} target={target} selected={target.id === selectedId} onSelect={() => selectTarget(target.id)} />
-                ))}
-              </div>
-
-            </div>
-
-            <footer className="flex flex-col gap-3 border-t border-white/[0.065] bg-black/10 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:px-5 sm:py-4">
-              <div className="min-w-0">
-                <div className="text-[8px] font-semibold uppercase tracking-[0.16em] text-white/28">Ready to collect</div>
-                <div className="mt-1 flex min-w-0 flex-wrap items-baseline gap-x-2.5 gap-y-0.5">
-                  <span className="text-[20px] font-semibold tabular-nums tracking-[-0.04em] text-[#4ade80]/92">{formatUsd(selectedTarget.usdValue)}</span>
-                  <span className="truncate text-[10px] tabular-nums text-white/42">
-                    {selectedTarget.nativeAmount} <span className="px-0.5 text-white/18">+</span> {selectedTarget.tokenAmount}
-                  </span>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={collectSelectedFees}
-                disabled={collectionState !== "idle"}
-                className={cx(
-                  "group inline-flex h-10 w-[124px] shrink-0 items-center justify-center gap-2 rounded-[13px] border text-[11px] font-semibold transition-[background-color,border-color,color,box-shadow,transform] duration-200",
-                  collectionState === "success"
-                    ? "border-[#4ade80]/14 bg-[#4ade80]/[0.055] text-[#4ade80]/68"
-                    : collectionState === "collecting"
-                      ? "border-white/[0.08] bg-white/[0.025] text-white/42"
-                      : "border-[#4ade80]/24 bg-[#4ade80]/[0.065] text-[#b7f7ca] shadow-[inset_0_1px_0_rgba(255,255,255,0.035),0_10px_28px_rgba(0,0,0,0.18)] hover:-translate-y-px hover:border-[#4ade80]/38 hover:bg-[#4ade80]/[0.1] hover:text-[#d9ffe4]",
-                )}
-              >
-                {collectionState === "success" ? <Check className="h-3.5 w-3.5" /> : <Coins className="h-3.5 w-3.5" />}
-                {collectionState === "collecting" ? "Collecting…" : collectionState === "success" ? "Collected" : "Collect fees"}
-              </button>
-            </footer>
-          </motion.section>
-        </motion.div>
-      ) : null}
-    </AnimatePresence>
   );
 }
 
@@ -1693,7 +1465,7 @@ function ToastViewport({ toast, onDismiss }: { toast: AppToast | null; onDismiss
             className="pointer-events-auto relative w-full overflow-hidden rounded-[14px] border border-white/[0.105] bg-[#0c0f0d]/96 px-3.5 py-3 shadow-[0_20px_54px_rgba(0,0,0,0.56),inset_0_1px_0_rgba(255,255,255,0.035)] backdrop-blur-xl"
           >
             <div className="flex items-start gap-3">
-              <span className="mt-px grid h-7 w-7 shrink-0 place-items-center rounded-[9px] bg-[#4ade80]/[0.085] text-[#4ade80] ring-1 ring-[#4ade80]/18">
+              <span className="mt-px grid h-7 w-7 shrink-0 place-items-center rounded-[9px] bg-[#18c98e]/[0.085] text-[#18c98e] ring-1 ring-[#18c98e]/18">
                 <Check className="h-3.5 w-3.5" strokeWidth={2.1} />
               </span>
               <span className="min-w-0 flex-1">
@@ -1704,7 +1476,7 @@ function ToastViewport({ toast, onDismiss }: { toast: AppToast | null; onDismiss
                 <X className="h-3 w-3" />
               </button>
             </div>
-            <motion.span aria-hidden="true" className="absolute bottom-0 left-0 h-px w-full origin-left bg-[#4ade80]/55" initial={{ scaleX: 1 }} animate={{ scaleX: 0 }} transition={{ duration: 3.6, ease: "linear" }} />
+            <motion.span aria-hidden="true" className="absolute bottom-0 left-0 h-px w-full origin-left bg-[#18c98e]/55" initial={{ scaleX: 1 }} animate={{ scaleX: 0 }} transition={{ duration: 3.6, ease: "linear" }} />
           </motion.div>
         ) : null}
       </AnimatePresence>
@@ -1728,18 +1500,12 @@ function CreatorPayoutStat() {
         <Image unoptimized src="/based-bid-coin-payout-animated.svg" alt="" width={76} height={48} className="bb-creator-payout__art" />
       </span>
       <span className="bb-creator-payout__copy inline-flex items-baseline gap-1.5 whitespace-nowrap">
-        <span className="text-[14px] font-semibold tabular-nums tracking-[-0.025em] text-[#4ade80]">$2.84M+</span>
+        <span className="text-[14px] font-semibold tabular-nums tracking-[-0.025em] text-[#18c98e]">$2.84M+</span>
         <span className="text-[11px] font-medium tracking-[-0.01em] text-white/48">paid to creators</span>
       </span>
     </div>
   );
 }
-
-const LIVE_CHAT_CONTACTS = [
-  { name: "Michael", handle: "@BasedBidMichael", href: "https://t.me/BasedBidMichael", avatar: "/team/michael.jpg" },
-  { name: "Lumi", handle: "@BasedLumi", href: "https://t.me/BasedLumi", avatar: "/team/lumi.jpg" },
-  { name: "Dante", handle: "@BasedDante", href: "https://t.me/BasedDante", avatar: "/team/dante.jpg" },
-] as const;
 
 function LiveChatMenu() {
   const [open, setOpen] = React.useState(false);
@@ -1763,7 +1529,7 @@ function LiveChatMenu() {
         aria-controls="live-chat-menu"
         className={cx("group inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 text-[10px] font-medium transition-[background-color,border-color,color]", open ? "border-white/[0.14] bg-white/[0.045] text-white/82" : "border-white/[0.08] bg-white/[0.018] text-white/46 hover:border-white/[0.14] hover:bg-white/[0.04] hover:text-white/78")}
       >
-        <MessageCircleMore className="h-3 w-3 text-[#4ade80]/62 transition-colors group-hover:text-[#4ade80]" />
+        <MessageCircleMore className="h-3 w-3 text-[#18c98e]/62 transition-colors group-hover:text-[#18c98e]" />
         <span>Live chat</span>
         <ChevronDown className={cx("h-3 w-3 text-white/28 transition-transform duration-200", open && "rotate-180")} />
       </button>
@@ -1777,7 +1543,7 @@ function LiveChatMenu() {
             <div className="border-t border-white/[0.08] p-1.5">
               {LIVE_CHAT_CONTACTS.map((contact) => (
                 <a key={contact.handle} href={contact.href} target="_blank" rel="noreferrer" onClick={() => setOpen(false)} className="group/contact flex items-center gap-2.5 rounded-lg px-2 py-2 transition-colors hover:bg-white/[0.045]">
-                  <Image unoptimized src={contact.avatar} alt="" width={28} height={28} className="h-7 w-7 shrink-0 rounded-full object-cover ring-1 ring-white/[0.12] transition-[filter,box-shadow] group-hover/contact:brightness-110 group-hover/contact:shadow-[0_0_12px_rgba(74,222,128,0.12)]" />
+                  <Image unoptimized src={contact.avatar} alt="" width={28} height={28} className="h-7 w-7 shrink-0 rounded-full object-cover ring-1 ring-white/[0.12] transition-[filter,box-shadow] group-hover/contact:brightness-110 group-hover/contact:shadow-[0_0_12px_rgba(24,201,142,0.12)]" />
                   <span className="min-w-0 flex-1">
                     <span className="block text-[11px] font-medium text-white/76 group-hover/contact:text-white/92">{contact.name}</span>
                     <span className="block truncate text-[9px] text-white/34">{contact.handle}</span>
@@ -1818,13 +1584,13 @@ function SidebarPanel({ query, onQuery, searchRef, sortLabel, onCycleSort, board
               const pinned = !!b.isPinned;
               const isBased = b.id === "based";
               return (
-              <motion.div layout key={b.id} transition={LAYOUT_SPRING} className={cx("group relative flex w-full items-center rounded-xl text-sm transition-[background-color,box-shadow] duration-300 focus-within:ring-1 focus-within:ring-white/15", active && "before:absolute before:bottom-2 before:left-0 before:top-2 before:w-[2px] before:rounded-full before:bg-[#4ade80]/85 before:shadow-[0_0_12px_rgba(74,222,128,0.34)] before:content-['']", active ? "bg-gradient-to-r from-white/[0.075] to-white/[0.035] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.025)]" : "text-white/72 hover:bg-white/[0.045] hover:text-white/92")}>
+              <motion.div layout key={b.id} transition={LAYOUT_SPRING} className={cx("group relative flex w-full items-center rounded-xl text-sm transition-[background-color,box-shadow] duration-300 focus-within:ring-1 focus-within:ring-white/15", active && "before:absolute before:bottom-2 before:left-0 before:top-2 before:w-[2px] before:rounded-full before:bg-[#18c98e]/85 before:shadow-[0_0_12px_rgba(24,201,142,0.34)] before:content-['']", active ? "bg-gradient-to-r from-white/[0.075] to-white/[0.035] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.025)]" : "text-white/72 hover:bg-white/[0.045] hover:text-white/92")}>
                   <button type="button" onClick={() => onSelectBoard(b.id)} className="flex min-w-0 flex-1 items-center gap-2 px-2.5 py-1.5 text-left outline-none">
                     <span className={cx("flex h-7 w-7 shrink-0 items-center justify-center rounded-full ring-1 transition-colors duration-300", active ? "bg-white/10 ring-white/15" : "bg-white/[0.035] ring-white/10 group-hover:bg-white/[0.07]")}>{b.icon ?? <BoardAvatar name={b.name} />}</span>
                     <span className="truncate font-normal">{b.name}</span>
                   </button>
                   {!isBased ? (
-                    <button type="button" onClick={() => onTogglePin(b.id)} className={cx("mr-1 grid h-7 w-7 shrink-0 cursor-pointer place-items-center rounded-lg outline-none transition-all duration-300 hover:bg-white/[0.06]", pinned ? "text-[#4ade80]/85" : "text-white/28 opacity-0 group-hover:opacity-100 hover:text-white/75 focus:opacity-100")} aria-label={pinned ? "Unpin board" : "Pin board"} data-ui-hint={pinned ? "Unpin" : "Pin"}>
+                    <button type="button" onClick={() => onTogglePin(b.id)} className={cx("mr-1 grid h-7 w-7 shrink-0 cursor-pointer place-items-center rounded-lg outline-none transition-all duration-300 hover:bg-white/[0.06]", pinned ? "text-[#18c98e]/85" : "text-white/28 opacity-0 group-hover:opacity-100 hover:text-white/75 focus:opacity-100")} aria-label={pinned ? "Unpin board" : "Pin board"} data-ui-hint={pinned ? "Unpin" : "Pin"}>
                       <Pin className={cx("h-3.5 w-3.5 transition-transform", pinned && "rotate-45")} />
                     </button>
                   ) : null}
@@ -1886,10 +1652,10 @@ function CookieControl({ enabled, onToggle }: { enabled: boolean; onToggle: () =
         <span aria-hidden="true" className="absolute -bottom-[5px] left-5 h-2.5 w-2.5 rotate-45 border-b border-r border-white/[0.10] bg-[#0c0d0d]" />
       </div>
       <button type="button" onClick={onToggle} aria-pressed={enabled} aria-describedby="cookie-help" className="inline-flex h-7 cursor-pointer items-center gap-2 rounded-lg bg-white/[0.018] px-2 text-[10px] font-medium text-white/44 ring-1 ring-white/[0.075] transition-[background-color,color,box-shadow] hover:bg-white/[0.045] hover:text-white/72 hover:ring-white/[0.14] focus-visible:bg-white/[0.045] focus-visible:text-white/72 focus-visible:outline-none focus-visible:ring-white/[0.18]">
-        <Cookie className={cx("h-3 w-3 transition-colors", enabled ? "text-[#4ade80]/68 group-hover/cookies:text-[#4ade80]" : "text-white/30 group-hover/cookies:text-white/62 group-focus-within/cookies:text-white/62")} />
+        <Cookie className={cx("h-3 w-3 transition-colors", enabled ? "text-[#18c98e]/68 group-hover/cookies:text-[#18c98e]" : "text-white/30 group-hover/cookies:text-white/62 group-focus-within/cookies:text-white/62")} />
         <span>Cookies</span>
-        <span className={cx("relative h-[16px] w-[29px] rounded-full border transition-colors duration-300", enabled ? "border-[#4ade80]/25 bg-[#4ade80]/20" : "border-white/10 bg-white/[0.035]")}>
-          <span className={cx("absolute top-[2px] h-[10px] w-[10px] rounded-full transition-[left,background-color,box-shadow] duration-300", enabled ? "left-[15px] bg-[#4ade80] shadow-[0_0_8px_rgba(74,222,128,0.52)]" : "left-[2px] bg-white/38")} />
+        <span className={cx("relative h-[16px] w-[29px] rounded-full border transition-colors duration-300", enabled ? "border-[#18c98e]/25 bg-[#18c98e]/20" : "border-white/10 bg-white/[0.035]")}>
+          <span className={cx("absolute top-[2px] h-[10px] w-[10px] rounded-full transition-[left,background-color,box-shadow] duration-300", enabled ? "left-[15px] bg-[#18c98e] shadow-[0_0_8px_rgba(24,201,142,0.52)]" : "left-[2px] bg-white/38")} />
         </span>
       </button>
     </div>
@@ -1902,7 +1668,9 @@ function PlatformLinks() {
     <div className="inline-flex h-7 items-center rounded-lg bg-black/15 p-0.5 ring-1 ring-white/[0.09] shadow-[inset_0_1px_0_rgba(255,255,255,0.025)]">
       <a href="/how-it-works" className={linkClass}><CircleHelp className="h-3 w-3" />How it works</a>
       <span className="h-3.5 w-px bg-white/[0.08]" aria-hidden="true" />
-      <a href="/deck" className={linkClass}><Presentation className="h-3 w-3" />Pitch deck</a>
+      <a href="/calculator" className={linkClass}><Calculator className="h-3 w-3" />Fee calculator</a>
+      <span className="h-3.5 w-px bg-white/[0.08]" aria-hidden="true" />
+      <a href="/deck" target="_blank" rel="noreferrer" className={linkClass}><Presentation className="h-3 w-3" />Pitch deck</a>
     </div>
   );
 }
@@ -1917,15 +1685,16 @@ function BottomBar({ settings, cookiesEnabled, onToggleCookies }: { settings: Re
         </div>
       </div>
       <div className="relative flex h-full min-w-0 flex-1 items-center px-4">
-        <CookieControl enabled={cookiesEnabled} onToggle={onToggleCookies} />
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"><PlatformLinks /></div>
-        <div className="ml-auto flex items-center gap-4">
-          <LiveChatMenu />
-          <div className="hidden items-center gap-3 text-[9px] text-white/30 xl:flex">
+        <div className="flex items-center gap-3">
+          <CookieControl enabled={cookiesEnabled} onToggle={onToggleCookies} />
+          <div className="flex items-center gap-3 text-[9px] text-white/30">
             <a href="/privacy" className="transition hover:text-white/62">Privacy</a>
             <a href="/terms" className="transition hover:text-white/62">ToS</a>
-            <span className="text-white/20">© 2026 based.bid</span>
           </div>
+        </div>
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"><PlatformLinks /></div>
+        <div className="ml-auto flex items-center">
+          <LiveChatMenu />
         </div>
       </div>
     </div>
@@ -1935,7 +1704,7 @@ function BottomBar({ settings, cookiesEnabled, onToggleCookies }: { settings: Re
 function ContentSortPill({ active, icon, label, onClick }: SortPillProps) {
   return (
     <motion.button type="button" aria-pressed={active} onClick={onClick} whileHover={{ y: -1 }} whileTap={{ scale: 0.985 }} className={cx("inline-flex h-[30px] items-center gap-1.5 rounded-full px-2.5 text-[11px] font-medium tracking-[0.01em] ring-1 transition-[background-color,color,box-shadow] duration-200", active ? "bg-gradient-to-b from-white/[0.11] to-white/[0.065] text-white ring-white/18 shadow-[0_8px_22px_rgba(0,0,0,0.22),inset_0_1px_0_rgba(255,255,255,0.06)]" : "bg-black/10 text-white/48 ring-white/9 hover:bg-white/[0.045] hover:text-white/78 hover:ring-white/14")}>
-      <span className={cx(active ? "text-[#4ade80]" : "text-white/40")}>{icon}</span>
+      <span className={cx(active ? "text-[#18c98e]" : "text-white/40")}>{icon}</span>
       <span>{label}</span>
     </motion.button>
   );
@@ -1951,41 +1720,46 @@ function MainContentHeader({ contentSort, onSetContentSort, selectedNetworks, on
   const dirty = contentSort !== "smart" || selectedNetworks.size !== CHAINS.length;
 
   return (
-    <div className="relative z-20 isolate flex h-[60px] items-center justify-between gap-4 bg-[#090a0a] px-4 md:px-5">
-      <div className="relative z-10 flex min-w-0 items-center gap-2 py-1">
+    <div className="relative z-20 isolate shrink-0 bg-[#090a0a] px-4 pb-2.5 pt-5 md:px-8">
+      <div className="relative z-10 flex min-h-10 items-center justify-between gap-4">
+        <div className="hidden min-w-0 items-center sm:flex">
+          <CreatorPayoutStat />
+        </div>
+        <Link
+          href="/create"
+          aria-label="Create a token"
+          className="bb-create-launch group relative z-10 ml-auto isolate inline-flex h-10 min-w-[132px] shrink-0 items-center justify-center gap-2 rounded-[15px] px-6 text-[13px] font-semibold text-white/90"
+        >
+          <span aria-hidden="true" className="bb-create-launch__glow bb-ambient-effect" />
+          <span aria-hidden="true" className="bb-create-launch__wash" />
+          <span aria-hidden="true" className="bb-create-launch__edge" />
+          <Plus className="bb-create-launch__plus relative z-10 h-4 w-4 text-white/68" />
+          <span className="relative z-10 tracking-[-0.01em]">Create</span>
+        </Link>
+      </div>
+
+      <div className="relative z-10 mt-3 flex flex-wrap items-center justify-center gap-4">
         <div className="flex shrink-0 items-center gap-1.5 overflow-visible">
           {items.map(([value, icon, label]) => <ContentSortPill key={value} active={contentSort === value} icon={icon} label={label} onClick={() => onSetContentSort(value)} />)}
         </div>
-        <NetworkFilter selected={selectedNetworks} onToggle={onToggleNetwork} onSelectAll={onSelectAllNetworks} />
-        <button
-          type="button"
-          onClick={onReset}
-          disabled={!dirty}
-          aria-label="Reset sorting and network filters"
-          data-ui-hint="Reset filters"
-          className={cx(
-            "inline-flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full ring-1 ring-inset transition-[background-color,color,box-shadow] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4ade80]/45",
-            dirty ? "bg-white/[0.018] text-white/48 ring-white/[0.075] hover:bg-white/[0.05] hover:text-white/86 hover:ring-white/[0.14]" : "cursor-default bg-transparent text-white/16 ring-white/[0.035]",
-          )}
-        >
-          <RotateCcw className="h-3.5 w-3.5" strokeWidth={1.8} />
-        </button>
+        <div className="flex items-center gap-2">
+          <NetworkFilter selected={selectedNetworks} onToggle={onToggleNetwork} onSelectAll={onSelectAllNetworks} />
+          <button
+            type="button"
+            onClick={onReset}
+            disabled={!dirty}
+            aria-label="Reset sorting and network filters"
+            data-ui-hint="Reset filters"
+            className={cx(
+              "inline-flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full ring-1 ring-inset transition-[background-color,color,box-shadow] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#18c98e]/45",
+              dirty ? "bg-white/[0.018] text-white/48 ring-white/[0.075] hover:bg-white/[0.05] hover:text-white/86 hover:ring-white/[0.14]" : "cursor-default bg-transparent text-white/16 ring-white/[0.035]",
+            )}
+          >
+            <RotateCcw className="h-3.5 w-3.5" strokeWidth={1.8} />
+          </button>
+        </div>
       </div>
-      <div className="hidden min-w-0 flex-1 justify-center px-3 min-[1200px]:flex">
-        <CreatorPayoutStat />
-      </div>
-      <Link
-        href="/create"
-        aria-label="Create a token"
-        className="bb-create-launch group relative z-10 isolate inline-flex h-10 min-w-[132px] shrink-0 items-center justify-center gap-2 rounded-[15px] px-6 text-[13px] font-semibold text-white/90"
-      >
-        <span aria-hidden="true" className="bb-create-launch__glow bb-ambient-effect" />
-        <span aria-hidden="true" className="bb-create-launch__wash" />
-        <span aria-hidden="true" className="bb-create-launch__edge" />
-        <Plus className="bb-create-launch__plus relative z-10 h-4 w-4 text-white/68" />
-        <span className="relative z-10 tracking-[-0.01em]">Create</span>
-      </Link>
-      <span aria-hidden="true" className="pointer-events-none absolute -bottom-7 left-0 right-0 z-0 h-7 bg-gradient-to-b from-[#090a0a] via-[#090a0a]/80 to-transparent" />
+      <span aria-hidden="true" className="pointer-events-none absolute -bottom-8 left-0 right-0 z-0 h-8 bg-gradient-to-b from-[#090a0a] via-[#090a0a]/80 to-transparent" />
     </div>
   );
 }
@@ -1997,7 +1771,7 @@ export default function BBLayout() {
   const [contentSort, setContentSort] = React.useState<ContentSortMode>("smart");
   const [selectedNetworks, setSelectedNetworks] = React.useState<Set<Network>>(createAllNetworkSet);
   const [boardsState, setBoardsState] = React.useState<Board[]>(BOARDS);
-  const [addr] = React.useState("0x4573A94fF2b711A4EcB9");
+  const [addr] = React.useState("0xA17C9e42B6D8f3057C24aE91B5d7630F8C2e4A69");
   const [settingsOpen, setSettingsOpen] = React.useState(false);
   const [collectFeesOpen, setCollectFeesOpen] = React.useState(false);
   const [cookiesEnabled, setCookiesEnabled] = React.useState(true);
@@ -2005,7 +1779,7 @@ export default function BBLayout() {
   const [toast, setToast] = React.useState<AppToast | null>(null);
 
   const dismissToast = React.useCallback(() => setToast(null), []);
-  const showCollectedToast = React.useCallback((target: FeeCollectTarget) => {
+  const showCollectedToast = React.useCallback((target: SharedFeeCollectTarget) => {
     setToast({
       id: Date.now(),
       title: "Fees collected",
@@ -2057,19 +1831,24 @@ export default function BBLayout() {
     const requestedBoard = params.get("board");
     const requestedQuery = params.get("q");
 
+    if (params.has("collect")) {
+      params.delete("collect");
+      const queryString = params.toString();
+      window.history.replaceState(window.history.state, "", `${window.location.pathname}${queryString ? `?${queryString}` : ""}${window.location.hash}`);
+    }
+
     const handoff = window.setTimeout(() => {
       if (requestedBoard && BOARDS.some((board) => board.id === requestedBoard)) {
         setActiveBoard(requestedBoard);
       }
       if (requestedQuery) setQuery(requestedQuery);
-      if (params.get("collect") === "1") setCollectFeesOpen(true);
     }, 0);
 
     return () => window.clearTimeout(handoff);
   }, []);
 
   React.useEffect(() => {
-    runSelfTests();
+    if (process.env.NODE_ENV !== "production") runSelfTests();
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "/" && !(e.metaKey || e.ctrlKey)) {
         e.preventDefault();
@@ -2108,7 +1887,7 @@ export default function BBLayout() {
             onOpenCollectFees={openCollectFees}
             collectFeesOpen={collectFeesOpen}
           />
-          <div className="flex min-h-0 flex-1 flex-col bg-[#090a0a]">
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-[#090a0a]">
             <MainContentHeader contentSort={contentSort} onSetContentSort={setContentSort} selectedNetworks={selectedNetworks} onToggleNetwork={toggleNetworkFilter} onSelectAllNetworks={() => setSelectedNetworks(createAllNetworkSet())} onReset={resetContentFilters} />
             <TokenCardGrid cards={visibleTokenCards} currentTime={smartNow} />
           </div>
@@ -2121,7 +1900,7 @@ export default function BBLayout() {
         />
       </div>
 
-      <CollectFeesModal open={collectFeesOpen} walletAddress={addr} onClose={() => setCollectFeesOpen(false)} onCollected={showCollectedToast} />
+      <SharedCollectFeesModal open={collectFeesOpen} walletAddress={addr} onClose={() => setCollectFeesOpen(false)} onCollected={showCollectedToast} />
       <ToastViewport toast={toast} onDismiss={dismissToast} />
     </div>
   );

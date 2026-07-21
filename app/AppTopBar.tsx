@@ -3,6 +3,8 @@
 import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useTerminalSidebar } from "./TerminalSidebarContext";
 import {
   ArrowUpRight,
   Bell,
@@ -18,6 +20,8 @@ import {
   Wallet,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import WalletNetworkModal, { type WalletNetwork } from "./WalletNetworkModal";
+import { isStandaloneDeckRoute } from "./appConfig";
 
 type Network = "eth" | "bsc" | "base" | "sol" | "robinhood" | "megaeth";
 
@@ -70,12 +74,12 @@ function NotificationRow({ item, onRead }: { item: NotificationItem; onRead: (id
   return (
     <button type="button" onClick={() => onRead(item.id)} className="flex w-full cursor-pointer items-start gap-2.5 px-3 py-2.5 text-left transition-colors hover:bg-white/[0.04]">
       <span className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-[8px] bg-white/[0.035] text-white/54 ring-1 ring-white/[0.08]">
-        {item.type === "system" ? <Info className="h-3.5 w-3.5" /> : item.type === "fees" ? <Coins className="h-3.5 w-3.5 text-[#4ade80]" /> : <Plus className="h-3.5 w-3.5 text-[#4ade80]" />}
+        {item.type === "system" ? <Info className="h-3.5 w-3.5" /> : item.type === "fees" ? <Coins className="h-3.5 w-3.5 text-[#18c98e]" /> : <Plus className="h-3.5 w-3.5 text-[#18c98e]" />}
       </span>
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-1.5 text-[11px] font-medium text-white/78">
           <span className="truncate">{item.title}</span>
-          {item.unread ? <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#4ade80]" /> : null}
+          {item.unread ? <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#18c98e]" /> : null}
         </span>
         <span className="mt-0.5 block text-[10px] leading-relaxed text-white/40">{item.body}</span>
       </span>
@@ -102,7 +106,7 @@ function NotificationsMenu() {
     <div className="relative" data-global-notifications>
       <button type="button" onClick={() => setOpen((value) => !value)} className="relative grid h-9 w-9 cursor-pointer place-items-center rounded-xl text-white/56 transition-colors hover:bg-white/[0.045] hover:text-white/84" aria-label="Notifications" aria-expanded={open}>
         <Bell className="h-4 w-4" />
-        {unread ? <span className="absolute right-[8px] top-[8px] h-2 w-2 rounded-full bg-[#4ade80] shadow-[0_0_8px_rgba(74,222,128,0.58)]" /> : null}
+        {unread ? <span className="absolute right-[8px] top-[8px] h-2 w-2 rounded-full bg-[#18c98e] shadow-[0_0_8px_rgba(24,201,142,0.58)]" /> : null}
       </button>
       <AnimatePresence>
         {open ? (
@@ -123,11 +127,13 @@ function NotificationsMenu() {
 }
 
 function WalletMenu() {
+  const pathname = usePathname();
   const [connected, setConnected] = useState(false);
   const [open, setOpen] = useState(false);
+  const [connectModalOpen, setConnectModalOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [network, setNetwork] = useState<Network>("base");
-  const address = "0x4573A94fF2b711A4EcB9";
+  const address = "0xA17C9e42B6D8f3057C24aE91B5d7630F8C2e4A69";
   const balance = 0.176;
 
   useEffect(() => {
@@ -145,13 +151,30 @@ function WalletMenu() {
     window.setTimeout(() => setCopied(false), 1200);
   };
 
+  const connectToNetwork = (selectedNetwork: WalletNetwork) => {
+    setNetwork(selectedNetwork === "solana" ? "sol" : "base");
+    setConnectModalOpen(false);
+    setConnected(true);
+  };
+
   return (
     <div className="relative" data-global-wallet>
       <button
         type="button"
-        onClick={() => connected ? setOpen((value) => !value) : setConnected(true)}
+        onClick={() => {
+          if (connected) {
+            setOpen((value) => !value);
+            return;
+          }
+          if (pathname === "/") {
+            setConnectModalOpen(true);
+            return;
+          }
+          setConnected(true);
+        }}
         aria-label={connected ? "Wallet connected" : "Connect wallet"}
-        aria-expanded={connected ? open : undefined}
+        aria-haspopup={!connected && pathname === "/" ? "dialog" : undefined}
+        aria-expanded={connected ? open : pathname === "/" ? connectModalOpen : undefined}
         className={cx(
           "inline-flex h-9 w-[104px] cursor-pointer items-center overflow-hidden whitespace-nowrap rounded-lg border px-3 text-[12px] font-medium shadow-sm ring-1 transition-[width,background-color,border-color,color,box-shadow] duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] focus-visible:outline-none sm:w-[144px]",
           connected
@@ -186,17 +209,17 @@ function WalletMenu() {
                 <div className="text-[8px] font-semibold uppercase tracking-[0.16em] text-white/28">Wallet</div>
                 <div className="mt-0.5 text-[13px] font-semibold text-white/88">Account &amp; network</div>
               </div>
-              <div className="inline-flex items-center gap-1.5 text-[9px] font-medium leading-none text-[#4ade80]"><span className="h-1.5 w-1.5 rounded-full bg-[#4ade80] shadow-[0_0_8px_rgba(74,222,128,0.7)]" />Connected</div>
+              <div className="inline-flex items-center gap-1.5 text-[9px] font-medium leading-none text-[#18c98e]"><span className="h-1.5 w-1.5 rounded-full bg-[#18c98e] shadow-[0_0_8px_rgba(24,201,142,0.7)]" />Connected</div>
             </div>
             <div className="border-t border-white/[0.075]" />
             <div className="group relative flex cursor-pointer items-center gap-3 px-4 py-3.5 transition-colors hover:bg-white/[0.04]">
               <Link href="/profile" className="absolute inset-0 z-0" aria-label="Open @redrum profile" />
-              <span className="pointer-events-none relative z-10 grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white/[0.035] text-white/52 ring-1 ring-white/[0.11] transition-colors group-hover:text-[#4ade80]"><User className="h-4 w-4" /></span>
+              <span className="pointer-events-none relative z-10 grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white/[0.035] text-white/52 ring-1 ring-white/[0.11] transition-colors group-hover:text-[#18c98e]"><User className="h-4 w-4" /></span>
               <span className="pointer-events-none relative z-10 min-w-0 flex-1">
                 <span className="block text-[10px] font-semibold text-white/74 group-hover:text-white/90">@redrum</span>
                 <span className="pointer-events-auto mt-1 flex items-center gap-1">
-                  <a href={`${EXPLORERS[network]}${address}`} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()} className="relative z-20 text-[11px] font-medium text-white/58 transition-colors hover:text-[#4ade80]">{shortAddress(address)}</a>
-                  <button type="button" onClick={(event) => { event.preventDefault(); event.stopPropagation(); void copyAddress(); }} className="relative z-20 grid h-5 w-5 cursor-pointer place-items-center text-white/28 transition-colors hover:text-[#4ade80]" aria-label="Copy wallet address">{copied ? <Check className="h-3 w-3 text-[#4ade80]" /> : <Copy className="h-3 w-3" />}</button>
+                  <a href={`${EXPLORERS[network]}${address}`} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()} className="relative z-20 text-[11px] font-medium text-white/58 transition-colors hover:text-[#18c98e]">{shortAddress(address)}</a>
+                  <button type="button" onClick={(event) => { event.preventDefault(); event.stopPropagation(); void copyAddress(); }} className="relative z-20 grid h-5 w-5 cursor-pointer place-items-center text-white/28 transition-colors hover:text-[#18c98e]" aria-label="Copy wallet address">{copied ? <Check className="h-3 w-3 text-[#18c98e]" /> : <Copy className="h-3 w-3" />}</button>
                 </span>
               </span>
               <span className="pointer-events-none relative z-10 shrink-0 text-right">
@@ -219,10 +242,15 @@ function WalletMenu() {
             <div className="border-t border-white/[0.075]" />
             <Link href="/wallet" className="flex w-full cursor-pointer items-center gap-2 px-4 py-2.5 text-[10px] font-medium text-white/48 transition-colors hover:bg-white/[0.04] hover:text-white/80"><Settings className="h-3.5 w-3.5" />Wallet options</Link>
             <div className="border-t border-white/[0.075]" />
-            <button type="button" onClick={() => { setConnected(false); setOpen(false); }} className="flex w-full cursor-pointer items-center gap-2 px-4 py-2.5 text-[10px] font-medium text-white/48 transition-colors hover:bg-[#ff3771]/[0.075] hover:text-[#ff3771]"><LogOut className="h-3.5 w-3.5" />Disconnect</button>
+            <button type="button" onClick={() => { setConnected(false); setOpen(false); setConnectModalOpen(false); }} className="flex w-full cursor-pointer items-center gap-2 px-4 py-2.5 text-[10px] font-medium text-white/48 transition-colors hover:bg-[#ff3771]/[0.075] hover:text-[#ff3771]"><LogOut className="h-3.5 w-3.5" />Disconnect</button>
           </motion.div>
         ) : null}
       </AnimatePresence>
+      <WalletNetworkModal
+        open={!connected && pathname === "/" && connectModalOpen}
+        onClose={() => setConnectModalOpen(false)}
+        onSelect={connectToNetwork}
+      />
     </div>
   );
 }
@@ -238,15 +266,20 @@ function TradeButton() {
 }
 
 export default function AppTopBar() {
+  const pathname = usePathname();
+  const { expanded: sidebarExpanded } = useTerminalSidebar();
+
+  if (isStandaloneDeckRoute(pathname)) return null;
+
   return (
     <header className="sticky top-0 z-[240] flex h-14 w-full shrink-0 items-center border-b border-white/[0.08] bg-[#0b0c0c]/96 shadow-[0_1px_0_rgba(255,255,255,0.015)] backdrop-blur-xl">
-      <div className="flex h-full w-auto shrink-0 items-center border-r-0 border-white/[0.08] px-3 sm:w-[272px] sm:border-r">
-        <Link href="/" className="flex items-center gap-2.5 px-1 py-1 transition-opacity hover:opacity-90" aria-label="Based Bid home">
+      <div className={cx("flex h-full shrink-0 items-center justify-start border-r border-white/[0.08] px-3 transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]", sidebarExpanded ? "w-[272px]" : "w-[66px] min-[1800px]:w-[272px]")}>
+        <Link href="/" className={cx("flex items-center px-1 py-1 transition-[gap,opacity] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:opacity-90", sidebarExpanded ? "gap-2.5" : "gap-0 min-[1800px]:gap-2.5")} aria-label="Based Bid home">
           <Image unoptimized src={BRAND_ICON} alt="Based Bid" width={36} height={36} className="h-9 w-9 rounded-2xl object-cover" priority />
-          <span className="hidden flex-col leading-tight min-[470px]:flex">
-            <span className="text-[15px] font-medium tracking-tight text-white">based.bid</span>
+          <span className={cx("flex min-w-0 flex-col overflow-hidden whitespace-nowrap leading-tight transition-[max-width,opacity,transform] duration-200 ease-out", sidebarExpanded ? "max-w-[150px] translate-x-0 opacity-100 delay-100" : "max-w-0 -translate-x-1 opacity-0 min-[1800px]:max-w-[150px] min-[1800px]:translate-x-0 min-[1800px]:opacity-100")}>
+            <span className="text-[15px] font-medium tracking-tight text-white">based <span className="text-[#18c98e]">bid</span></span>
             <span className="mt-0.5 text-[7.5px] font-semibold uppercase tracking-[0.225em] text-white/38">
-              Next-gen <span className="text-[#4ade80]/72">economies</span>
+              Programmable <span className="text-[#d8b75f]/80">economies</span>
             </span>
           </span>
         </Link>

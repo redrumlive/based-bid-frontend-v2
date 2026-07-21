@@ -14,6 +14,11 @@ select {
 
 :root {
   color-scheme: dark;
+  --bb-green: #18c98e;
+  --bb-green-bright: #52dfb2;
+  --bb-green-rgb: 24, 201, 142;
+  --bb-red: #ff3771;
+  --bb-red-rgb: 255, 55, 113;
 }
 
 html,
@@ -45,6 +50,15 @@ html::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.24);
 }
 
+.app-sidebar-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.app-sidebar-scroll::-webkit-scrollbar {
+  display: none;
+}
+
 body {
   min-height: 100vh;
   text-rendering: optimizeLegibility;
@@ -57,7 +71,7 @@ body {
 }
 
 ::selection {
-  background: rgba(16, 185, 129, 0.28);
+  background: rgba(var(--bb-green-rgb), 0.28);
   color: #ffffff;
 }
 
@@ -75,8 +89,8 @@ select {
 html[data-ambient="off"] .bb-ambient-effect,
 html[data-ambient="off"] .bb-ambient-surface::before,
 html[data-ambient="off"] .bb-ambient-surface::after,
-html[data-ambient="off"] button[class*="bg-[#10B981]"][class*="text-[#02130B]"]::before,
-html[data-ambient="off"] button[class*="bg-[#10B981]/90"][class*="text-[#03150D]"]::before {
+html[data-ambient="off"] button[class*="bg-[#18C98E]"][class*="text-[#02130B]"]::before,
+html[data-ambient="off"] button[class*="bg-[#18C98E]/90"][class*="text-[#03150D]"]::before {
   opacity: 0 !important;
   animation: none !important;
   pointer-events: none !important;
@@ -140,10 +154,10 @@ section.mt-8 > .grid > button:hover {
   box-shadow: 0 22px 46px rgba(0, 0, 0, 0.38);
 }
 
-section.mt-8 > .grid > button:has(.bg-\[\#10B981\]):hover {
-  border-color: rgba(16, 185, 129, 0.45);
-  background: linear-gradient(135deg, rgba(16, 185, 129, 0.10), #121212 42%, #101010);
-  box-shadow: 0 22px 46px rgba(0, 0, 0, 0.38), 0 0 28px rgba(16, 185, 129, 0.12);
+section.mt-8 > .grid > button:has(.bg-\[\#18C98E\]):hover {
+  border-color: rgba(24, 201, 142, 0.45);
+  background: linear-gradient(135deg, rgba(24, 201, 142, 0.10), #121212 42%, #101010);
+  box-shadow: 0 22px 46px rgba(0, 0, 0, 0.38), 0 0 28px rgba(24, 201, 142, 0.12);
 }
 
 section.mt-8 > .grid > button:has(.bg-fuchsia-500):hover {
@@ -163,8 +177,8 @@ section.mt-8 > .grid > button:hover > div:first-child {
   filter: saturate(1.25) brightness(1.16);
 }
 
-button[class*="bg-[#10B981]"][class*="text-[#02130B]"],
-button[class*="bg-[#10B981]/90"][class*="text-[#03150D]"] {
+button[class*="bg-[#18C98E]"][class*="text-[#02130B]"],
+button[class*="bg-[#18C98E]/90"][class*="text-[#03150D]"] {
   --bb-launch-rainbow: linear-gradient(
     90deg,
     rgb(255, 109, 27),
@@ -200,8 +214,8 @@ button[class*="bg-[#10B981]/90"][class*="text-[#03150D]"] {
     filter 220ms ease;
 }
 
-button[class*="bg-[#10B981]"][class*="text-[#02130B]"]::before,
-button[class*="bg-[#10B981]/90"][class*="text-[#03150D]"]::before {
+button[class*="bg-[#18C98E]"][class*="text-[#02130B]"]::before,
+button[class*="bg-[#18C98E]/90"][class*="text-[#03150D]"]::before {
   content: "";
   position: absolute;
   left: 50%;
@@ -219,8 +233,8 @@ button[class*="bg-[#10B981]/90"][class*="text-[#03150D]"]::before {
   animation: bbLaunchRainbowFlow 3s linear infinite;
 }
 
-button[class*="bg-[#10B981]"][class*="text-[#02130B]"]:hover,
-button[class*="bg-[#10B981]/90"][class*="text-[#03150D]"]:hover {
+button[class*="bg-[#18C98E]"][class*="text-[#02130B]"]:hover,
+button[class*="bg-[#18C98E]/90"][class*="text-[#03150D]"]:hover {
   transform: translateY(-1px);
   filter: brightness(1.06) saturate(1.08);
   box-shadow:
@@ -228,13 +242,13 @@ button[class*="bg-[#10B981]/90"][class*="text-[#03150D]"]:hover {
     inset 0 1px 0 rgba(255, 255, 255, 0.12) !important;
 }
 
-button[class*="bg-[#10B981]"][class*="text-[#02130B]"]:hover::before,
-button[class*="bg-[#10B981]/90"][class*="text-[#03150D]"]:hover::before {
+button[class*="bg-[#18C98E]"][class*="text-[#02130B]"]:hover::before,
+button[class*="bg-[#18C98E]/90"][class*="text-[#03150D]"]:hover::before {
   opacity: 0.52;
 }
 
-button[class*="bg-[#10B981]"][class*="text-[#02130B]"]:active,
-button[class*="bg-[#10B981]/90"][class*="text-[#03150D]"]:active {
+button[class*="bg-[#18C98E]"][class*="text-[#02130B]"]:active,
+button[class*="bg-[#18C98E]/90"][class*="text-[#03150D]"]:active {
   transform: translateY(0) scale(0.99);
 }
 
@@ -258,10 +272,10 @@ button[class*="bg-[#10B981]/90"][class*="text-[#03150D]"]:active {
     transition-duration: 0.001ms !important;
   }
 
-  button[class*="bg-[#10B981]"][class*="text-[#02130B]"],
-  button[class*="bg-[#10B981]/90"][class*="text-[#03150D]"],
-  button[class*="bg-[#10B981]"][class*="text-[#02130B]"]::before,
-  button[class*="bg-[#10B981]/90"][class*="text-[#03150D]"]::before {
+  button[class*="bg-[#18C98E]"][class*="text-[#02130B]"],
+  button[class*="bg-[#18C98E]/90"][class*="text-[#03150D]"],
+  button[class*="bg-[#18C98E]"][class*="text-[#02130B]"]::before,
+  button[class*="bg-[#18C98E]/90"][class*="text-[#03150D]"]::before {
     animation: none;
   }
 }

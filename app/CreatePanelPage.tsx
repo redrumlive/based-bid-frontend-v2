@@ -77,6 +77,15 @@ type Plan = {
 };
 type DexOpt = { name: string; logo: string };
 type ChainOpt = { short: string };
+type LiquidityTokenKind = "native" | "stable" | "stock" | "etf";
+type LiquidityTokenOption = {
+  id: string;
+  symbol: string;
+  name: string;
+  kind: LiquidityTokenKind;
+  icon: string;
+  usdPrice: number;
+};
 type SocialKind = "website" | "x" | "telegram" | "discord";
 type SocialLink = { kind: SocialKind; href: string; label: string };
 type DescriptionPreview =
@@ -175,22 +184,264 @@ const DEX_LIQUIDITY_LEVELS = [
   { value: 2.5, label: "High volatility", color: "#FB7185" },
   { value: 5, label: "Volatile", color: "#FB923C" },
   { value: 7.5, label: "Balanced", color: "#FBBF24" },
-  { value: 10, label: "Healthy", color: "#34D399" },
+  { value: 10, label: "Healthy", color: "#52DFB2" },
   { value: 12.5, label: "Deep", color: "#2DD4BF" },
   { value: 15, label: "Very deep", color: "#22D3EE" },
   { value: 17.5, label: "Thick", color: "#38BDF8" },
   { value: 20, label: "Very thick", color: "#60A5FA" },
 ] as const;
-const CHAIN_ASSET_REFERENCE: Record<
-  string,
-  { symbol: string; usdPrice: number }
-> = {
-  BASE: { symbol: "ETH", usdPrice: 1740 },
-  ROBINHOOD: { symbol: "ETH", usdPrice: 1740 },
-  SOL: { symbol: "SOL", usdPrice: 150 },
-  BSC: { symbol: "BNB", usdPrice: 600 },
-  ETH: { symbol: "ETH", usdPrice: 1740 },
-  MEGAETH: { symbol: "ETH", usdPrice: 1740 },
+const LIQUIDITY_TOKEN_OPTIONS: Record<string, LiquidityTokenOption> = {
+  ETH: {
+    id: "ETH",
+    symbol: "ETH",
+    name: "Ethereum",
+    kind: "native",
+    icon: "/tokens/ethereum.png",
+    usdPrice: 1740,
+  },
+  SOL: {
+    id: "SOL",
+    symbol: "SOL",
+    name: "Solana",
+    kind: "native",
+    icon: "/tokens/solana.png",
+    usdPrice: 150,
+  },
+  BNB: {
+    id: "BNB",
+    symbol: "BNB",
+    name: "BNB",
+    kind: "native",
+    icon: "/tokens/bnb.png",
+    usdPrice: 600,
+  },
+  USDC: {
+    id: "USDC",
+    symbol: "USDC",
+    name: "USD Coin",
+    kind: "stable",
+    icon: "/tokens/usdc.png",
+    usdPrice: 1,
+  },
+  USDT: {
+    id: "USDT",
+    symbol: "USDT",
+    name: "Tether USD",
+    kind: "stable",
+    icon: "/tokens/usdt.png",
+    usdPrice: 1,
+  },
+  USD1: {
+    id: "USD1",
+    symbol: "USD1",
+    name: "World Liberty USD",
+    kind: "stable",
+    icon: "/tokens/usd1.png",
+    usdPrice: 1,
+  },
+  USDG: {
+    id: "USDG",
+    symbol: "USDG",
+    name: "Global Dollar",
+    kind: "stable",
+    icon: "/tokens/usdg.png",
+    usdPrice: 1,
+  },
+  AAPL: {
+    id: "AAPL",
+    symbol: "AAPL",
+    name: "Apple",
+    kind: "stock",
+    icon: "/rwa/aapl.png",
+    usdPrice: 334,
+  },
+  NVDA: {
+    id: "NVDA",
+    symbol: "NVDA",
+    name: "NVIDIA",
+    kind: "stock",
+    icon: "/rwa/nvda.png",
+    usdPrice: 203,
+  },
+  GOOGL: {
+    id: "GOOGL",
+    symbol: "GOOGL",
+    name: "Alphabet",
+    kind: "stock",
+    icon: "/rwa/googl.png",
+    usdPrice: 385,
+  },
+  MSFT: {
+    id: "MSFT",
+    symbol: "MSFT",
+    name: "Microsoft",
+    kind: "stock",
+    icon: "/rwa/msft.png",
+    usdPrice: 416,
+  },
+  AMZN: {
+    id: "AMZN",
+    symbol: "AMZN",
+    name: "Amazon",
+    kind: "stock",
+    icon: "/rwa/amzn.png",
+    usdPrice: 245,
+  },
+  META: {
+    id: "META",
+    symbol: "META",
+    name: "Meta",
+    kind: "stock",
+    icon: "/rwa/meta.png",
+    usdPrice: 792,
+  },
+  TSLA: {
+    id: "TSLA",
+    symbol: "TSLA",
+    name: "Tesla",
+    kind: "stock",
+    icon: "/rwa/tsla.png",
+    usdPrice: 336,
+  },
+  ORCL: {
+    id: "ORCL",
+    symbol: "ORCL",
+    name: "Oracle",
+    kind: "stock",
+    icon: "/rwa/orcl.png",
+    usdPrice: 259,
+  },
+  AMD: {
+    id: "AMD",
+    symbol: "AMD",
+    name: "Advanced Micro Devices",
+    kind: "stock",
+    icon: "/rwa/amd.png",
+    usdPrice: 173,
+  },
+  PLTR: {
+    id: "PLTR",
+    symbol: "PLTR",
+    name: "Palantir",
+    kind: "stock",
+    icon: "/rwa/pltr.png",
+    usdPrice: 160,
+  },
+  CRCL: {
+    id: "CRCL",
+    symbol: "CRCL",
+    name: "Circle",
+    kind: "stock",
+    icon: "/rwa/crcl.png",
+    usdPrice: 205,
+  },
+  COIN: {
+    id: "COIN",
+    symbol: "COIN",
+    name: "Coinbase",
+    kind: "stock",
+    icon: "/rwa/coin.png",
+    usdPrice: 410,
+  },
+  SPY: {
+    id: "SPY",
+    symbol: "SPY",
+    name: "S&P 500 ETF",
+    kind: "etf",
+    icon: "/rwa/spy.png",
+    usdPrice: 744,
+  },
+  QQQ: {
+    id: "QQQ",
+    symbol: "QQQ",
+    name: "Nasdaq-100 ETF",
+    kind: "etf",
+    icon: "/rwa/qqq.png",
+    usdPrice: 699,
+  },
+  SGOV: {
+    id: "SGOV",
+    symbol: "SGOV",
+    name: "Treasury Bond ETF",
+    kind: "etf",
+    icon: "/rwa/sgov.png",
+    usdPrice: 101,
+  },
+};
+const LIQUIDITY_TOKEN_KIND_LABEL: Record<LiquidityTokenKind, string> = {
+  native: "Native",
+  stable: "Stable",
+  stock: "Stock",
+  etf: "ETF",
+};
+const CHAIN_LIQUIDITY_PRESETS = {
+  BASE: { native: "ETH", stables: ["USDC", "USDT"] },
+  ROBINHOOD: { native: "ETH", stables: ["USDG"] },
+  SOL: { native: "SOL", stables: ["USDC", "USDT", "USD1"] },
+  BSC: { native: "BNB", stables: ["USDC", "USDT", "USD1"] },
+  ETH: { native: "ETH", stables: ["USDC", "USDT", "USD1", "USDG"] },
+  MEGAETH: { native: "ETH", stables: ["USDC", "USDT"] },
+} as const;
+const LIQUIDITY_STOCK_ORDER = [
+  "AAPL",
+  "NVDA",
+  "GOOGL",
+  "MSFT",
+  "AMZN",
+  "META",
+  "TSLA",
+  "ORCL",
+  "AMD",
+  "PLTR",
+  "CRCL",
+  "COIN",
+] as const;
+const LIQUIDITY_ETF_ORDER = ["SPY", "QQQ", "SGOV"] as const;
+const normalizeLaunchChain = (value?: string) => {
+  const candidate = value?.toUpperCase() ?? "BASE";
+  return candidate in CHAIN_LIQUIDITY_PRESETS
+    ? (candidate as keyof typeof CHAIN_LIQUIDITY_PRESETS)
+    : "BASE";
+};
+const getLiquidityTokenOption = (id?: string) =>
+  LIQUIDITY_TOKEN_OPTIONS[id ?? ""] ?? LIQUIDITY_TOKEN_OPTIONS.ETH;
+const getDefaultLiquidityToken = (chain: string) =>
+  CHAIN_LIQUIDITY_PRESETS[normalizeLaunchChain(chain)].native;
+const getLiquidityTokenGroups = (chain: string) => {
+  const chainKey = normalizeLaunchChain(chain);
+  const supportsRwaPairs = chainKey !== "SOL";
+  const groups = [
+    {
+      label: "Native",
+      items: [getLiquidityTokenOption(CHAIN_LIQUIDITY_PRESETS[chainKey].native)],
+    },
+    {
+      label: "Stables",
+      items: CHAIN_LIQUIDITY_PRESETS[chainKey].stables.map((id) =>
+        getLiquidityTokenOption(id),
+      ),
+    },
+    supportsRwaPairs
+      ? {
+          label: "Stocks",
+          items: LIQUIDITY_STOCK_ORDER.map((id) => getLiquidityTokenOption(id)),
+        }
+      : null,
+    supportsRwaPairs
+      ? {
+          label: "ETFs",
+          items: LIQUIDITY_ETF_ORDER.map((id) => getLiquidityTokenOption(id)),
+        }
+      : null,
+  ];
+  return groups.filter(
+    (
+      group,
+    ): group is {
+      label: string;
+      items: LiquidityTokenOption[];
+    } => Boolean(group?.items.length),
+  );
 };
 const WALLET_DEMO_OPTIONS: {
   value: WalletDemoMode;
@@ -274,8 +525,8 @@ const PLANS: Plan[] = [
     name: "based",
     price: "Launch at no cost",
     perk: "Standard launch",
-    bar: "bg-[#10B981]",
-    border: "launch-plan-active launch-plan-based border-[#10B981]/70",
+    bar: "bg-[#18C98E]",
+    border: "launch-plan-active launch-plan-based border-[#18C98E]/70",
   },
   {
     name: "super based",
@@ -294,7 +545,7 @@ const PLANS: Plan[] = [
 ];
 const getDexOption = (name: string) =>
   DEX.find((x) => x.name === name) ?? DEX[0];
-const CSS = `.range-slider{height:24px}.range-slider::-webkit-slider-runnable-track{height:8px;background:transparent}.range-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:14px;height:14px;border:2px solid #0A0A0A;background:#10B981;box-shadow:0 0 0 2px rgba(16,185,129,.18);margin-top:-1px;transform:rotate(45deg);transform-origin:center}.range-slider::-moz-range-track{height:8px;background:transparent}.range-slider::-moz-range-thumb{width:14px;height:14px;border:2px solid #0A0A0A;background:#10B981;box-shadow:0 0 0 2px rgba(16,185,129,.18);border-radius:0;transform:rotate(45deg);transform-origin:center}.diamond-thumb::-webkit-slider-thumb,.diamond-thumb::-moz-range-thumb{border-radius:0}.diamond-thumb-gold::-webkit-slider-thumb,.diamond-thumb-gold::-moz-range-thumb{background:#F5C451;box-shadow:0 0 0 2px rgba(245,196,81,.2)}.dark-scrollbar{scrollbar-width:thin;scrollbar-color:#2B2B31 #0C0C0E}.dark-scrollbar::-webkit-scrollbar{width:10px}.dark-scrollbar::-webkit-scrollbar-track{background:#0C0C0E;border-left:1px solid rgba(255,255,255,.04)}.dark-scrollbar::-webkit-scrollbar-thumb{background:#2B2B31;border-radius:999px;border:2px solid #0C0C0E}.dark-scrollbar::-webkit-scrollbar-thumb:hover{background:#3A3A42}.fee-builder-trigger{position:relative;overflow:hidden}.fee-builder-trigger::after{content:"";position:absolute;inset:0;background:linear-gradient(135deg,rgba(245,217,122,.075),rgba(255,255,255,.035) 42%,rgba(16,185,129,.035));opacity:0;transition:opacity .28s ease;pointer-events:none}.fee-builder-trigger:hover::after{opacity:1}.fee-builder-trigger>*{position:relative;z-index:1}.smooth-reveal{display:grid;grid-template-rows:0fr;opacity:0;transform:translateY(-6px);transition:grid-template-rows .3s cubic-bezier(.22,1,.36,1),opacity .2s ease,transform .3s cubic-bezier(.22,1,.36,1);will-change:grid-template-rows,opacity,transform}.smooth-reveal[data-open="true"]{grid-template-rows:1fr;opacity:1;transform:translateY(0)}.smooth-reveal-inner{min-height:0;overflow:hidden}.smooth-pop{animation:smoothPop .22s cubic-bezier(.22,1,.36,1) both;transform-origin:top right}.smooth-pop-left{transform-origin:top left}.smooth-modal-bg{animation:smoothFade .18s ease-out both}.smooth-modal-panel{animation:smoothModal .28s cubic-bezier(.22,1,.36,1) both}@keyframes smoothPop{from{opacity:0;transform:translateY(-7px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}@keyframes smoothFade{from{opacity:0}to{opacity:1}}@keyframes smoothModal{from{opacity:0;transform:translateY(10px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}@keyframes milestonePulse{0%,100%{box-shadow:0 0 8px rgba(16,185,129,.20)}50%{box-shadow:0 0 14px rgba(16,185,129,.34)}}@keyframes launchGradientFlow{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}@keyframes launchSheen{0%,12%{opacity:0;transform:translateX(-145%) skewX(-18deg)}34%{opacity:.34}62%,100%{opacity:0;transform:translateX(310%) skewX(-18deg)}}.launchButtonReady .launchButtonGradient{animation:launchGradientFlow 5.8s ease-in-out infinite}.launchButtonReady .launchButtonSheen{animation:launchSheen 3.25s cubic-bezier(.22,1,.36,1) infinite}@media (max-width:640px){.smooth-modal-bg{align-items:stretch!important;padding:0!important}.smooth-modal-panel{display:flex!important;height:100dvh!important;max-height:100dvh!important;flex-direction:column!important;border-left:0!important;border-right:0!important;border-radius:0!important}.smooth-modal-panel>div:first-child{padding:16px!important}.smooth-modal-panel>div:first-child>div>div:first-child{font-size:23px!important;line-height:1.1!important}.smooth-modal-panel>div:first-child>div>div:nth-child(2){white-space:normal!important;overflow:hidden!important;text-overflow:clip!important;display:-webkit-box!important;-webkit-line-clamp:2;-webkit-box-orient:vertical}.smooth-modal-panel>div:first-child button{height:34px!important;width:34px!important}.smooth-modal-panel>div:nth-child(2){flex:1 1 auto!important;overflow:auto!important;padding:16px!important}.smooth-modal-panel>div:nth-child(2)>div:first-child button{height:32px!important;border-radius:11px!important;font-size:12px!important}.smooth-modal-panel textarea{min-height:42dvh!important;border-radius:14px!important;padding:12px!important;font-size:13px!important;line-height:1.6!important}.smooth-modal-panel>div:last-child{padding:12px 16px calc(12px + env(safe-area-inset-bottom))!important;gap:8px!important;flex-wrap:wrap!important}.smooth-modal-panel>div:last-child button{height:36px!important;border-radius:12px!important;font-size:13px!important}.smooth-modal-panel>div:last-child button:last-child{order:3;flex:1 0 100%!important}}@media (prefers-reduced-motion:reduce){.smooth-reveal,.smooth-pop,.smooth-pop-left,.smooth-modal-bg,.smooth-modal-panel,.launchButtonReady .launchButtonGradient,.launchButtonReady .launchButtonSheen{animation:none;transition:none;transform:none}}`;
+const CSS = `.range-slider{height:24px}.range-slider::-webkit-slider-runnable-track{height:8px;background:transparent}.range-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:14px;height:14px;border:2px solid #0A0A0A;background:#18C98E;box-shadow:0 0 0 2px rgba(24,201,142,.18);margin-top:-1px;transform:rotate(45deg);transform-origin:center}.range-slider::-moz-range-track{height:8px;background:transparent}.range-slider::-moz-range-thumb{width:14px;height:14px;border:2px solid #0A0A0A;background:#18C98E;box-shadow:0 0 0 2px rgba(24,201,142,.18);border-radius:0;transform:rotate(45deg);transform-origin:center}.diamond-thumb::-webkit-slider-thumb,.diamond-thumb::-moz-range-thumb{border-radius:0}.diamond-thumb-gold::-webkit-slider-thumb,.diamond-thumb-gold::-moz-range-thumb{background:#F5C451;box-shadow:0 0 0 2px rgba(245,196,81,.2)}.dark-scrollbar{scrollbar-width:thin;scrollbar-color:#2B2B31 #0C0C0E}.dark-scrollbar::-webkit-scrollbar{width:10px}.dark-scrollbar::-webkit-scrollbar-track{background:#0C0C0E;border-left:1px solid rgba(255,255,255,.04)}.dark-scrollbar::-webkit-scrollbar-thumb{background:#2B2B31;border-radius:999px;border:2px solid #0C0C0E}.dark-scrollbar::-webkit-scrollbar-thumb:hover{background:#3A3A42}.fee-builder-trigger{position:relative;overflow:hidden}.fee-builder-trigger::after{content:"";position:absolute;inset:0;background:linear-gradient(135deg,rgba(245,217,122,.075),rgba(255,255,255,.035) 42%,rgba(24,201,142,.035));opacity:0;transition:opacity .28s ease;pointer-events:none}.fee-builder-trigger:hover::after{opacity:1}.fee-builder-trigger>*{position:relative;z-index:1}.smooth-reveal{display:grid;grid-template-rows:0fr;opacity:0;transform:translateY(-6px);transition:grid-template-rows .3s cubic-bezier(.22,1,.36,1),opacity .2s ease,transform .3s cubic-bezier(.22,1,.36,1);will-change:grid-template-rows,opacity,transform}.smooth-reveal[data-open="true"]{grid-template-rows:1fr;opacity:1;transform:translateY(0)}.smooth-reveal-inner{min-height:0;overflow:hidden}.smooth-pop{animation:smoothPop .22s cubic-bezier(.22,1,.36,1) both;transform-origin:top right}.smooth-pop-left{transform-origin:top left}.smooth-modal-bg{animation:smoothFade .18s ease-out both}.smooth-modal-panel{animation:smoothModal .28s cubic-bezier(.22,1,.36,1) both}@keyframes smoothPop{from{opacity:0;transform:translateY(-7px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}@keyframes smoothFade{from{opacity:0}to{opacity:1}}@keyframes smoothModal{from{opacity:0;transform:translateY(10px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}@keyframes milestonePulse{0%,100%{box-shadow:0 0 8px rgba(24,201,142,.20)}50%{box-shadow:0 0 14px rgba(24,201,142,.34)}}@keyframes launchGradientFlow{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}@keyframes launchSheen{0%,12%{opacity:0;transform:translateX(-145%) skewX(-18deg)}34%{opacity:.34}62%,100%{opacity:0;transform:translateX(310%) skewX(-18deg)}}.launchButtonReady .launchButtonGradient{animation:launchGradientFlow 5.8s ease-in-out infinite}.launchButtonReady .launchButtonSheen{animation:launchSheen 3.25s cubic-bezier(.22,1,.36,1) infinite}@media (max-width:640px){.smooth-modal-bg{align-items:stretch!important;padding:0!important}.smooth-modal-panel{display:flex!important;height:100dvh!important;max-height:100dvh!important;flex-direction:column!important;border-left:0!important;border-right:0!important;border-radius:0!important}.smooth-modal-panel>div:first-child{padding:16px!important}.smooth-modal-panel>div:first-child>div>div:first-child{font-size:23px!important;line-height:1.1!important}.smooth-modal-panel>div:first-child>div>div:nth-child(2){white-space:normal!important;overflow:hidden!important;text-overflow:clip!important;display:-webkit-box!important;-webkit-line-clamp:2;-webkit-box-orient:vertical}.smooth-modal-panel>div:first-child button{height:34px!important;width:34px!important}.smooth-modal-panel>div:nth-child(2){flex:1 1 auto!important;overflow:auto!important;padding:16px!important}.smooth-modal-panel>div:nth-child(2)>div:first-child button{height:32px!important;border-radius:11px!important;font-size:12px!important}.smooth-modal-panel textarea{min-height:42dvh!important;border-radius:14px!important;padding:12px!important;font-size:13px!important;line-height:1.6!important}.smooth-modal-panel>div:last-child{padding:12px 16px calc(12px + env(safe-area-inset-bottom))!important;gap:8px!important;flex-wrap:wrap!important}.smooth-modal-panel>div:last-child button{height:36px!important;border-radius:12px!important;font-size:13px!important}.smooth-modal-panel>div:last-child button:last-child{order:3;flex:1 0 100%!important}}@media (prefers-reduced-motion:reduce){.smooth-reveal,.smooth-pop,.smooth-pop-left,.smooth-modal-bg,.smooth-modal-panel,.launchButtonReady .launchButtonGradient,.launchButtonReady .launchButtonSheen{animation:none;transition:none;transform:none}}`;
 const WALLET_MODAL_CSS = `@media (max-width:900px){.wallet-modal-bg.wallet-modal-bg{align-items:stretch!important;background:#080809!important;padding:0!important;backdrop-filter:none!important}.wallet-modal-panel.wallet-modal-panel{display:flex!important;width:100vw!important;max-width:none!important;height:100dvh!important;max-height:100dvh!important;flex-direction:column!important;overflow:hidden!important;border:0!important;border-radius:0!important;background:#080809!important;box-shadow:none!important}.wallet-modal-panel .wallet-modal-header{border-bottom:1px solid rgba(255,255,255,.07)!important;padding:18px 16px 14px!important}.wallet-modal-panel .wallet-modal-title{font-size:24px!important;line-height:1.02!important;letter-spacing:-.03em}.wallet-modal-panel .wallet-modal-helper{white-space:normal!important;display:-webkit-box!important;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden!important;text-overflow:clip!important;font-size:11.5px!important;line-height:17px!important}.wallet-modal-panel .wallet-modal-close{height:34px!important;width:34px!important}.wallet-modal-panel .wallet-modal-body{display:flex!important;min-height:0!important;flex:1 1 auto!important;flex-direction:column!important;overflow:hidden!important;padding:14px 12px 8px!important}.wallet-modal-panel .wallet-modal-modes{margin-bottom:12px!important}.wallet-modal-panel .wallet-modal-modes button{height:31px!important;border-radius:10px!important;font-size:11px!important}.wallet-modal-panel .wallet-modal-textarea{min-height:0!important;flex:1 1 auto!important;border-radius:14px!important;padding:11px 12px!important;font-size:10px!important;line-height:18px!important;white-space:pre!important;overflow:auto!important}.wallet-modal-panel .wallet-modal-meta{margin-top:10px!important;gap:8px!important;font-size:11px!important}.wallet-modal-panel .wallet-modal-footer{border-top:1px solid rgba(255,255,255,.07)!important;background:#080809!important;padding:10px 12px calc(12px + env(safe-area-inset-bottom))!important;gap:8px!important;flex-wrap:wrap!important}.wallet-modal-panel .wallet-modal-footer button{height:34px!important;border-radius:12px!important;font-size:12px!important}.wallet-modal-panel .wallet-modal-footer .wallet-modal-primary{order:3;flex:1 0 100%!important}}`;
 const SMOOTH_REVEAL_OPEN_CSS = `.smooth-reveal[data-open="true"]>.smooth-reveal-inner{overflow:visible}`;
 
@@ -346,12 +597,12 @@ const formatStartingPrice = (value: number, compact = false): ReactNode => {
   return compactTinyPrice(explicit);
 };
 const chainBtn = (on: boolean) =>
-  `inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold transition ${on ? "border-[#10B981] bg-[#10B981]/16 text-white hover:bg-[#0EA875]/18" : "border-white/10 bg-[#101010] text-white/68 hover:border-white/16 hover:bg-[#131313]"}`;
+  `inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold transition ${on ? "border-[#18C98E] bg-[#18C98E]/16 text-white hover:bg-[#0EA875]/18" : "border-white/10 bg-[#101010] text-white/68 hover:border-white/16 hover:bg-[#131313]"}`;
 const liquidityMarker = (selected: boolean, done: boolean) =>
   selected
-    ? "h-4 w-4 border border-[#10B981] bg-[#10B981] shadow-[0_0_0_4px_rgba(16,185,129,0.16)]"
+    ? "h-4 w-4 border border-[#18C98E] bg-[#18C98E] shadow-[0_0_0_4px_rgba(24,201,142,0.16)]"
     : done
-      ? "h-2.5 w-2.5 border border-[#10B981]/80 bg-[#10B981] shadow-[0_0_8px_rgba(16,185,129,0.22)]"
+      ? "h-2.5 w-2.5 border border-[#18C98E]/80 bg-[#18C98E] shadow-[0_0_8px_rgba(24,201,142,0.22)]"
       : "h-2.5 w-2.5 border border-white/20 bg-[#161616]";
 const conic = (parts: { color: string; value: number }[]) => {
   let start = 0;
@@ -657,7 +908,7 @@ function DelayTradeTimeControl({
                   setUnit(compactDelayUnit(preset.value));
                   onChange(preset.value);
                 }}
-                className={`inline-flex h-6 min-w-0 items-center justify-center rounded-full border px-1.5 text-[9.5px] font-semibold leading-none transition-[border-color,background-color,color] ${active ? "border-[#10B981]/50 bg-[#10B981]/15 text-[#7CFFC0]" : "border-white/10 bg-white/[0.025] text-white/50 hover:border-[#10B981]/30 hover:bg-[#10B981]/[0.075] hover:text-[#D8FFEA]"}`}
+                className={`inline-flex h-6 min-w-0 items-center justify-center rounded-full border px-1.5 text-[9.5px] font-semibold leading-none transition-[border-color,background-color,color] ${active ? "border-[#18C98E]/50 bg-[#18C98E]/15 text-[#7CFFC0]" : "border-white/10 bg-white/[0.025] text-white/50 hover:border-[#18C98E]/30 hover:bg-[#18C98E]/[0.075] hover:text-[#D8FFEA]"}`}
               >
                 {preset.label}
               </button>
@@ -674,7 +925,7 @@ function DelayTradeTimeControl({
             max={maxAmount}
             value={amount}
             onChange={(event) => setDuration(Number(event.target.value || 1))}
-            className="h-8 w-[58px] rounded-lg border border-white/10 bg-[#151515] px-2.5 text-[13px] text-white/86 outline-none transition focus:border-[#10B981]/38"
+            className="h-8 w-[58px] rounded-lg border border-white/10 bg-[#151515] px-2.5 text-[13px] text-white/86 outline-none transition focus:border-[#18C98E]/38"
           />
           <div className="relative" ref={unitMenuRef}>
             <button
@@ -682,7 +933,7 @@ function DelayTradeTimeControl({
               aria-expanded={unitOpen}
               aria-controls={unitMenuId}
               onClick={() => setUnitOpen((open) => !open)}
-              className="inline-flex h-8 min-w-[106px] items-center justify-between gap-3 rounded-lg border border-white/10 bg-[#151515] px-3 text-[13px] font-medium text-white/74 outline-none transition hover:border-white/16 hover:bg-[#181818] focus:border-[#10B981]/38"
+              className="inline-flex h-8 min-w-[106px] items-center justify-between gap-3 rounded-lg border border-white/10 bg-[#151515] px-3 text-[13px] font-medium text-white/74 outline-none transition hover:border-white/16 hover:bg-[#181818] focus:border-[#18C98E]/38"
             >
               <span>{selectedUnit.label}</span>
               <ChevronDown
@@ -711,7 +962,7 @@ function DelayTradeTimeControl({
                       );
                       setUnitOpen(false);
                     }}
-                    className={`block h-8 w-full rounded-lg px-2.5 text-left text-[12px] font-medium transition ${option.value === unit ? "bg-[#10B981]/14 text-[#7CFFC0]" : "text-white/58 hover:bg-white/[0.045] hover:text-white/82"}`}
+                    className={`block h-8 w-full rounded-lg px-2.5 text-left text-[12px] font-medium transition ${option.value === unit ? "bg-[#18C98E]/14 text-[#7CFFC0]" : "text-white/58 hover:bg-white/[0.045] hover:text-white/82"}`}
                   >
                     {option.label}
                   </button>
@@ -721,7 +972,7 @@ function DelayTradeTimeControl({
           </div>
         </div>
       </div>
-      <div className="text-[13px] font-semibold text-[#10B981]">
+      <div className="text-[13px] font-semibold text-[#18C98E]">
         {durationText(boundedValue)} between buy and sell
       </div>
     </div>
@@ -783,7 +1034,7 @@ function SettingSurface({
         className="flex w-full items-start gap-3 px-4 py-4 text-left"
       >
         <span
-          className={`mt-0.5 flex h-6 w-11 shrink-0 items-center rounded-full border p-0.5 transition ${enabled ? "border-[#10B981]/55 bg-[#10B981]/35" : "border-white/12 bg-white/[0.04]"}`}
+          className={`mt-0.5 flex h-6 w-11 shrink-0 items-center rounded-full border p-0.5 transition ${enabled ? "border-[#18C98E]/55 bg-[#18C98E]/35" : "border-white/12 bg-white/[0.04]"}`}
           aria-hidden="true"
         >
           <span
@@ -984,7 +1235,7 @@ function RequiredPill({ complete }: { complete: boolean }) {
     <span
       className={`inline-flex h-[17px] w-[58px] items-center justify-center rounded-full border text-[7px] font-semibold uppercase tracking-[0.12em] transition-[border-color,background-color,color] duration-300 ${
         complete
-          ? "border-[#4ade80]/30 bg-[#4ade80]/[0.055] text-[#7bea9e]/88"
+          ? "border-[#18c98e]/30 bg-[#18c98e]/[0.055] text-[#7bea9e]/88"
           : "border-[#F5C451]/30 bg-[#F5C451]/[0.035] text-[#F5D97A]/76"
       }`}
     >
@@ -1079,6 +1330,31 @@ function DexLogo({
   );
 }
 
+function LiquidityTokenIcon({
+  option,
+  size = 16,
+  className = "",
+}: {
+  option: LiquidityTokenOption;
+  size?: number;
+  className?: string;
+}) {
+  return (
+    <span
+      className={`inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full ${className}`}
+      style={{ width: size, height: size }}
+    >
+      <Image
+        src={option.icon}
+        alt=""
+        width={size}
+        height={size}
+        className="h-full w-full object-cover"
+      />
+    </span>
+  );
+}
+
 function ChainIcon({ chain, size = 16 }: { chain: string; size?: number }) {
   const base =
     "relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full";
@@ -1134,9 +1410,9 @@ function MiniGlowChart({ active }: { active: boolean }) {
       >
         <defs>
           <linearGradient id={fillId} x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor="rgba(52,211,153,0.22)" />
-            <stop offset="42%" stopColor="rgba(52,211,153,0.11)" />
-            <stop offset="72%" stopColor="rgba(52,211,153,0.04)" />
+            <stop offset="0%" stopColor="rgba(82,223,178,0.22)" />
+            <stop offset="42%" stopColor="rgba(82,223,178,0.11)" />
+            <stop offset="72%" stopColor="rgba(82,223,178,0.04)" />
             <stop offset="100%" stopColor="rgba(0,0,0,0)" />
           </linearGradient>
           <filter id={glowId} x="-12%" y="-80%" width="124%" height="220%">
@@ -1153,7 +1429,7 @@ function MiniGlowChart({ active }: { active: boolean }) {
         <path
           d={d}
           fill="none"
-          stroke="rgba(52,211,153,0.10)"
+          stroke="rgba(82,223,178,0.10)"
           strokeLinecap="round"
           strokeLinejoin="round"
           strokeWidth="11"
@@ -1162,7 +1438,7 @@ function MiniGlowChart({ active }: { active: boolean }) {
         <path
           d={d}
           fill="none"
-          stroke="rgba(52,211,153,0.22)"
+          stroke="rgba(82,223,178,0.22)"
           strokeLinecap="round"
           strokeLinejoin="round"
           strokeWidth="6"
@@ -1171,18 +1447,18 @@ function MiniGlowChart({ active }: { active: boolean }) {
         <path
           d={d}
           fill="none"
-          stroke="rgba(74,222,128,0.98)"
+          stroke="rgba(24,201,142,0.98)"
           strokeLinecap="round"
           strokeLinejoin="round"
           strokeWidth="2.4"
-          style={{ filter: "drop-shadow(0 0 4px rgba(52,211,153,0.22))" }}
+          style={{ filter: "drop-shadow(0 0 4px rgba(82,223,178,0.22))" }}
         />
       </svg>
       <span
-        className="pointer-events-none absolute right-0 block h-1 w-1 rounded-full bg-[#4ADE80]"
+        className="pointer-events-none absolute right-0 block h-1 w-1 rounded-full bg-[#18C98E]"
         style={{
           top: dotTop,
-          filter: "drop-shadow(0 0 5px rgba(52,211,153,0.35))",
+          filter: "drop-shadow(0 0 5px rgba(82,223,178,0.35))",
         }}
         aria-hidden
       />
@@ -1322,7 +1598,7 @@ function MomentumPreviewCard({
           style={{ boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)" }}
         />
         <div className="absolute right-3.5 top-2.5">
-          <span className="inline-flex rounded-full border border-white/[0.06] px-[7px] py-[1px] text-[10px] font-semibold tabular-nums tracking-[0.01em] text-[#34D399]/90">
+          <span className="inline-flex rounded-full border border-white/[0.06] px-[7px] py-[1px] text-[10px] font-semibold tabular-nums tracking-[0.01em] text-[#52DFB2]/90">
             ATH 789%
           </span>
         </div>
@@ -1331,7 +1607,7 @@ function MomentumPreviewCard({
           <div className="relative h-10 w-10 overflow-visible">
             <div className="grid h-10 w-10 place-items-center overflow-hidden rounded-full border border-white/[0.08] bg-[#141717]">
               {logo ? (
-                <span className="grid h-full w-full place-items-center bg-[radial-gradient(circle_at_32%_24%,rgba(245,217,122,0.34),transparent_30%),linear-gradient(135deg,rgba(16,185,129,0.36),rgba(20,23,23,0.92)_62%)] text-sm font-semibold tracking-wide text-white/92">
+                <span className="grid h-full w-full place-items-center bg-[radial-gradient(circle_at_32%_24%,rgba(245,217,122,0.34),transparent_30%),linear-gradient(135deg,rgba(24,201,142,0.36),rgba(20,23,23,0.92)_62%)] text-sm font-semibold tracking-wide text-white/92">
                   {avatarText}
                 </span>
               ) : (
@@ -1410,7 +1686,7 @@ function Row({ item, onJump }: { item: RowItem; onJump: (k: Sec) => void }) {
       <div className="flex min-w-0 items-center gap-2 text-sm text-white/80">
         {item.ok ? (
           <Check
-            className={`h-3.5 w-3.5 shrink-0 ${item.checkClass ?? "text-[#10B981]"}`}
+            className={`h-3.5 w-3.5 shrink-0 ${item.checkClass ?? "text-[#18C98E]"}`}
           />
         ) : (
           <span
@@ -1460,7 +1736,7 @@ function Slider({
           className={`pointer-events-none absolute inset-x-0 top-1/2 h-1.5 -translate-y-1/2 rounded-full ${disabled ? "bg-white/[0.06]" : "bg-white/10"}`}
         />
         <div
-          className={`pointer-events-none absolute left-0 top-1/2 h-1.5 -translate-y-1/2 rounded-full ${disabled ? "bg-white/[0.16]" : "bg-[#10B981]"}`}
+          className={`pointer-events-none absolute left-0 top-1/2 h-1.5 -translate-y-1/2 rounded-full ${disabled ? "bg-white/[0.16]" : "bg-[#18C98E]"}`}
           style={{ width: `${pct}%` }}
         />
         <input
@@ -1487,7 +1763,7 @@ function Slider({
             ▾
           </button>
           <div
-            className={`min-w-[68px] px-2 text-center text-sm font-medium ${disabled ? "text-white/38" : "text-[#10B981]"}`}
+            className={`min-w-[68px] px-2 text-center text-sm font-medium ${disabled ? "text-white/38" : "text-[#18C98E]"}`}
           >
             {display}
             {suffix}
@@ -1526,7 +1802,7 @@ function Expandable({
     >
       {featured ? (
         <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[22px]">
-          <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-[#F5D97A] via-[#F7D46B] to-[#10B981]" />
+          <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-[#F5D97A] via-[#F7D46B] to-[#18C98E]" />
         </div>
       ) : null}
       <button
@@ -1696,6 +1972,8 @@ function DexSettingsPanel({
   setDexSel,
   dexOpen,
   setDexOpen,
+  liquidityToken,
+  setLiquidityToken,
   supplyText,
   setSupplyText,
   chain,
@@ -1712,6 +1990,8 @@ function DexSettingsPanel({
   setDexSel: (v: string) => void;
   dexOpen: boolean;
   setDexOpen: (v: boolean) => void;
+  liquidityToken: string;
+  setLiquidityToken: (v: string) => void;
   supplyText: string;
   setSupplyText: (v: string) => void;
   chain: string;
@@ -1720,6 +2000,7 @@ function DexSettingsPanel({
 }) {
   const [burnTokenFees, setBurnTokenFees] = useState(false);
   const [capEditing, setCapEditing] = useState(false);
+  const [liquidityTokenOpen, setLiquidityTokenOpen] = useState(false);
   const [capDraft, setCapDraft] = useState(() =>
     formatMarketCapInput(marketCap),
   );
@@ -1740,14 +2021,16 @@ function DexSettingsPanel({
   const liquidityShare = dexLiquidity / 100;
   const liquidityTokenAmount = supplyValue * liquidityShare;
   const liquidityMarketValue = cap * liquidityShare;
-  const chainAsset = CHAIN_ASSET_REFERENCE[chain] ?? CHAIN_ASSET_REFERENCE.BASE;
-  const liquidityAssetAmount = liquidityMarketValue / chainAsset.usdPrice;
+  const quoteAsset = getLiquidityTokenOption(liquidityToken);
+  const liquidityAssetAmount = liquidityMarketValue / quoteAsset.usdPrice;
   const graduationFeeAmount =
     liquidityAssetAmount * (Math.max(0, graduationFee) / 100);
   const liquidityLevel =
     DEX_LIQUIDITY_LEVELS.find((level) => level.value === dexLiquidity) ??
     DEX_LIQUIDITY_LEVELS[3];
   const selected = getDexOption(dexSel);
+  const selectedLiquidityToken = getLiquidityTokenOption(liquidityToken);
+  const liquidityGroups = getLiquidityTokenGroups(chain);
   const groups = [
     {
       label: "Uniswap",
@@ -1789,57 +2072,160 @@ function DexSettingsPanel({
   return (
     <div className="space-y-6">
       <div className="grid gap-4 lg:grid-cols-[1fr_1fr] lg:items-start">
-        <div className={`relative ${dexOpen ? "z-30" : "z-10"}`}>
-          <div className="mb-2 h-5">
-            <Label>Select DEX</Label>
-          </div>
-          <button
-            type="button"
-            onClick={() => setDexOpen(!dexOpen)}
-            className={`flex h-11 w-full items-center justify-between px-4 text-sm text-white/80 ${UI.input} hover:border-white/16`}
-          >
-            <span className="inline-flex items-center gap-3">
-              <DexLogo option={selected} size={18} />
-              <span>{dexSel}</span>
-            </span>
-            <span
-              className={`text-white/45 transition ${dexOpen ? "rotate-180" : ""}`}
+        <div
+          className={`grid grid-cols-[minmax(0,1fr)_152px] items-end gap-3 ${dexOpen || liquidityTokenOpen ? "z-30" : "z-10"}`}
+        >
+          <div className="relative min-w-0">
+            <div className="mb-2 h-5 text-sm font-medium text-white">
+              Select DEX
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setDexOpen(!dexOpen);
+                setLiquidityTokenOpen(false);
+              }}
+              className={`flex h-11 w-full items-center justify-between px-4 text-sm text-white/80 ${UI.input} hover:border-white/16`}
             >
-              {"\u25BE"}
-            </span>
-          </button>
-          {dexOpen ? (
-            <div className="smooth-pop smooth-pop-left absolute inset-x-0 top-full z-20 mt-2 overflow-hidden rounded-xl border border-white/10 bg-[#101010] shadow-[0_18px_50px_rgba(0,0,0,0.38)]">
-              {groups.map((group) => (
-                <div key={group.label}>
-                  <div className="px-4 pb-2 pt-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-white/38">
-                    {group.label}
+              <span className="inline-flex min-w-0 items-center gap-3">
+                <DexLogo option={selected} size={18} />
+                <span className="truncate">{dexSel}</span>
+              </span>
+              <span
+                className={`text-white/45 transition ${dexOpen ? "rotate-180" : ""}`}
+              >
+                {"\u25BE"}
+              </span>
+            </button>
+            {dexOpen ? (
+              <div className="smooth-pop smooth-pop-left absolute inset-x-0 top-full z-20 mt-2 overflow-hidden rounded-xl border border-white/10 bg-[#101010] shadow-[0_18px_50px_rgba(0,0,0,0.38)]">
+                {groups.map((group) => (
+                  <div key={group.label}>
+                    <div className="px-4 pb-2 pt-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-white/38">
+                      {group.label}
+                    </div>
+                    {group.items.map((option) => (
+                      <button
+                        key={option.name}
+                        type="button"
+                        onClick={() => {
+                          setDexSel(option.name);
+                          if (/\bv3\b/i.test(option.name))
+                            setBurnTokenFees(false);
+                          setDexOpen(false);
+                        }}
+                        className={`flex w-full items-center justify-between px-4 py-3 text-left text-sm transition ${option.name === dexSel ? "bg-white/[0.07] text-white" : "text-white/72 hover:bg-[#131313] hover:text-white"}`}
+                      >
+                        <span className="inline-flex items-center gap-3">
+                          <DexLogo option={option} size={18} />
+                          <span>{option.name}</span>
+                        </span>
+                        {option.name === dexSel ? (
+                          <span className="text-white/70">{"\u2713"}</span>
+                        ) : null}
+                      </button>
+                    ))}
                   </div>
-                  {group.items.map((option) => (
-                    <button
-                      key={option.name}
-                      type="button"
-                      onClick={() => {
-                        setDexSel(option.name);
-                        if (/\bv3\b/i.test(option.name))
-                          setBurnTokenFees(false);
-                        setDexOpen(false);
-                      }}
-                      className={`flex w-full items-center justify-between px-4 py-3 text-left text-sm transition ${option.name === dexSel ? "bg-white/[0.07] text-white" : "text-white/72 hover:bg-[#131313] hover:text-white"}`}
+                ))}
+              </div>
+            ) : null}
+          </div>
+          <div className="relative min-w-0">
+            <div className="mb-2 flex h-5 items-center justify-end gap-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-white/36">
+              <span>Quote asset</span>
+              <div className="group relative inline-flex items-center">
+                <button
+                  type="button"
+                  aria-label="Quote asset helper"
+                  className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-white/12 bg-white/[0.035] text-[10px] font-semibold leading-none text-white/44 transition hover:border-white/18 hover:text-white/78 focus:border-white/22 focus:text-white focus:outline-none"
+                >
+                  i
+                </button>
+                <div
+                  role="tooltip"
+                  className="pointer-events-none absolute right-0 top-[calc(100%-2px)] z-40 w-[min(320px,calc(100vw-32px))] pt-2 text-left opacity-0 transition duration-150 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100 max-sm:fixed max-sm:inset-x-4 max-sm:bottom-[11rem] max-sm:top-auto max-sm:w-auto max-sm:pt-0"
+                >
+                  <div className="rounded-xl border border-white/10 bg-[#101011] px-3.5 py-3 text-[12px] font-normal normal-case leading-5 tracking-[0.01em] text-white/68 shadow-[0_18px_42px_rgba(0,0,0,0.38)] ring-1 ring-inset ring-white/5">
+                    This sets the asset your token launches against on the DEX.
+                    Native pairs are the default, stables keep pricing easier
+                    to read, and stock or ETF pairs are there for more thematic
+                    markets.
+                  </div>
+                </div>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setLiquidityTokenOpen(!liquidityTokenOpen);
+                setDexOpen(false);
+              }}
+              className={`flex h-11 w-full items-center justify-between gap-2 px-3 text-sm text-white/82 ${UI.input} hover:border-white/16`}
+            >
+              <span className="inline-flex min-w-0 items-center gap-2.5">
+                <LiquidityTokenIcon option={selectedLiquidityToken} size={18} />
+                <span className="min-w-0 text-left">
+                  <span className="block text-sm font-semibold leading-none text-white">
+                    {selectedLiquidityToken.symbol}
+                  </span>
+                  <span className="mt-1 block truncate text-[10px] font-medium uppercase tracking-[0.12em] text-white/34">
+                    {LIQUIDITY_TOKEN_KIND_LABEL[selectedLiquidityToken.kind]}
+                  </span>
+                </span>
+              </span>
+              <span
+                className={`shrink-0 text-white/45 transition ${liquidityTokenOpen ? "rotate-180" : ""}`}
+              >
+                {"\u25BE"}
+              </span>
+            </button>
+            {liquidityTokenOpen ? (
+              <div className="smooth-pop absolute right-0 top-full z-20 mt-2 w-[min(430px,calc(100vw-32px))] overflow-hidden rounded-xl border border-white/10 bg-[#101010] shadow-[0_18px_50px_rgba(0,0,0,0.38)]">
+                <div className="dark-scrollbar max-h-[min(420px,calc(100vh-12rem))] overflow-y-auto overscroll-contain px-3 py-3">
+                  {liquidityGroups.map((group) => (
+                    <div
+                      key={group.label}
+                      className="pb-3 last:pb-0"
                     >
-                      <span className="inline-flex items-center gap-3">
-                        <DexLogo option={option} size={18} />
-                        <span>{option.name}</span>
-                      </span>
-                      {option.name === dexSel ? (
-                        <span className="text-white/70">{"\u2713"}</span>
-                      ) : null}
-                    </button>
+                      <div className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-white/38">
+                        {group.label}
+                      </div>
+                      <div
+                        className={`grid gap-2 ${group.items.length <= 2 ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-3"}`}
+                      >
+                        {group.items.map((option) => (
+                          <button
+                            key={option.id}
+                            type="button"
+                            onClick={() => {
+                              setLiquidityToken(option.id);
+                              setLiquidityTokenOpen(false);
+                            }}
+                            className={`flex min-w-0 items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left transition ${option.id === liquidityToken ? "border-[#18C98E]/32 bg-[#18C98E]/10 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.025)]" : "border-white/8 bg-[#121212] text-white/72 hover:border-white/14 hover:bg-[#151515] hover:text-white"}`}
+                          >
+                            <LiquidityTokenIcon option={option} size={18} />
+                            <span className="min-w-0 flex-1">
+                              <span className="block truncate text-[12px] font-semibold leading-none">
+                                {option.symbol}
+                              </span>
+                              <span className="mt-1 block truncate text-[10px] leading-none text-white/38">
+                                {option.name}
+                              </span>
+                            </span>
+                            {option.id === liquidityToken ? (
+                              <span className="shrink-0 text-[#BFF7D7]">
+                                {"\u2713"}
+                              </span>
+                            ) : null}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   ))}
                 </div>
-              ))}
-            </div>
-          ) : null}
+              </div>
+            ) : null}
+          </div>
         </div>
         <div>
           <div className="mb-2 flex h-5 items-center justify-between gap-3">
@@ -1960,7 +2346,7 @@ function DexSettingsPanel({
           </div>
           <div className="flex h-11 min-w-[132px] shrink-0 items-center justify-end text-right max-sm:col-start-2 max-sm:row-start-1">
             {capEditing ? (
-              <label className="flex h-11 w-[132px] items-center rounded-xl border border-[#10B981]/30 bg-[#10B981]/[0.055] px-3 text-[#34D399] shadow-[inset_0_1px_0_rgba(255,255,255,0.025)] transition focus-within:border-[#34D399]/55 focus-within:bg-[#10B981]/[0.08]">
+              <label className="flex h-11 w-[132px] items-center rounded-xl border border-[#18C98E]/30 bg-[#18C98E]/[0.055] px-3 text-[#52DFB2] shadow-[inset_0_1px_0_rgba(255,255,255,0.025)] transition focus-within:border-[#52DFB2]/55 focus-within:bg-[#18C98E]/[0.08]">
                 <span className="mr-1 text-sm font-medium">$</span>
                 <input
                   autoFocus
@@ -1976,7 +2362,7 @@ function DexSettingsPanel({
                       event.currentTarget.blur();
                     }
                   }}
-                  className="min-w-0 flex-1 bg-transparent text-right text-sm font-semibold text-[#34D399] outline-none"
+                  className="min-w-0 flex-1 bg-transparent text-right text-sm font-semibold text-[#52DFB2] outline-none"
                 />
               </label>
             ) : (
@@ -1989,11 +2375,11 @@ function DexSettingsPanel({
                 }}
                 className="group inline-flex h-11 flex-col items-end justify-center rounded-lg px-1 transition hover:bg-white/[0.025]"
               >
-                <span className="text-lg font-semibold text-[#10B981] transition group-hover:text-[#34D399]">
+                <span className="text-lg font-semibold text-[#18C98E] transition group-hover:text-[#52DFB2]">
                   {fmtCap(cap)}
                 </span>
-                <span className="text-[11px] text-[#10B981]/72">
-                  {fmtAssetAmount(liquidityAssetAmount)} {chainAsset.symbol}
+                <span className="text-[11px] text-[#18C98E]/72">
+                  {fmtAssetAmount(liquidityAssetAmount)} {quoteAsset.symbol}
                 </span>
               </button>
             )}
@@ -2003,7 +2389,7 @@ function DexSettingsPanel({
           <div className="relative mx-2">
             <div className="pointer-events-none absolute inset-x-0 top-[9px] h-2 rounded-full bg-zinc-800" />
             <div
-              className="pointer-events-none absolute left-0 top-[9px] h-2 max-w-full rounded-full bg-gradient-to-r from-[#34D399] to-[#86EFAC]"
+              className="pointer-events-none absolute left-0 top-[9px] h-2 max-w-full rounded-full bg-gradient-to-r from-[#52DFB2] to-[#86EFAC]"
               style={{ width: `${capProgress}%` }}
             />
             <div className="relative z-10 h-8 w-full">
@@ -2020,7 +2406,7 @@ function DexSettingsPanel({
                     className="absolute left-1/2 top-1/2 flex h-7 w-7 -translate-x-1/2 -translate-y-1/2 items-center justify-center transition hover:opacity-90"
                   >
                     <span
-                      className={`h-2.5 w-2.5 rotate-45 rounded-[1px] ${index < capPosition ? "border border-[#10B981]/80 bg-[#10B981] shadow-[0_0_8px_rgba(16,185,129,0.25)] [animation:milestonePulse_1.8s_ease-in-out_infinite]" : "border border-[rgb(30_30_30)] bg-[#121212]"}`}
+                      className={`h-2.5 w-2.5 rotate-45 rounded-[1px] ${index < capPosition ? "border border-[#18C98E]/80 bg-[#18C98E] shadow-[0_0_8px_rgba(24,201,142,0.25)] [animation:milestonePulse_1.8s_ease-in-out_infinite]" : "border border-[rgb(30_30_30)] bg-[#121212]"}`}
                     />
                   </button>
                 </div>
@@ -2056,7 +2442,7 @@ function DexSettingsPanel({
                   key={step}
                   type="button"
                   onClick={() => updateCapPosition(index)}
-                  className={`absolute top-0 px-0.5 text-[11px] font-medium tabular-nums transition focus:outline-none max-sm:text-[9px] max-sm:tracking-[-0.035em] ${edgeClass} ${cap === step ? "text-[#34D399]" : "text-white/40 hover:text-white"}`}
+                  className={`absolute top-0 px-0.5 text-[11px] font-medium tabular-nums transition focus:outline-none max-sm:text-[9px] max-sm:tracking-[-0.035em] ${edgeClass} ${cap === step ? "text-[#52DFB2]" : "text-white/40 hover:text-white"}`}
                   style={
                     index > 0 && index < CAPS.length - 1
                       ? { left: `${(index / (CAPS.length - 1)) * 100}%` }
@@ -2108,7 +2494,7 @@ function DexSettingsPanel({
               </div>
             </div>
             <div className="shrink-0 text-right max-sm:col-start-2 max-sm:row-start-1">
-              <div className="text-lg font-semibold text-[#10B981]">
+              <div className="text-lg font-semibold text-[#18C98E]">
                 {dexLiquidity}%
               </div>
               <div className="mt-0.5 flex flex-wrap items-center justify-end gap-x-2 gap-y-0.5 text-[11px] sm:text-xs">
@@ -2127,7 +2513,7 @@ function DexSettingsPanel({
           <div className="relative pt-1">
             <div className="pointer-events-none absolute inset-x-0 top-[15px] h-2 rounded-full bg-white/10" />
             <div
-              className="pointer-events-none absolute left-0 top-[15px] h-2 rounded-full bg-gradient-to-r from-[#10B981] to-[#6EE7B7]"
+              className="pointer-events-none absolute left-0 top-[15px] h-2 rounded-full bg-gradient-to-r from-[#18C98E] to-[#6EE7B7]"
               style={{ width: `${liquidityProgress}%` }}
             />
             <div
@@ -2175,7 +2561,7 @@ function DexSettingsPanel({
                   key={step}
                   type="button"
                   onClick={() => setDexLiquidity(step)}
-                  className={`text-center transition focus:outline-none max-sm:text-[9px] max-sm:tracking-[-0.035em] ${liquidityIndex === index ? "text-[#34D399]" : "text-white/40 hover:text-white"}`}
+                  className={`text-center transition focus:outline-none max-sm:text-[9px] max-sm:tracking-[-0.035em] ${liquidityIndex === index ? "text-[#52DFB2]" : "text-white/40 hover:text-white"}`}
                 >
                   {step}%
                 </button>
@@ -2197,7 +2583,7 @@ function DexSettingsPanel({
                       key={option.label}
                       type="button"
                       onClick={() => setSupplyText(option.display)}
-                      className={`inline-flex h-6 items-center justify-center rounded-full border px-2.5 text-[10px] font-semibold tracking-[0.01em] transition ${active ? "border-[#10B981]/55 bg-[#10B981]/16 text-[#BFF7D7]" : "border-white/10 bg-white/[0.025] text-white/45 hover:border-white/16 hover:bg-white/[0.04] hover:text-white/74"}`}
+                      className={`inline-flex h-6 items-center justify-center rounded-full border px-2.5 text-[10px] font-semibold tracking-[0.01em] transition ${active ? "border-[#18C98E]/55 bg-[#18C98E]/16 text-[#BFF7D7]" : "border-white/10 bg-white/[0.025] text-white/45 hover:border-white/16 hover:bg-white/[0.04] hover:text-white/74"}`}
                     >
                       {option.label}
                     </button>
@@ -2225,12 +2611,12 @@ function DexSettingsPanel({
               Token starting price
             </div>
             <div className="mt-2 flex min-h-10 flex-col md:items-end">
-              <div className="text-[19px] font-semibold leading-none tracking-[-0.03em] text-[#10B981]">
+              <div className="text-[19px] font-semibold leading-none tracking-[-0.03em] text-[#18C98E]">
                 {priceNode}
               </div>
               <div className="mt-1.5 text-[10.5px] leading-4 text-white/36">
                 You will receive {fmtAssetAmount(graduationFeeAmount)}{" "}
-                {chainAsset.symbol} upon graduation.
+                {quoteAsset.symbol} upon graduation.
               </div>
             </div>
           </div>
@@ -2311,7 +2697,7 @@ function AddressModal({
                   key={option}
                   type="button"
                   onClick={() => onModeChange(option)}
-                  className={`inline-flex h-9 items-center justify-center rounded-xl border px-3 text-[13px] font-medium transition ${active ? "border-[#10B981]/40 bg-[#10B981]/12 text-[#D9FBEA]" : "border-white/10 bg-[#111112] text-white/66 hover:border-white/16 hover:text-white"}`}
+                  className={`inline-flex h-9 items-center justify-center rounded-xl border px-3 text-[13px] font-medium transition ${active ? "border-[#18C98E]/40 bg-[#18C98E]/12 text-[#D9FBEA]" : "border-white/10 bg-[#111112] text-white/66 hover:border-white/16 hover:text-white"}`}
                 >
                   {label}
                 </button>
@@ -2363,7 +2749,7 @@ function AddressModal({
           <button
             type="button"
             onClick={onSave}
-            className="wallet-modal-primary inline-flex h-10 items-center justify-center rounded-xl border border-[#10B981]/60 bg-[#063e2e] px-4 text-[15px] font-semibold text-[#EAFBF4] transition hover:border-[#10B981]/80 hover:bg-[#08543d]"
+            className="wallet-modal-primary inline-flex h-10 items-center justify-center rounded-xl border border-[#18C98E]/60 bg-[#063e2e] px-4 text-[15px] font-semibold text-[#EAFBF4] transition hover:border-[#18C98E]/80 hover:bg-[#08543d]"
           >
             Apply Distribution
           </button>
@@ -2448,7 +2834,7 @@ function WhitelistModal({
           <button
             type="button"
             onClick={onSave}
-            className="wallet-modal-primary inline-flex h-10 items-center justify-center rounded-xl border border-[#10B981]/60 bg-[#063e2e] px-4 text-[15px] font-semibold text-[#EAFBF4] transition hover:border-[#10B981]/80 hover:bg-[#08543d]"
+            className="wallet-modal-primary inline-flex h-10 items-center justify-center rounded-xl border border-[#18C98E]/60 bg-[#063e2e] px-4 text-[15px] font-semibold text-[#EAFBF4] transition hover:border-[#18C98E]/80 hover:bg-[#08543d]"
           >
             Save Whitelist
           </button>
@@ -2487,7 +2873,7 @@ function InitialBuyPanel({
   const instant = buyNow >= MAX_BUY;
   const estimatedMarketCap = getEstimatedMarketCap(buyNow);
   const legend = [
-    { label: "Creator", value: buyNow, color: "#10B981" },
+    { label: "Creator", value: buyNow, color: "#18C98E" },
     { label: "Uniswap", value: lp, color: "#3B82F6" },
     { label: "LBP", value: lbp, color: "#A855F7" },
   ];
@@ -2596,7 +2982,7 @@ function InitialBuyPanel({
                 className="absolute inset-0 rounded-full"
                 style={{
                   background: conic([
-                    { color: "#10B981", value: buyNow },
+                    { color: "#18C98E", value: buyNow },
                     { color: "#3B82F6", value: lp },
                     { color: "#A855F7", value: lbp },
                   ]),
@@ -2645,7 +3031,7 @@ function InitialBuyPanel({
                   Max initial buy size is 80.4% of total supply.
                 </div>
               </div>
-              <label className="initialBuyPercentLabel flex items-center gap-1 rounded-xl border border-transparent px-2 py-1 text-[28px] font-semibold leading-none text-white transition focus-within:border-[#10B981]/40 focus-within:bg-white/[0.03] hover:bg-white/[0.02]">
+              <label className="initialBuyPercentLabel flex items-center gap-1 rounded-xl border border-transparent px-2 py-1 text-[28px] font-semibold leading-none text-white transition focus-within:border-[#18C98E]/40 focus-within:bg-white/[0.03] hover:bg-white/[0.02]">
                 <input
                   type="number"
                   min={0}
@@ -2804,6 +3190,7 @@ function MobileLaunchDock({
   missing,
   dexFee,
   dexSel,
+  liquidityToken,
   marketCap,
   feeBuilderValue,
   feeBuilderIssues,
@@ -2823,6 +3210,7 @@ function MobileLaunchDock({
   missing: string[];
   dexFee: number;
   dexSel: string;
+  liquidityToken: string;
   marketCap: number;
   feeBuilderValue: string | null;
   feeBuilderIssues: number;
@@ -2853,9 +3241,10 @@ function MobileLaunchDock({
       ? "text-fuchsia-400"
       : plan === "ultra based"
         ? "text-amber-400"
-        : "text-[#10B981]";
+        : "text-[#18C98E]";
   const dexOption = getDexOption(dexSel);
   const dexName = dexSel.replace(/\s+v\d+$/, "");
+  const quoteAsset = getLiquidityTokenOption(liquidityToken);
   const feeBuilderDisplay = feeBuilderValue ? (
     feeBuilderIssues > 0 ? (
       <span className="inline-flex items-center justify-end gap-1.5 whitespace-nowrap">
@@ -2878,6 +3267,7 @@ function MobileLaunchDock({
         <span className="inline-flex min-w-0 items-center justify-end gap-1.5 whitespace-nowrap leading-none">
           <DexLogo option={dexOption} size={14} />
           <span className="truncate">{dexName}</span>
+          <span className="shrink-0 text-white/38">/{quoteAsset.symbol}</span>
           <span className="shrink-0 text-white/38">{dexFee}%</span>
         </span>
       ),
@@ -2888,7 +3278,7 @@ function MobileLaunchDock({
       label: "Starting Market Cap",
       value: marketCapValue,
       ok: true,
-      valueClass: "text-[#10B981]",
+      valueClass: "text-[#18C98E]",
     },
     {
       key: "dex",
@@ -2971,8 +3361,8 @@ function MobileLaunchDock({
     </div>
   );
   const mobileCompactCss = `@media (max-width: 639px){section.mt-8{margin-top:1.5rem}section.mt-8>.mb-4{margin-bottom:.75rem}section.mt-8 h2{font-size:15px;line-height:1.15}section.mt-8 h2+div{margin-top:3px;font-size:12px;line-height:16px;color:rgba(255,255,255,.48)}section.mt-8 .grid.gap-3{gap:8px}section.mt-8 button.rounded-2xl{border-radius:14px}section.mt-8 button.rounded-2xl>div.relative{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;column-gap:12px;padding:12px}section.mt-8 button.rounded-2xl>div.relative>.mb-2{grid-column:1;margin-bottom:0}section.mt-8 button.rounded-2xl [class*="text-[17px]"]{font-size:14px;line-height:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}section.mt-8 button.rounded-2xl>div.relative>div:nth-child(2){grid-column:1;font-size:11px;line-height:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:rgba(255,255,255,.52)}section.mt-8 button.rounded-2xl .mt-3.border-t{grid-column:2;grid-row:1/span 2;align-self:center;margin-top:0;border-top:0;padding-top:0}section.mt-8 button.rounded-2xl .mt-3.border-t .text-sm{font-size:11px;line-height:14px;text-align:right;white-space:nowrap}.initialBuyPanel .initialBuyPercentLabel{font-size:22px!important;padding:3px 6px!important}.initialBuyPanel .initialBuyPercentLabel input{width:64px!important}.initialBuyPanel .initialBuySliderGrid{grid-template-columns:minmax(0,1fr) 36px!important;gap:10px!important;align-items:center!important}.initialBuyPanel .initialBuyDexButton{height:36px!important;width:36px!important;border-radius:11px!important}.initialBuyPanel .range-slider{height:20px!important}.initialBuyPanel .buyStopLabel{top:16px!important;min-width:24px!important;font-size:9.5px!important;line-height:11px!important;letter-spacing:-.02em}}`;
-  const initialBuyMobileCss = `@media (max-width:639px){.initialBuyPanel .initialBuyIntroBlock{margin-bottom:14px!important}.initialBuyPanel .initialBuyTitle{font-size:16px!important;line-height:20px!important;font-weight:650!important}.initialBuyPanel .initialBuyIntro{margin-top:4px!important;font-size:11.5px!important;line-height:17px!important;color:rgba(255,255,255,.54)!important;display:-webkit-box!important;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden!important}.initialBuyPanel .initialBuyPercentRow{display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;align-items:center!important;column-gap:10px!important;row-gap:4px!important}.initialBuyPanel .initialBuyPercentCopy{display:contents!important}.initialBuyPanel .initialBuyPercentTitle{grid-column:1!important;grid-row:1!important;font-size:9.5px!important;line-height:12px!important;letter-spacing:.12em!important;color:rgba(255,255,255,.50)!important}.initialBuyPanel .initialBuyPercentHelp{grid-column:1/-1!important;grid-row:2!important;margin-top:0!important;font-size:10.5px!important;line-height:14px!important;color:rgba(255,255,255,.36)!important}.initialBuyPanel .initialBuyPercentLabel{grid-column:2!important;grid-row:1!important;width:auto!important;justify-self:end!important;border-color:rgba(255,255,255,.09)!important;background:linear-gradient(180deg,rgba(255,255,255,.040),rgba(255,255,255,.020))!important;border-radius:12px!important;padding:4px 7px!important;font-size:20px!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.025)!important}.initialBuyPanel .initialBuyPercentLabel:focus-within{border-color:rgba(16,185,129,.24)!important;background:rgba(16,185,129,.028)!important;box-shadow:0 0 0 1px rgba(16,185,129,.055) inset!important}.initialBuyPanel .initialBuyPercentLabel input{width:54px!important}}`;
-  const launchPlanCss = `.launch-plan-active::before{content:"Selected";position:absolute;right:12px;top:12px;z-index:2;border:1px solid rgba(255,255,255,.12);border-radius:999px;background:rgba(255,255,255,.055);padding:4px 8px;font-size:9px;font-weight:700;letter-spacing:.12em;line-height:1;text-transform:uppercase;box-shadow:inset 0 1px 0 rgba(255,255,255,.04)}.launch-plan-based::before{border-color:rgba(16,185,129,.42);background:rgba(16,185,129,.13);color:#10B981}.launch-plan-super::before{border-color:rgba(217,70,239,.42);background:rgba(217,70,239,.13);color:#D946EF}.launch-plan-ultra::before{border-color:rgba(251,191,36,.45);background:rgba(251,191,36,.14);color:#FBBF24}.launch-plan-active>div.relative>div:first-of-type{padding-right:90px}@media(max-width:639px){.launch-plan-active::before{content:"✓";right:10px;top:50%;display:grid;height:20px;width:20px;place-items:center;padding:0;transform:translateY(-50%);font-size:11px;letter-spacing:0}.launch-plan-active>div.relative>div:first-of-type{padding-right:28px}}`;
+  const initialBuyMobileCss = `@media (max-width:639px){.initialBuyPanel .initialBuyIntroBlock{margin-bottom:14px!important}.initialBuyPanel .initialBuyTitle{font-size:16px!important;line-height:20px!important;font-weight:650!important}.initialBuyPanel .initialBuyIntro{margin-top:4px!important;font-size:11.5px!important;line-height:17px!important;color:rgba(255,255,255,.54)!important;display:-webkit-box!important;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden!important}.initialBuyPanel .initialBuyPercentRow{display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;align-items:center!important;column-gap:10px!important;row-gap:4px!important}.initialBuyPanel .initialBuyPercentCopy{display:contents!important}.initialBuyPanel .initialBuyPercentTitle{grid-column:1!important;grid-row:1!important;font-size:9.5px!important;line-height:12px!important;letter-spacing:.12em!important;color:rgba(255,255,255,.50)!important}.initialBuyPanel .initialBuyPercentHelp{grid-column:1/-1!important;grid-row:2!important;margin-top:0!important;font-size:10.5px!important;line-height:14px!important;color:rgba(255,255,255,.36)!important}.initialBuyPanel .initialBuyPercentLabel{grid-column:2!important;grid-row:1!important;width:auto!important;justify-self:end!important;border-color:rgba(255,255,255,.09)!important;background:linear-gradient(180deg,rgba(255,255,255,.040),rgba(255,255,255,.020))!important;border-radius:12px!important;padding:4px 7px!important;font-size:20px!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.025)!important}.initialBuyPanel .initialBuyPercentLabel:focus-within{border-color:rgba(24,201,142,.24)!important;background:rgba(24,201,142,.028)!important;box-shadow:0 0 0 1px rgba(24,201,142,.055) inset!important}.initialBuyPanel .initialBuyPercentLabel input{width:54px!important}}`;
+  const launchPlanCss = `.launch-plan-active::before{content:"Selected";position:absolute;right:12px;top:12px;z-index:2;border:1px solid rgba(255,255,255,.12);border-radius:999px;background:rgba(255,255,255,.055);padding:4px 8px;font-size:9px;font-weight:700;letter-spacing:.12em;line-height:1;text-transform:uppercase;box-shadow:inset 0 1px 0 rgba(255,255,255,.04)}.launch-plan-based::before{border-color:rgba(24,201,142,.42);background:rgba(24,201,142,.13);color:#18C98E}.launch-plan-super::before{border-color:rgba(217,70,239,.42);background:rgba(217,70,239,.13);color:#D946EF}.launch-plan-ultra::before{border-color:rgba(251,191,36,.45);background:rgba(251,191,36,.14);color:#FBBF24}.launch-plan-active>div.relative>div:first-of-type{padding-right:90px}@media(max-width:639px){.launch-plan-active::before{content:"✓";right:10px;top:50%;display:grid;height:20px;width:20px;place-items:center;padding:0;transform:translateY(-50%);font-size:11px;letter-spacing:0}.launch-plan-active>div.relative>div:first-of-type{padding-right:28px}}`;
   const launchPlanMobileFixCss = `@media(max-width:639px){.launch-plan-active::before{content:"Selected";right:10px;top:7px;display:block;height:auto;width:auto;padding:3px 6px;transform:none;font-size:7px;line-height:1;letter-spacing:.1em}.launch-plan-active>div.relative>div:first-of-type{padding-right:58px}.launch-plan-active>div.relative .mt-3.border-t{transform:translateY(5px)}}`;
 
   return (
@@ -3068,7 +3458,7 @@ function MobileLaunchDock({
             <div className="mt-2">
               <div className="relative h-1 overflow-hidden rounded-full bg-white/[0.07] shadow-[inset_0_1px_0_rgba(255,255,255,0.025)]">
                 <div
-                  className={`h-full rounded-full transition-[width,background] duration-500 ease-[cubic-bezier(.22,1,.36,1)] ${walletFundingWarning ? "bg-gradient-to-r from-[#C58C32] to-[#F5D97A]" : ready ? "bg-gradient-to-r from-[#10B981] via-[#34D399] to-[#F5D97A]" : "bg-gradient-to-r from-[#10B981] to-[#34D399]"}`}
+                  className={`h-full rounded-full transition-[width,background] duration-500 ease-[cubic-bezier(.22,1,.36,1)] ${walletFundingWarning ? "bg-gradient-to-r from-[#C58C32] to-[#F5D97A]" : ready ? "bg-gradient-to-r from-[#18C98E] via-[#52DFB2] to-[#F5D97A]" : "bg-gradient-to-r from-[#18C98E] to-[#52DFB2]"}`}
                   style={{ width: `${ready ? 100 : (filled / 3) * 100}%` }}
                 />
               </div>
@@ -3078,7 +3468,7 @@ function MobileLaunchDock({
               onClick={() =>
                 walletFundingWarning ? setSettingsOpen(true) : onLaunch()
               }
-              className={`group relative mt-2 w-full overflow-hidden rounded-full border px-4 py-2.5 text-sm font-semibold transition-[border-color,box-shadow,color,transform] duration-500 ease-[cubic-bezier(.22,1,.36,1)] ${walletFundingWarning ? "border-[#F5C451]/28 bg-[#F5C451]/[0.035] text-[#F5D97A] active:scale-[0.99]" : canLaunch ? "launchButtonReady border-[#10B981]/70 text-[#07331F] shadow-[0_14px_30px_rgba(16,185,129,0.20)] active:scale-[0.99]" : "border-white/12 text-white/58 active:scale-[0.99]"}`}
+              className={`group relative mt-2 w-full overflow-hidden rounded-full border px-4 py-2.5 text-sm font-semibold transition-[border-color,box-shadow,color,transform] duration-500 ease-[cubic-bezier(.22,1,.36,1)] ${walletFundingWarning ? "border-[#F5C451]/28 bg-[#F5C451]/[0.035] text-[#F5D97A] active:scale-[0.99]" : canLaunch ? "launchButtonReady border-[#18C98E]/70 text-[#07331F] shadow-[0_14px_30px_rgba(24,201,142,0.20)] active:scale-[0.99]" : "border-white/12 text-white/58 active:scale-[0.99]"}`}
             >
               <span
                 aria-hidden
@@ -3086,7 +3476,7 @@ function MobileLaunchDock({
               />
               <span
                 aria-hidden
-                className={`launchButtonGradient absolute inset-0 bg-[linear-gradient(110deg,#0EDB86_0%,#36EBA6_38%,#F5D97A_78%,#10B981_100%)] bg-[length:220%_100%] transition-opacity duration-700 ease-[cubic-bezier(.22,1,.36,1)] ${canLaunch ? "opacity-100" : "opacity-0"}`}
+                className={`launchButtonGradient absolute inset-0 bg-[linear-gradient(110deg,#0EDB86_0%,#36EBA6_38%,#F5D97A_78%,#18C98E_100%)] bg-[length:220%_100%] transition-opacity duration-700 ease-[cubic-bezier(.22,1,.36,1)] ${canLaunch ? "opacity-100" : "opacity-0"}`}
               />
               <span
                 aria-hidden
@@ -3182,6 +3572,7 @@ function Sidebar({
   missing,
   dexFee,
   dexSel,
+  liquidityToken,
   marketCap,
   feeBuilderValue,
   feeBuilderIssues,
@@ -3205,6 +3596,7 @@ function Sidebar({
   missing: string[];
   dexFee: number;
   dexSel: string;
+  liquidityToken: string;
   marketCap: number;
   feeBuilderValue: string | null;
   feeBuilderIssues: number;
@@ -3243,9 +3635,10 @@ function Sidebar({
       ? "text-fuchsia-400"
       : plan === "ultra based"
         ? "text-amber-400"
-        : "text-[#10B981]";
+        : "text-[#18C98E]";
   const dexOption = getDexOption(dexSel);
   const dexName = dexSel.replace(/\s+v\d+$/, "");
+  const quoteAsset = getLiquidityTokenOption(liquidityToken);
   const feeBuilderDisplay = feeBuilderValue ? (
     feeBuilderIssues > 0 ? (
       <span className="inline-flex items-center justify-end gap-1.5 whitespace-nowrap">
@@ -3268,6 +3661,7 @@ function Sidebar({
         <span className="inline-flex min-w-0 items-center justify-end gap-1.5 whitespace-nowrap leading-none">
           <DexLogo option={dexOption} size={14} />
           <span className="truncate">{dexName}</span>
+          <span className="shrink-0 text-white/38">/{quoteAsset.symbol}</span>
           <span className="shrink-0 text-white/38">{dexFee}%</span>
         </span>
       ),
@@ -3278,7 +3672,7 @@ function Sidebar({
       label: "Starting Market Cap",
       value: marketCapValue,
       ok: true,
-      valueClass: "text-[#10B981]",
+      valueClass: "text-[#18C98E]",
     },
     {
       key: "dex",
@@ -3424,7 +3818,7 @@ function Sidebar({
                   >
                     <span>{option.label}</span>
                     {active ? (
-                      <Check className="h-3 w-3 text-[#34D399]" />
+                      <Check className="h-3 w-3 text-[#52DFB2]" />
                     ) : null}
                   </button>
                 );
@@ -3455,14 +3849,14 @@ function Sidebar({
         <div className="mt-3">
           <div className="relative h-1.5 overflow-hidden rounded-full bg-white/[0.07] shadow-[inset_0_1px_0_rgba(255,255,255,0.025)]">
             <div
-              className={`h-full rounded-full transition-[width,background] duration-500 ease-[cubic-bezier(.22,1,.36,1)] ${ready ? "bg-gradient-to-r from-[#10B981] via-[#34D399] to-[#F5D97A]" : "bg-gradient-to-r from-[#10B981] to-[#34D399]"}`}
+              className={`h-full rounded-full transition-[width,background] duration-500 ease-[cubic-bezier(.22,1,.36,1)] ${ready ? "bg-gradient-to-r from-[#18C98E] via-[#52DFB2] to-[#F5D97A]" : "bg-gradient-to-r from-[#18C98E] to-[#52DFB2]"}`}
               style={{ width: `${ready ? 100 : (filled / 3) * 100}%` }}
             />
           </div>
         </div>
         <button
           type="button"
-          className={`group relative mt-4 w-full overflow-hidden rounded-full border px-4 py-3.5 text-sm font-semibold transition-[border-color,box-shadow,color,transform] duration-500 ease-[cubic-bezier(.22,1,.36,1)] ${ready ? "launchButtonReady border-[#10B981]/70 text-[#07331F] shadow-[0_18px_38px_rgba(16,185,129,0.24)] hover:shadow-[0_20px_44px_rgba(16,185,129,0.30)]" : "border-white/12 text-white/58 hover:border-white/18 hover:text-white"}`}
+          className={`group relative mt-4 w-full overflow-hidden rounded-full border px-4 py-3.5 text-sm font-semibold transition-[border-color,box-shadow,color,transform] duration-500 ease-[cubic-bezier(.22,1,.36,1)] ${ready ? "launchButtonReady border-[#18C98E]/70 text-[#07331F] shadow-[0_18px_38px_rgba(24,201,142,0.24)] hover:shadow-[0_20px_44px_rgba(24,201,142,0.30)]" : "border-white/12 text-white/58 hover:border-white/18 hover:text-white"}`}
         >
           <span
             aria-hidden
@@ -3470,7 +3864,7 @@ function Sidebar({
           />
           <span
             aria-hidden
-            className={`launchButtonGradient absolute inset-0 bg-[linear-gradient(110deg,#0EDB86_0%,#36EBA6_38%,#F5D97A_78%,#10B981_100%)] bg-[length:220%_100%] transition-opacity duration-700 ease-[cubic-bezier(.22,1,.36,1)] ${ready ? "opacity-100" : "opacity-0"}`}
+            className={`launchButtonGradient absolute inset-0 bg-[linear-gradient(110deg,#0EDB86_0%,#36EBA6_38%,#F5D97A_78%,#18C98E_100%)] bg-[length:220%_100%] transition-opacity duration-700 ease-[cubic-bezier(.22,1,.36,1)] ${ready ? "opacity-100" : "opacity-0"}`}
           />
           <span
             aria-hidden
@@ -3553,6 +3947,9 @@ export default function BBLbpCreationReworkPreview() {
     [initialBuy, setInitialBuy] = useState(0),
     [dexSel, setDexSel] = useState("Uniswap v4"),
     [dexOpen, setDexOpen] = useState(false),
+    [liquidityToken, setLiquidityToken] = useState<string>(() =>
+      getDefaultLiquidityToken("BASE"),
+    ),
     [preset, setPreset] = useState<number | null>(null),
     [supplyText, setSupplyText] = useState<string>(DEFAULT_SUPPLY_TEXT);
   const moreRef = useRef<HTMLDivElement | null>(null),
@@ -3617,6 +4014,18 @@ export default function BBLbpCreationReworkPreview() {
         : null;
   const selectedMarketCap = marketCap;
   const marketCapSummary = fmtCap(selectedMarketCap);
+  const selectedLiquidityToken = getLiquidityTokenOption(liquidityToken);
+  const applyChainSelection = useCallback((nextChain: string) => {
+    setChain(nextChain);
+    setLiquidityToken((current) => {
+      const availableIds = getLiquidityTokenGroups(nextChain).flatMap((group) =>
+        group.items.map((item) => item.id),
+      );
+      return availableIds.includes(current)
+        ? current
+        : getDefaultLiquidityToken(nextChain);
+    });
+  }, []);
   const requiredPillText = ready ? (
     <Check
       className="-mx-1.5 -my-0.5 inline-block h-3 w-3 align-[-1px]"
@@ -3817,7 +4226,13 @@ export default function BBLbpCreationReworkPreview() {
       title: "DEX Settings",
       description:
         "Choose your launch DEX, tier, define market cap and token supply.",
+      /*
       summary: `${dexSel} • ${dexFee}% • ${marketCapSummary}`,
+      ...{
+        summary: `${dexSel} • ${selectedLiquidityToken.symbol} • ${dexFee}% • ${marketCapSummary}`,
+      },
+      */
+      summary: `${dexSel} • ${selectedLiquidityToken.symbol} • ${dexFee}% • ${marketCapSummary}`,
       content: (
         <DexSettingsPanel
           dexFee={dexFee}
@@ -3830,6 +4245,8 @@ export default function BBLbpCreationReworkPreview() {
           setDexSel={setDexSel}
           dexOpen={dexOpen}
           setDexOpen={setDexOpen}
+          liquidityToken={liquidityToken}
+          setLiquidityToken={setLiquidityToken}
           supplyText={supplyText}
           setSupplyText={setSupplyText}
           chain={chain}
@@ -3848,6 +4265,7 @@ export default function BBLbpCreationReworkPreview() {
       content: (
         <FeeBuilderPanel
           chain={chain}
+          walletAddress={walletStatus.address}
           onTotalChange={setFeeBuilderTotal}
           onAdvancedProtectionChange={setAdvancedProtectionCount}
           onIssuesChange={setFeeBuilderIssues}
@@ -3905,7 +4323,7 @@ export default function BBLbpCreationReworkPreview() {
             key={c.short}
             type="button"
             onClick={() => {
-              setChain(c.short);
+              applyChainSelection(c.short);
               setMoreOpen(false);
             }}
             className={chainBtn(active)}
@@ -3940,7 +4358,7 @@ export default function BBLbpCreationReworkPreview() {
                     key={c.short}
                     type="button"
                     onClick={() => {
-                      setChain(c.short);
+                      applyChainSelection(c.short);
                       setMoreOpen(false);
                     }}
                     className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm transition ${active ? "bg-white/[0.07] text-white" : "text-white/72 hover:bg-[#131313] hover:text-white"}`}
@@ -3949,7 +4367,7 @@ export default function BBLbpCreationReworkPreview() {
                       <ChainIcon chain={c.short} size={16} />
                       <span>{c.short}</span>
                     </span>
-                    {active ? <span className="text-[#10B981]">✓</span> : null}
+                    {active ? <span className="text-[#18C98E]">✓</span> : null}
                   </button>
                 );
               })}
@@ -3996,7 +4414,7 @@ export default function BBLbpCreationReworkPreview() {
                     Launch instantly with name, symbol and logo.
                   </div>
                   <div
-                    className={`hidden rounded-full border px-3 py-1 text-xs font-medium transition-colors duration-300 sm:block ${ready ? "border-[#4ade80]/30 bg-[#4ade80]/[0.055] text-[#7bea9e]/88" : "border-[#F5C451]/28 bg-[#F5C451]/[0.035] text-[#F5D97A]/74"}`}
+                    className={`hidden rounded-full border px-3 py-1 text-xs font-medium transition-colors duration-300 sm:block ${ready ? "border-[#18c98e]/30 bg-[#18c98e]/[0.055] text-[#7bea9e]/88" : "border-[#F5C451]/28 bg-[#F5C451]/[0.035] text-[#F5D97A]/74"}`}
                   >
                     {requiredPillText}
                   </div>
@@ -4192,6 +4610,7 @@ export default function BBLbpCreationReworkPreview() {
                 missing={missing}
                 dexFee={dexFee}
                 dexSel={dexSel}
+                liquidityToken={liquidityToken}
                 marketCap={selectedMarketCap}
                 feeBuilderValue={feeBuilderValue}
                 feeBuilderIssues={feeBuilderIssues}
@@ -4219,6 +4638,7 @@ export default function BBLbpCreationReworkPreview() {
                   missing={missing}
                   dexFee={dexFee}
                   dexSel={dexSel}
+                  liquidityToken={liquidityToken}
                   marketCap={selectedMarketCap}
                   feeBuilderValue={feeBuilderValue}
                   feeBuilderIssues={feeBuilderIssues}
@@ -4244,6 +4664,7 @@ export default function BBLbpCreationReworkPreview() {
           missing={missing}
           dexFee={dexFee}
           dexSel={dexSel}
+          liquidityToken={liquidityToken}
           marketCap={selectedMarketCap}
           feeBuilderValue={feeBuilderValue}
           feeBuilderIssues={feeBuilderIssues}
