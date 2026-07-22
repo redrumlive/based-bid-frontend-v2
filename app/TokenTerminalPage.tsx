@@ -13,10 +13,14 @@ import {
   Bold,
   CandlestickChart,
   Check,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Code2,
   Copy,
   Crown,
   EyeOff,
+  Gauge,
   Italic,
   LineChart,
   Link2,
@@ -30,12 +34,24 @@ import {
   Quote,
   Reply,
   Smile,
+  SlidersHorizontal,
   Star,
   Trash2,
   Wallet,
   X,
 } from "lucide-react";
 import type { LbpTokenDetail } from "./lbpTokenData";
+import FeeEngineCard, {
+  type FeeEngineRewardPayment,
+  type FeeEngineRoute,
+} from "./FeeEngineCard";
+import {
+  FEE_BUILDER_ROUTE_ORDER_EVENT,
+  FEE_BUILDER_ROUTE_ORDER_STORAGE_KEY,
+  orderFeeBuilderRoutes,
+  readFeeBuilderRouteOrder,
+  type FeeBuilderRouteOrderKey,
+} from "./feeBuilderRouteOrder";
 
 type ChartMode = "candles" | "line";
 type ChartBasis = "marketCap" | "price";
@@ -43,6 +59,14 @@ type TradeSide = "buy" | "sell";
 type ActivityTab = "live" | "mine" | "comments" | "holders";
 type TradeFilter = "all" | "buy" | "sell";
 type SlippageMode = "auto" | "fixed-50" | "fixed-100" | "fixed-500" | "custom";
+
+type LiveMarketMetrics = {
+  price: number;
+  change24h: number;
+  volume24h: number;
+  poolQuote: number;
+  marketCap: number;
+};
 
 type Candle = {
   open: number;
@@ -116,6 +140,80 @@ const SLIPPAGE_OPTIONS: Array<{ value: Exclude<SlippageMode, "custom">; label: s
   { value: "fixed-500", label: "5%" },
 ];
 
+const DEMO_TREASURY_ADDRESS = "0x8D7C4a91bE65F203C19A4E72d5806Fb34c921A6D";
+
+function feeBuilderDemo(token: LbpTokenDetail): {
+  routes: FeeEngineRoute[];
+  payments: FeeEngineRewardPayment[];
+} {
+  const solanaTreasury = "7YVjRz8vUBGxWBThHrw8mM6KzL4uAd3Fw9nQeC2PpV6s";
+  const treasuryAddress = token.network === "sol" ? solanaTreasury : DEMO_TREASURY_ADDRESS;
+  const treasuryExplorer = token.network === "sol"
+    ? `https://solscan.io/account/${solanaTreasury}`
+    : `${EXPLORERS[token.network]}${DEMO_TREASURY_ADDRESS}`;
+
+  return {
+    routes: [
+      {
+        id: "combo-rewards",
+        label: "Combo Rewards",
+        percent: 2,
+        color: "#B7F34A",
+        kind: "basket",
+        detail: "Pays eligible holders across a mixed rewards basket.",
+        distributionMode: "rotating",
+        currentAssetId: "combo-eth",
+        nextAssetId: "combo-usdc",
+        minimumWalletShare: 0.1,
+        assets: [
+          { id: "combo-eth", symbol: "ETH", name: "Ethereum", icon: "/tokens/ethereum.png", weight: 30 },
+          { id: "combo-usdc", symbol: "USDC", name: "USD Coin", icon: "/tokens/usdc.png", weight: 25 },
+          { id: "combo-spy", symbol: "SPY", name: "SPDR S&P 500 ETF", icon: "/rwa/spy.png", weight: 25 },
+          { id: "combo-nvda", symbol: "NVDA", name: "NVIDIA", icon: "/rwa/nvda.png", weight: 20 },
+        ],
+      },
+      {
+        id: "stock-treasury",
+        label: "Treasury",
+        percent: 1,
+        color: "#60A5FA",
+        kind: "treasury",
+        detail: "Routes treasury payouts across selected stock rewards.",
+        recipientAddress: treasuryAddress,
+        recipientExplorerUrl: treasuryExplorer,
+        distributionMode: "all",
+        assets: [
+          { id: "treasury-aapl", symbol: "AAPL", name: "Apple", icon: "/rwa/aapl.png", weight: 40 },
+          { id: "treasury-nvda", symbol: "NVDA", name: "NVIDIA", icon: "/rwa/nvda.png", weight: 35 },
+          { id: "treasury-tsla", symbol: "TSLA", name: "Tesla", icon: "/rwa/tsla.png", weight: 25 },
+        ],
+      },
+      {
+        id: "creator-fees",
+        label: "Creator Fees",
+        percent: 1,
+        color: "#00E38C",
+        kind: "creator",
+        detail: "Trading fees paid directly to the creator.",
+      },
+      {
+        id: "buybacks-burn",
+        label: "Buybacks & Burns",
+        percent: 1,
+        color: "#8B7CF6",
+        kind: "buybacks",
+        detail: "Automatically buys & burns your token.",
+      },
+    ],
+    payments: [
+      { assetId: "combo-eth", amount: 0.0184, usdValue: 61.42 },
+      { assetId: "combo-usdc", amount: 24.5, usdValue: 24.5 },
+      { assetId: "combo-spy", amount: 0.041, usdValue: 27.18 },
+      { assetId: "combo-nvda", amount: 0.084, usdValue: 15.86 },
+    ],
+  };
+}
+
 const cx = (...classes: Array<string | false | null | undefined>) => classes.filter(Boolean).join(" ");
 const shortAddress = (address: string) => `${address.slice(0, 6)}…${address.slice(-4)}`;
 
@@ -123,7 +221,7 @@ const TERMINAL_CONTROL_CSS = `
 .bb-size-slider::before,
 .bb-size-fill {
   position: absolute;
-  top: 11px;
+  top: 9px;
   left: 7px;
   height: 3px;
   border-radius: 3px;
@@ -141,7 +239,7 @@ const TERMINAL_CONTROL_CSS = `
   box-shadow: 0 0 10px rgba(24,201,142,0.13);
 }
 .bb-size-halo {
-  top: 12px;
+  top: 10.5px;
   left: calc(7px + (100% - 14px) * var(--size-ratio));
   width: 20px;
   height: 20px;
@@ -231,6 +329,53 @@ const TERMINAL_CONTROL_CSS = `
   background: linear-gradient(90deg,rgba(255,55,113,0.114),rgba(255,55,113,0.043) 48%,transparent 88%);
   box-shadow: inset 5px 0 12px -10px rgba(255,55,113,0.72),-2px 0 10px -5px rgba(255,55,113,0.52);
 }
+.bb-fee-builder-invite {
+  isolation: isolate;
+  animation: bbFeeBuilderInvite 4.2s cubic-bezier(0.2,0.72,0.2,1) infinite;
+  transition: background 220ms ease,box-shadow 220ms ease;
+}
+.bb-fee-builder-invite::before {
+  position: absolute;
+  z-index: 2;
+  top: -30%;
+  left: 0;
+  width: 2px;
+  height: 24%;
+  border-radius: 2px;
+  background: linear-gradient(180deg,transparent,rgba(238,206,106,0.9),rgba(255,232,151,0.82),rgba(120,233,157,0.42),transparent);
+  box-shadow: 0 0 11px rgba(238,206,106,0.22);
+  content: "";
+  pointer-events: none;
+  animation: bbFeeBuilderTrace 4.2s cubic-bezier(0.2,0.72,0.2,1) infinite;
+}
+.bb-fee-builder-invite::after {
+  position: absolute;
+  inset: 0;
+  border-right: 1px solid rgba(238,206,106,0.1);
+  content: "";
+  pointer-events: none;
+  animation: bbFeeBuilderEdge 4.2s ease-in-out infinite;
+}
+.bb-fee-builder-invite .bb-fee-builder-invite-mark {
+  animation: bbFeeBuilderMark 4.2s ease-in-out infinite;
+}
+.bb-fee-builder-invite:hover {
+  background: linear-gradient(180deg,rgba(238,206,106,0.055),rgba(238,206,106,0.018) 48%,transparent 88%);
+  box-shadow: inset 2px 0 rgba(238,206,106,0.34),-8px 0 24px rgba(238,206,106,0.055);
+}
+.bb-fee-builder-invite:hover::after {
+  border-right-color: rgba(255,225,132,0.3);
+  background: linear-gradient(90deg,transparent,rgba(238,206,106,0.045));
+  box-shadow: inset -1px 0 rgba(255,237,177,0.08);
+}
+.bb-fee-builder-invite:hover .bb-fee-builder-invite-mark,
+.bb-fee-builder-invite:hover .bb-fee-builder-invite-fee {
+  color: #ffe59a !important;
+  filter: drop-shadow(0 0 6px rgba(238,206,106,0.2));
+}
+.bb-fee-builder-invite:hover .bb-fee-builder-invite-mark {
+  animation-play-state: paused;
+}
 @keyframes bbTradeArrivalPulse {
   0% { opacity: 0; }
   16% { opacity: 0.88; }
@@ -238,6 +383,33 @@ const TERMINAL_CONTROL_CSS = `
   61% { opacity: 0.32; }
   82% { opacity: 0.12; }
   100% { opacity: 0; }
+}
+@keyframes bbFeeBuilderInvite {
+  0%,58%,100% { box-shadow: inset 1px 0 rgba(255,255,255,0.012); }
+  70% { box-shadow: inset 2px 0 rgba(238,206,106,0.24),0 0 18px rgba(238,206,106,0.04); }
+  84% { box-shadow: inset 1px 0 rgba(120,233,157,0.14),0 0 13px rgba(120,233,157,0.02); }
+}
+@keyframes bbFeeBuilderTrace {
+  0%,54% { top: -30%; opacity: 0; }
+  62% { opacity: 1; }
+  88% { top: 106%; opacity: 0.72; }
+  100% { top: 106%; opacity: 0; }
+}
+@keyframes bbFeeBuilderEdge {
+  0%,58%,100% { opacity: 0.22; }
+  72% { opacity: 0.82; }
+  88% { opacity: 0.28; }
+}
+@keyframes bbFeeBuilderMark {
+  0%,58%,100% { color: rgba(255,255,255,0.48); filter: drop-shadow(0 0 0 rgba(238,206,106,0)); }
+  70% { color: #ffe59a; filter: drop-shadow(0 0 6px rgba(238,206,106,0.18)); }
+  84% { color: rgba(236,215,143,0.78); filter: drop-shadow(0 0 4px rgba(238,206,106,0.1)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bb-fee-builder-invite,
+  .bb-fee-builder-invite::before,
+  .bb-fee-builder-invite::after,
+  .bb-fee-builder-invite .bb-fee-builder-invite-mark { animation: none; }
 }
 `;
 
@@ -267,6 +439,13 @@ function formatUsd(value: number) {
 
 function formatQuoteUsd(value: number) {
   return value.toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function formatQuoteAmount(value: number) {
+  return value.toLocaleString("en-US", {
+    minimumFractionDigits: value >= 100 ? 1 : 2,
+    maximumFractionDigits: value >= 1_000 ? 1 : value >= 100 ? 2 : 4,
+  });
 }
 
 function formatPrice(value: number) {
@@ -411,15 +590,25 @@ function initialQuoteUsd(symbol: string) {
   return 1;
 }
 
+function initialLiveMarketMetrics(token: LbpTokenDetail): LiveMarketMetrics {
+  return {
+    price: token.price,
+    change24h: token.change24h,
+    volume24h: token.volume24h,
+    poolQuote: token.raised / initialQuoteUsd(token.quoteSymbol),
+    marketCap: token.marketCap,
+  };
+}
+
 function NetworkMark({ token, className = "h-4 w-4" }: { token: LbpTokenDetail; className?: string }) {
   return <Image unoptimized src={NETWORK_ICONS[token.network]} alt="" width={20} height={20} className={cx("shrink-0 rounded-full object-cover", className)} />;
 }
 
-function TokenMark({ token, size = "h-10 w-10" }: { token: LbpTokenDetail; size?: string }) {
+function TokenMark({ token, size = "h-10 w-10", showNetwork = true }: { token: LbpTokenDetail; size?: string; showNetwork?: boolean }) {
   return (
     <span className={cx("relative grid shrink-0 place-items-center rounded-full border border-white/12 bg-[#111514] text-[12px] font-bold", size)} style={{ color: token.accent, boxShadow: `inset 0 0 20px color-mix(in srgb, ${token.accent} 10%, transparent)` }}>
       {token.ticker.slice(0, 2)}
-      <span className="absolute -bottom-0.5 -right-0.5 rounded-full bg-[#090a0a] p-[1px]"><NetworkMark token={token} className="h-3.5 w-3.5" /></span>
+      {showNetwork ? <span className="absolute -bottom-0.5 -right-0.5 rounded-full bg-[#090a0a] p-[1px]"><NetworkMark token={token} className="h-3.5 w-3.5" /></span> : null}
     </span>
   );
 }
@@ -447,13 +636,13 @@ function Metric({ label, value, accent = false, className }: { label: string; va
   return (
     <div className={cx("flex min-w-[104px] flex-1 flex-col justify-center border-l border-[#1d2220] px-[18px] first:border-l-0 max-[1400px]:min-w-[90px] max-[1400px]:px-3", className)}>
       <dt className={cx("text-[9.5px] font-bold uppercase tracking-[0.105em] text-[#73807a]", accent ? "whitespace-normal leading-[1.05] max-[1400px]:text-[7.5px] max-[1400px]:tracking-[0.035em]" : "truncate")}>{label}</dt>
-      <dd className={cx("mt-[5px] truncate font-mono text-[12.5px] font-semibold tracking-[-0.018em] tabular-nums", accent ? "text-[#52dfb2]" : "text-[#edf2f0]")}>{value}</dd>
+      <motion.dd key={value} initial={{ opacity: 0.62, y: 1 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.22 }} className={cx("mt-[5px] truncate font-mono text-[12.5px] font-semibold tracking-[-0.018em] tabular-nums", accent ? "text-[#52dfb2]" : "text-[#edf2f0]")}>{value}</motion.dd>
     </div>
   );
 }
 
-function InstrumentHeader({ token }: { token: LbpTokenDetail }) {
-  const progress = Math.min(100, token.target ? (token.marketCap / token.target) * 100 : 0);
+function InstrumentHeader({ token, liveMetrics }: { token: LbpTokenDetail; liveMetrics: LiveMarketMetrics }) {
+  const progress = Math.min(100, token.target ? (liveMetrics.marketCap / token.target) * 100 : 0);
   const dex = DEX_CONFIG[token.network];
   return (
     <section className="shrink-0 bg-[#0f1111]">
@@ -472,23 +661,22 @@ function InstrumentHeader({ token }: { token: LbpTokenDetail }) {
         </div>
 
         <div className="flex min-w-[150px] flex-col justify-center border-l border-[#222826] px-5 max-[1400px]:min-w-[130px] max-[1400px]:px-3">
-          <strong className="font-mono text-[20px] font-semibold tracking-[-0.04em] text-[#edf2ef]">{formatPrice(token.price)}</strong>
-          <span className={cx("mt-[3px] font-mono text-[11.5px] font-semibold", token.change24h >= 0 ? "text-[#18c98e]" : "text-[#ff3771]")}>{token.change24h >= 0 ? "+" : ""}{token.change24h.toFixed(2)}% <i className="font-mono text-[9.5px] not-italic uppercase tracking-[0.05em] text-[#626d68]">24H</i></span>
+          <motion.strong key={liveMetrics.price} initial={{ opacity: 0.62, y: 1 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.22 }} className="font-mono text-[20px] font-semibold tracking-[-0.04em] text-[#edf2ef]">{formatPrice(liveMetrics.price)}</motion.strong>
+          <motion.span key={liveMetrics.change24h} initial={{ opacity: 0.62 }} animate={{ opacity: 1 }} transition={{ duration: 0.22 }} className={cx("mt-[3px] font-mono text-[11.5px] font-semibold", liveMetrics.change24h >= 0 ? "text-[#18c98e]" : "text-[#ff3771]")}>{liveMetrics.change24h >= 0 ? "+" : ""}{liveMetrics.change24h.toFixed(2)}% <i className="font-mono text-[9.5px] not-italic uppercase tracking-[0.05em] text-[#626d68]">24H</i></motion.span>
         </div>
 
         <dl className="flex min-w-0 flex-1 overflow-hidden border-l border-[#222826]">
-          <Metric label="24h volume" value={formatUsd(token.volume24h)} />
-          <Metric label="Raised" value={formatUsd(token.raised)} className="max-[1400px]:hidden" />
-          <Metric label="Market cap" value={formatUsd(token.marketCap)} />
+          <Metric label="24h volume" value={formatUsd(liveMetrics.volume24h)} />
+          <Metric label="Pool" value={`${formatQuoteAmount(liveMetrics.poolQuote)} ${token.quoteSymbol}`} className="max-[1400px]:hidden" />
+          <Metric label="Market cap" value={formatUsd(liveMetrics.marketCap)} />
           <Metric label="Target market cap" value={formatUsd(token.target)} accent />
         </dl>
       </div>
 
       <div className="flex min-h-[36px] items-center gap-7 bg-[#151918] px-3 text-[9.5px] text-[#aeb8b4] max-[1400px]:gap-5">
-        <div className="flex items-center gap-2"><span className="uppercase tracking-[0.1em] text-[#515b57]">Network</span><NetworkMark token={token} className="h-3.5 w-3.5" /><strong className="font-medium text-[#aeb8b4] max-[1400px]:hidden">{token.networkLabel}</strong></div>
         <div className="flex items-center gap-2"><span className="uppercase tracking-[0.1em] text-[#515b57]">DEX</span><span className="hidden" aria-hidden="true">◆</span>{dex.icon ? <Image unoptimized src={dex.icon} alt="" width={16} height={16} className="h-4 w-4 shrink-0 object-contain" /> : null}<strong className="-ml-1 font-medium text-[#aeb8b4]">{dex.name}</strong><span className="font-mono text-[#66716c]">{dex.version}</span><span className="font-mono text-[#78847e]">{token.poolFee.toFixed(2)}%</span></div>
         <div className="flex items-center gap-2"><span className="uppercase tracking-[0.1em] text-[#515b57]">Contract</span><a href={`${EXPLORERS[token.network]}${token.contract}`} target="_blank" rel="noreferrer" className="font-mono text-[#aeb8b4] transition hover:text-white/88">{shortAddress(token.contract)}</a><CopyAddress value={token.contract} /></div>
-        <div className="hidden items-center gap-2 min-[1500px]:flex"><span className="uppercase tracking-[0.1em] text-[#515b57]">Created by</span><Link href={`/u/${token.creator}`} className="font-medium text-[#aeb8b4] hover:text-white/90">{token.creator}</Link><span className="text-[#515b57]">on</span><a href={`/?board=${token.board}`} className="font-medium text-[#aeb8b4] hover:text-white/90">b/{token.board}</a></div>
+        <div className="hidden items-center gap-2 min-[1120px]:flex"><span className="uppercase tracking-[0.1em] text-[#515b57]"><span className="min-[1780px]:hidden">by</span><span className="hidden min-[1780px]:inline">Created by</span></span><Link href={`/u/${token.creator}`} className="font-medium text-[#aeb8b4] hover:text-white/90">{token.creator}</Link><span className="hidden text-[#515b57] min-[1320px]:inline">on</span><a href={`/?board=${token.board}`} className="hidden font-medium text-[#aeb8b4] hover:text-white/90 min-[1320px]:inline">b/{token.board}</a></div>
         <div className="ml-auto flex min-w-[220px] items-center gap-3 max-[1400px]:min-w-[150px] max-[1400px]:gap-2">
           <div className="h-[3px] min-w-[90px] flex-1 overflow-hidden rounded-full bg-white/[0.08]"><span className="block h-full rounded-full bg-[#18c98e] shadow-[0_0_10px_rgba(24,201,142,0.3)]" style={{ width: `${progress}%` }} /></div>
           <strong className="w-10 font-mono text-[10px] text-[#18c98e]">{progress.toFixed(0)}%</strong>
@@ -498,15 +686,18 @@ function InstrumentHeader({ token }: { token: LbpTokenDetail }) {
   );
 }
 
-function PriceChart({ token, focusHidden = false }: { token: LbpTokenDetail; focusHidden?: boolean }) {
+function PriceChart({ token, livePrice, focusHidden = false }: { token: LbpTokenDetail; livePrice: number; focusHidden?: boolean }) {
   const [timeframe, setTimeframe] = React.useState<(typeof TIMEFRAMES)[number]>("15m");
   const [mode, setMode] = React.useState<ChartMode>("candles");
   const [basis, setBasis] = React.useState<ChartBasis>("marketCap");
   const [visibleCount, setVisibleCount] = React.useState(78);
   const [fullscreen, setFullscreen] = React.useState(false);
   const [creatorTradesVisible, setCreatorTradesVisible] = React.useState(true);
+  const [hoveredCreatorTrade, setHoveredCreatorTrade] = React.useState<string | null>(null);
   const allCandles = React.useMemo(() => createCandles(token), [token]);
-  const candles = allCandles.slice(-visibleCount);
+  const candles = allCandles.slice(-visibleCount).map((candle, index, source) => index === source.length - 1
+    ? { ...candle, close: livePrice, high: Math.max(candle.high, livePrice), low: Math.min(candle.low, livePrice) }
+    : candle);
   const supply = token.marketCap > 0 ? token.marketCap / token.price : 100_000_000;
   const factor = basis === "marketCap" ? supply : 1;
   const width = 1000;
@@ -528,9 +719,9 @@ function PriceChart({ token, focusHidden = false }: { token: LbpTokenDetail; foc
   const areaPath = `${closePath} L${right} ${bottom} L${left} ${bottom} Z`;
   const formatAxis = (value: number) => basis === "marketCap" ? formatUsd(value) : formatPrice(value);
   const latestCandle = candles[candles.length - 1];
-  const creatorTrades: Array<{ index: number; side: TradeSide }> = [
-    { index: Math.max(4, Math.floor(candles.length * 0.3)), side: "buy" },
-    { index: Math.max(8, Math.floor(candles.length * 0.68)), side: "sell" },
+  const creatorTrades: Array<{ index: number; side: TradeSide; nativeAmount: number; time: string }> = [
+    { index: Math.max(4, Math.floor(candles.length * 0.3)), side: "buy", nativeAmount: 2.18, time: "11:25" },
+    { index: Math.max(8, Math.floor(candles.length * 0.68)), side: "sell", nativeAmount: 1.42, time: "13:24" },
   ];
 
   return (
@@ -550,7 +741,10 @@ function PriceChart({ token, focusHidden = false }: { token: LbpTokenDetail; foc
           <button type="button" onClick={() => setMode("line")} aria-label="Line chart" className={cx("grid h-7 w-7 place-items-center rounded transition", mode === "line" ? "bg-white/[0.07] text-white/80" : "text-white/35 hover:text-white/70")}><LineChart className="h-3.5 w-3.5" /></button>
         </div>
         <div className="ml-auto flex items-center gap-2">
-          <button type="button" onClick={() => setCreatorTradesVisible((current) => !current)} aria-pressed={creatorTradesVisible} className={cx("inline-flex h-7 items-center gap-1.5 rounded-md border px-2 text-[9px] font-semibold transition", creatorTradesVisible ? "border-[#d8b75f]/45 bg-[#d8b75f]/[0.07] text-[#ecd78f]" : "border-white/[0.07] text-white/34 hover:text-white/64")}><Crown className="h-3 w-3" /><span>Creator</span><span className="ml-0.5 flex items-center gap-0.5" aria-label="Creator buys and sells"><i className="h-1 w-1 rounded-full bg-[#18c98e]" /><i className="h-1 w-1 rounded-full bg-[#ff3771]" /></span></button>
+          <button type="button" onClick={() => setCreatorTradesVisible((current) => !current)} aria-pressed={creatorTradesVisible} aria-label={`${creatorTradesVisible ? "Hide" : "Show"} creator buys and sells`} className={cx("inline-flex h-7 items-center gap-1.5 rounded-md border px-2 text-[9px] font-semibold transition", creatorTradesVisible ? "border-white/[0.13] bg-white/[0.045] text-white/72 shadow-[inset_0_1px_rgba(255,255,255,0.025)]" : "border-white/[0.07] bg-transparent text-white/34 hover:border-white/[0.11] hover:text-white/62")}>
+            <span className="grid h-3.5 w-3.5 shrink-0 place-items-center" aria-hidden><Crown className="h-[11px] w-[11px] text-white/42" strokeWidth={1.8} /></span>
+            <span className="leading-none">Creator</span>
+          </button>
           <div className="flex rounded-full bg-white/[0.035] p-0.5 ring-1 ring-white/[0.07]">
             <button type="button" onClick={() => setBasis("marketCap")} className={cx("h-6 rounded-full px-2.5 text-[9.5px] transition", basis === "marketCap" ? "bg-white/[0.09] text-white/82" : "text-white/38")}>Market cap</button>
             <button type="button" onClick={() => setBasis("price")} className={cx("h-6 rounded-full px-2.5 text-[9.5px] transition", basis === "price" ? "bg-white/[0.09] text-white/82" : "text-white/38")}>Price</button>
@@ -592,18 +786,51 @@ function PriceChart({ token, focusHidden = false }: { token: LbpTokenDetail; foc
             const markerX = x(Math.min(trade.index, candles.length - 1));
             const markerY = Math.max(top + 13, y(candle.high * factor) - 20);
             const sideColor = trade.side === "buy" ? "#18c98e" : "#ff3771";
-            return <g key={`creator-${trade.index}`}><line x1={markerX} x2={markerX} y1={markerY + 9} y2={y(candle.high * factor) - 2} stroke="#d8b75f" strokeWidth="1" strokeDasharray="2 2" opacity="0.6" /><circle cx={markerX} cy={markerY} r="9" fill="#111513" stroke="#d8b75f" strokeWidth="1.2" /><text x={markerX} y={markerY + 3.6} textAnchor="middle" fill="#ecd78f" fontSize="10">♛</text><circle cx={markerX + 7} cy={markerY + 7} r="2.7" fill={sideColor} stroke="#111513" strokeWidth="1" /></g>;
+            const tradeId = `${trade.side}-${trade.index}`;
+            const hovered = hoveredCreatorTrade === tradeId;
+            const tooltipWidth = 172;
+            const tooltipHeight = 52;
+            const tooltipX = markerX + tooltipWidth + 12 > right ? markerX - tooltipWidth - 12 : markerX + 12;
+            const tooltipY = markerY < top + 64 ? markerY + 15 : markerY - tooltipHeight - 13;
+            const usdValue = trade.nativeAmount * initialQuoteUsd(token.quoteSymbol);
+            return (
+              <g
+                key={`creator-${tradeId}`}
+                className="cursor-pointer outline-none"
+                role="button"
+                tabIndex={0}
+                aria-label={`Creator ${trade.side}. ${trade.nativeAmount.toFixed(2)} ${token.quoteSymbol}, ${formatUsd(usdValue)}, at ${trade.time}.`}
+                onMouseEnter={() => setHoveredCreatorTrade(tradeId)}
+                onMouseLeave={() => setHoveredCreatorTrade(null)}
+                onFocus={() => setHoveredCreatorTrade(tradeId)}
+                onBlur={() => setHoveredCreatorTrade(null)}
+                style={{ filter: hovered ? `drop-shadow(0 0 7px ${trade.side === "buy" ? "rgba(24,201,142,0.28)" : "rgba(255,55,113,0.26)"})` : "none", transition: "filter 160ms ease" }}
+              >
+                <line x1={markerX} x2={markerX} y1={markerY + 7} y2={y(candle.high * factor) - 2} stroke={sideColor} strokeWidth={hovered ? 1.35 : 0.9} strokeDasharray="2 2" opacity={hovered ? 0.9 : 0.48} vectorEffect="non-scaling-stroke" />
+                <circle cx={markerX} cy={markerY} r={hovered ? 9.75 : 8.25} fill={sideColor} stroke="rgba(255,255,255,0.48)" strokeWidth={hovered ? 1.5 : 0.85} style={{ transition: "r 150ms ease,stroke-width 150ms ease" }} />
+                <path d="M2 4l3 12h14l3-12-6 7-4-7-4 7-6-7M5 20h14" fill="none" stroke="#fff1b8" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" transform={`translate(${markerX - 5.4} ${markerY - 5.4}) scale(.45)`} />
+                {hovered ? (
+                  <g pointerEvents="none">
+                    <rect x={tooltipX} y={tooltipY} width={tooltipWidth} height={tooltipHeight} rx="7" fill="rgba(11,14,13,0.985)" stroke="rgba(255,255,255,0.13)" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+                    <rect x={tooltipX} y={tooltipY} width="2" height={tooltipHeight} rx="1" fill={sideColor} />
+                    <text x={tooltipX + 11} y={tooltipY + 14} fill={sideColor} fontSize="8" fontWeight="700" letterSpacing="0.7">CREATOR {trade.side.toUpperCase()}</text>
+                    <text x={tooltipX + 11} y={tooltipY + 29} fill="rgba(239,244,242,0.92)" fontSize="9" fontWeight="600" fontFamily="monospace">{trade.nativeAmount.toFixed(2)} {token.quoteSymbol}  ·  {formatUsd(usdValue)}</text>
+                    <text x={tooltipX + 11} y={tooltipY + 43} fill="rgba(174,184,180,0.64)" fontSize="8" fontFamily="monospace">{trade.time}  ·  {formatAxis(candle.close * factor)}</text>
+                  </g>
+                ) : null}
+              </g>
+            );
           }) : null}
           {candles.map((candle, index) => <rect key={`volume-${index}`} x={x(index) - candleWidth / 2} y={bottom + 8 + (1 - candle.volume) * 25} width={candleWidth} height={candle.volume * 25} fill={candle.close >= candle.open ? "#18c98e" : "#ff3771"} opacity="0.8" />)}
-          <line x1={left} x2={right} y1={y(latestCandle.close * factor)} y2={y(latestCandle.close * factor)} stroke={token.accent} strokeDasharray="3 4" opacity="0.52" />
-          <rect x={right} y={y(latestCandle.close * factor) - 9} width="74" height="18" fill={token.accent} /><text x={right + 7} y={y(latestCandle.close * factor) + 3.5} fill="#07100b" fontSize="9.5" fontWeight="700" fontFamily="monospace">{formatAxis(latestCandle.close * factor)}</text>
+          <line x1={left} x2={right} y1={y(latestCandle.close * factor)} y2={y(latestCandle.close * factor)} stroke="#18c98e" strokeDasharray="3 4" opacity="0.52" />
+          <rect x={right} y={y(latestCandle.close * factor) - 9} width="74" height="18" fill="#18c98e" /><text x={right + 7} y={y(latestCandle.close * factor) + 3.5} fill="#06140e" fontSize="9.5" fontWeight="700" fontFamily="monospace">{formatAxis(latestCandle.close * factor)}</text>
         </svg>
       </div>
     </section>
   );
 }
 
-function FloatingChart({ token, onRestore }: { token: LbpTokenDetail; onRestore: () => void }) {
+function FloatingChart({ token, onRestore, rightOffset = 14 }: { token: LbpTokenDetail; onRestore: () => void; rightOffset?: number }) {
   const candles = React.useMemo(() => createCandles(token, 42), [token]);
   const [position, setPosition] = React.useState<{ x: number; y: number } | null>(null);
   const [size, setSize] = React.useState({ width: 318, height: 188 });
@@ -683,7 +910,7 @@ function FloatingChart({ token, onRestore }: { token: LbpTokenDetail; onRestore:
       exit={{ opacity: 0, y: 8, scale: 0.98 }}
       transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
       className="fixed z-[260] overflow-hidden rounded-xl border border-[#2a3330] bg-[#0d100f]/[0.98] shadow-[0_20px_55px_rgba(0,0,0,0.58),0_0_0_1px_rgba(24,201,142,0.035)] backdrop-blur-xl"
-      style={position ? { left: position.x, top: position.y, width: size.width, height: size.height } : { right: 14, bottom: 54, width: size.width, height: size.height }}
+      style={position ? { left: position.x, top: position.y, width: size.width, height: size.height } : { right: rightOffset, bottom: 54, width: size.width, height: size.height }}
       aria-label="Floating price chart"
     >
       <div onPointerDown={startDrag} onPointerMove={moveDrag} onPointerUp={finishDrag} onPointerCancel={finishDrag} className={cx("flex h-8 touch-none items-center border-b border-white/[0.07] px-2.5", dragging ? "cursor-grabbing" : "cursor-grab")}>
@@ -752,7 +979,7 @@ function CommentThread({ comment, token }: { comment: CommentNode; token: LbpTok
   );
 }
 
-function ActivityPanel({ token, height, focusMode, onHeightChange, onToggleCollapsed, onCommentsFocusChange }: { token: LbpTokenDetail; height: number; focusMode: boolean; onHeightChange: (height: number) => void; onToggleCollapsed: () => void; onCommentsFocusChange: (focused: boolean) => void }) {
+function ActivityPanel({ token, liveMetrics, height, focusMode, onHeightChange, onToggleCollapsed, onCommentsFocusChange }: { token: LbpTokenDetail; liveMetrics: LiveMarketMetrics; height: number; focusMode: boolean; onHeightChange: (height: number) => void; onToggleCollapsed: () => void; onCommentsFocusChange: (focused: boolean) => void }) {
   const [tab, setTab] = React.useState<ActivityTab>("live");
   const [filter, setFilter] = React.useState<TradeFilter>("all");
   const [windowSize, setWindowSize] = React.useState("5m");
@@ -764,17 +991,21 @@ function ActivityPanel({ token, height, focusMode, onHeightChange, onToggleColla
   const [arrival, setArrival] = React.useState<TradeRow | null>(null);
   const [resizing, setResizing] = React.useState(false);
   const tradeSequence = React.useRef(20);
+  const livePriceRef = React.useRef(liveMetrics.price);
   const resizeState = React.useRef({ startY: 0, startHeight: height, moved: false });
   const holders = React.useMemo(() => createHolders(token), [token]);
   const filteredRows = rows.filter((row) => filter === "all" || row.side === filter);
   const visibleRows = filteredRows.slice(0, visibleTradeCount);
   const visibleHolders = holders.slice(0, visibleHolderCount);
   const buys = rows.filter((row) => row.side === "buy");
-  const volume = rows.reduce((sum, row) => sum + row.usd, 0);
   const buyRatio = rows.length ? Math.round((buys.length / rows.length) * 100) : 0;
   const maxTradeUsd = Math.max(1, ...filteredRows.map((row) => row.usd));
   const commentCount = countComments(comments);
   const collapsed = !focusMode && height <= 42;
+
+  React.useEffect(() => {
+    livePriceRef.current = liveMetrics.price;
+  }, [liveMetrics.price]);
 
   React.useEffect(() => {
     if (token.upcoming) return;
@@ -783,7 +1014,8 @@ function ActivityPanel({ token, height, focusMode, onHeightChange, onToggleColla
       const index = tradeSequence.current;
       const base = createTrades(token)[index % 12];
       if (!base) return;
-      const next = { ...base, id: `live-${Date.now()}`, age: "now" };
+      const price = livePriceRef.current * (1 + (seeded(token.seed + 131, index) - 0.5) * 0.0035);
+      const next = { ...base, id: `live-${Date.now()}`, age: "now", price, amount: base.usd / Math.max(price, 0.000001) };
       setRows((current) => [next, ...current.map((row, rowIndex) => ({ ...row, age: rowIndex < 5 ? `${[6, 12, 18, 27, 39][rowIndex]}s` : row.age }))].slice(0, 180));
       setArrival(next);
     }, 4600);
@@ -865,9 +1097,9 @@ function ActivityPanel({ token, height, focusMode, onHeightChange, onToggleColla
         <div className="flex flex-col justify-center border-r border-white/[0.07] px-[18px] max-[1400px]:px-3"><strong className="font-mono text-[11.5px] font-semibold tracking-[-0.025em] text-[#d7dfdc]">{token.ticker}/{token.quoteSymbol}</strong><span className="mt-0.5 text-[8.5px] font-bold uppercase tracking-[0.095em] text-[#18c98e]">{token.upcoming ? "Scheduled market" : "Realtime market"}</span></div>
         <div className="flex items-center gap-[10px] border-r border-white/[0.07] px-3"><span className="text-[9px] font-semibold uppercase tracking-[0.09em] text-[#75817c]">Window</span><div className="grid min-w-0 flex-1 grid-cols-4 gap-0.5 rounded-md border border-white/[0.08] bg-[#0c0f0e] p-0.5">{["5m", "1h", "4h", "24h"].map((item) => <button key={item} type="button" onClick={() => setWindowSize(item)} className={cx("h-[26px] rounded text-[10px] font-medium transition", windowSize === item ? "bg-[#18c98e]/[0.10] text-[#78e99d] shadow-[inset_0_0_0_1px_rgba(24,201,142,0.24)]" : "text-[#7d8984] hover:bg-[#171d1b] hover:text-[#c4ceca]")}>{item}</button>)}</div></div>
         <dl className="grid min-w-0 grid-cols-4">
-          <ActivityMetric label="Price change" value={`${token.change24h >= 0 ? "+" : ""}${token.change24h.toFixed(2)}%`} accent />
+          <ActivityMetric label="Price change" value={`${liveMetrics.change24h >= 0 ? "+" : ""}${liveMetrics.change24h.toFixed(2)}%`} accent />
           <ActivityMetric label="Trades" value={rows.length.toString()} />
-          <ActivityMetric label="Volume" value={formatUsd(volume)} />
+          <ActivityMetric label="Volume" value={formatUsd(liveMetrics.volume24h)} />
           <ActivityMetric label="Buy ratio" value={`${buyRatio}%`} accent />
         </dl>
       </div> : null}
@@ -917,7 +1149,131 @@ function ActivityPanel({ token, height, focusMode, onHeightChange, onToggleColla
   );
 }
 
-function TradeTicket({ token }: { token: LbpTokenDetail }) {
+function FeeBuilderDrawer({
+  token,
+  expanded,
+  onExpand,
+  onCollapse,
+}: {
+  token: LbpTokenDetail;
+  expanded: boolean;
+  onExpand: () => void;
+  onCollapse: () => void;
+}) {
+  const feeBuilderBase = React.useMemo(() => feeBuilderDemo(token), [token]);
+  const [savedRouteOrder, setSavedRouteOrder] = React.useState<FeeBuilderRouteOrderKey[]>([]);
+
+  React.useEffect(() => {
+    const syncRouteOrder = () => setSavedRouteOrder(readFeeBuilderRouteOrder());
+    const syncStorageRouteOrder = (event: StorageEvent) => {
+      if (event.key === FEE_BUILDER_ROUTE_ORDER_STORAGE_KEY) syncRouteOrder();
+    };
+    syncRouteOrder();
+    window.addEventListener(FEE_BUILDER_ROUTE_ORDER_EVENT, syncRouteOrder);
+    window.addEventListener("storage", syncStorageRouteOrder);
+    return () => {
+      window.removeEventListener(FEE_BUILDER_ROUTE_ORDER_EVENT, syncRouteOrder);
+      window.removeEventListener("storage", syncStorageRouteOrder);
+    };
+  }, []);
+
+  const feeBuilder = React.useMemo(
+    () => ({ ...feeBuilderBase, routes: orderFeeBuilderRoutes(feeBuilderBase.routes, savedRouteOrder) }),
+    [feeBuilderBase, savedRouteOrder],
+  );
+  const activeRoutes = feeBuilder.routes.filter((route) => route.percent > 0);
+  const activeFee = activeRoutes.reduce((sum, route) => sum + route.percent, 0);
+  const activeFeeLabel = `${Number.isInteger(activeFee) ? activeFee.toFixed(0) : activeFee.toFixed(1)}%`;
+
+  return (
+    <aside
+      className={cx(
+        "relative flex min-h-0 min-w-0 flex-col overflow-hidden border-l border-[#242a28] bg-[#0a0c0b] text-[#dce4e0] shadow-[inset_1px_0_rgba(255,255,255,0.012)] max-[1420px]:absolute max-[1420px]:bottom-0 max-[1420px]:right-0 max-[1420px]:top-0 max-[1420px]:z-30 max-[1040px]:!static max-[1040px]:order-3 max-[1040px]:min-h-11 max-[1040px]:!w-full max-[1040px]:border-t",
+        expanded ? "max-[1420px]:w-[440px] max-[480px]:w-[calc(100%_-_42px)]" : "max-[1420px]:w-[42px]",
+      )}
+      data-testid="pool-fee-builder-drawer"
+      aria-label="Fee Builder"
+    >
+      <AnimatePresence initial={false} mode="sync">
+        {!expanded ? (
+          <motion.button
+            key="collapsed-fee-builder"
+            type="button"
+            onClick={onExpand}
+            aria-label={`Open Fee Builder. ${activeFeeLabel} active fees`}
+            aria-expanded="false"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.12 }}
+            className="bb-fee-builder-invite group relative grid h-full w-full min-h-0 grid-rows-[30px_minmax(180px,1fr)_30px] items-center justify-items-center overflow-hidden py-2 text-white/46 outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-white/20 max-[1040px]:h-11 max-[1040px]:grid-cols-[22px_minmax(0,1fr)_24px] max-[1040px]:grid-rows-1 max-[1040px]:gap-2 max-[1040px]:px-3 max-[1040px]:py-0"
+          >
+            <ChevronLeft className="h-3 w-3 text-white/32 transition-colors group-hover:text-[#ffe59a] max-[1040px]:-rotate-90" strokeWidth={1.8} aria-hidden />
+            <span className="bb-fee-builder-invite-mark relative grid h-full min-h-0 w-full place-items-center whitespace-nowrap text-[8.5px] font-normal uppercase text-white/58">
+              <span className="absolute left-1/2 top-1/2 hidden w-max -translate-x-1/2 -translate-y-1/2 rotate-90 items-center gap-3.5 font-light leading-none text-white/60 min-[1041px]:inline-flex" aria-hidden>
+                <span className="text-[10.5px] tracking-[1.34em] [text-shadow:0_0_16px_rgba(255,255,255,0.035)]">Fee Builder</span>
+                <i className="h-px w-5 shrink-0 bg-gradient-to-r from-white/8 via-[#e4ca72]/55 to-white/8 shadow-[0_0_7px_rgba(228,202,114,0.13)]" />
+                <strong className="bb-fee-builder-invite-fee font-mono text-[9.5px] font-medium tracking-[0.24em] text-[#e7d69b]/76">{activeFeeLabel}</strong>
+              </span>
+              <span className="hidden items-center gap-5 tracking-[0.34em] max-[1040px]:inline-flex">
+                <span>Fee Builder</span>
+                <strong className="bb-fee-builder-invite-fee font-mono text-[8.5px] font-medium tracking-[0.28em] text-white/66">{activeFeeLabel}</strong>
+              </span>
+            </span>
+            <Gauge className="h-[15px] w-[15px] text-white/30 transition-colors group-hover:text-[#f0d77f]" strokeWidth={1.65} aria-hidden />
+          </motion.button>
+        ) : (
+          <motion.div
+            key="expanded-fee-builder"
+            initial={{ opacity: 0, x: 8 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 5 }}
+            transition={{ duration: 0.2, ease: [0.2, 0.72, 0.2, 1] }}
+            className="flex h-full min-h-0 w-full flex-col max-[1040px]:h-auto"
+          >
+            <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto bg-[#0a0c0b] [scrollbar-color:#303936_transparent] [scrollbar-width:thin] max-[1040px]:max-h-[560px]">
+              <FeeEngineCard
+                routes={feeBuilder.routes}
+                maxTotal={10}
+                accruedAmount={0.036}
+                distributionThreshold={0.05}
+                settlementAsset={token.quoteSymbol}
+                totalPaidOut={12.84}
+                lastPayoutAt="11 min ago"
+                payoutCount={64}
+                viewerRewardPayments={feeBuilder.payments}
+                viewerWalletShare={(18_420 / Math.max(token.marketCap / Math.max(token.price, 0.0000001), 1)) * 100}
+                compact
+                headerInfo={(
+                  <>
+                    <span className="block font-light text-white/50"><span className="font-normal text-[#e2d39f]/76">Based Bid’s Fee Engine</span> transforms trading activity into programmable value.</span>
+                    <span className="mt-1 block font-light text-white/45">It automates <span className="font-light text-[#e2d39f]/68">rewards, RWA payouts, treasury flows, buybacks and custom programmable routes.</span></span>
+                    <span className="mt-1 block font-light text-[#78e99d]/68">All without selling any project tokens and creating sell pressure.</span>
+                    <span className="mt-1.5 block border-t border-white/[0.065] pt-1.5 text-white/42">Activates automatically after bonding completes.</span>
+                  </>
+                )}
+                headerAction={(
+                  <button
+                    type="button"
+                    onClick={onCollapse}
+                    aria-label="Collapse Fee Builder"
+                    aria-expanded="true"
+                    className="grid h-7 w-7 shrink-0 place-items-center rounded-md text-white/35 outline-none transition hover:bg-white/[0.04] hover:text-white/72 focus-visible:ring-1 focus-visible:ring-[#18c98e]/45"
+                  >
+                    <ChevronRight className="h-3.5 w-3.5 max-[1040px]:rotate-90" strokeWidth={1.8} aria-hidden />
+                  </button>
+                )}
+                className="min-h-full !rounded-none !border-0 !bg-transparent !p-4 !shadow-none sm:!p-[18px]"
+              />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </aside>
+  );
+}
+
+function TradeTicket({ token, livePrice }: { token: LbpTokenDetail; livePrice: number }) {
   const [side, setSide] = React.useState<TradeSide>("buy");
   const [amount, setAmount] = React.useState("");
   const [slippageMode, setSlippageMode] = React.useState<SlippageMode>("auto");
@@ -925,7 +1281,7 @@ function TradeTicket({ token }: { token: LbpTokenDetail }) {
   const [slippageOpen, setSlippageOpen] = React.useState(false);
   const [connected, setConnected] = React.useState(false);
   const [quoteUsd, setQuoteUsd] = React.useState(() => initialQuoteUsd(token.quoteSymbol));
-  const [quotedTokenPrice, setQuotedTokenPrice] = React.useState(token.price);
+  const [quotedTokenPrice, setQuotedTokenPrice] = React.useState(livePrice);
   const [quoteCountdown, setQuoteCountdown] = React.useState(10);
   const quoteBalance = 12_481.22;
   const tokenBalance = 18420;
@@ -939,15 +1295,19 @@ function TradeTicket({ token }: { token: LbpTokenDetail }) {
   const numericCustomSlippage = Number(customSlippage);
   const validCustomSlippage = customSlippage !== "" && Number.isFinite(numericCustomSlippage) && numericCustomSlippage > 0 && numericCustomSlippage <= 999;
   const slippage = slippageMode === "fixed-50" ? 0.5 : slippageMode === "fixed-100" ? 1 : slippageMode === "fixed-500" ? 5 : slippageMode === "custom" && validCustomSlippage ? numericCustomSlippage : 0.5;
+  const slippageLabel = `${slippageMode === "auto" ? "Auto " : ""}${Number.isInteger(slippage) ? slippage.toFixed(0) : slippage.toFixed(2).replace(/0$/, "")}%`;
   const sizeStyle = { "--size-ratio": `${sizePercent / 100}`, "--size-percent": `${sizePercent}%` } as React.CSSProperties;
   const maxBuyNative = token.maxBuyTokens ? token.maxBuyTokens * quotedTokenPrice : 0;
+
+  React.useEffect(() => {
+    setQuotedTokenPrice(livePrice);
+  }, [livePrice, token.id]);
 
   React.useEffect(() => {
     const interval = window.setInterval(() => {
       setQuoteCountdown((current) => {
         if (current <= 1) {
           setQuoteUsd((value) => Number((value * (1 + (Math.random() - 0.5) * 0.0014)).toFixed(2)));
-          setQuotedTokenPrice((value) => Number((value * (1 + (Math.random() - 0.5) * 0.0016)).toFixed(8)));
           return 10;
         }
         return current - 1;
@@ -975,11 +1335,21 @@ function TradeTicket({ token }: { token: LbpTokenDetail }) {
   const flip = () => changeSide(side === "buy" ? "sell" : "buy");
 
   return (
-    <aside className={cx("relative isolate min-h-0 overflow-hidden border-l border-[#242a28] bg-[#0f1111]", side === "buy" ? "shadow-[inset_12px_0_36px_rgba(24,201,142,0.015)]" : "shadow-[inset_12px_0_36px_rgba(255,55,113,0.012)]")}>
+    <aside className={cx("relative isolate min-h-0 overflow-hidden border-l border-[#242a28] bg-[#0f1111] max-[1040px]:order-2", side === "buy" ? "shadow-[inset_12px_0_36px_rgba(24,201,142,0.015)]" : "shadow-[inset_12px_0_36px_rgba(255,55,113,0.012)]")}>
       <div className="bb-ticket-surface flex h-full min-h-0 flex-col overflow-y-auto px-5 pb-[14px] pt-4 [scrollbar-color:#303936_transparent] [scrollbar-width:thin]">
       <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(24,201,142,0.68)_48%,transparent)]" />
-      <div>
-        <div className="text-[8.5px] font-semibold uppercase tracking-[0.11em] text-[#68736e]">LBP order</div><h2 className="mt-0.5 text-[16px] font-bold tracking-[-0.03em] text-[#edf2ef]">Trade {token.ticker}</h2>
+      <div className="flex min-h-[38px] items-start justify-between gap-4">
+        <div>
+          <div className="text-[8.5px] font-semibold uppercase tracking-[0.11em] text-[#68736e]">LBP order</div><h2 className="mt-0.5 text-[16px] font-bold tracking-[-0.03em] text-[#edf2ef]">Trade {token.ticker}</h2>
+        </div>
+        <div className="grid shrink-0 justify-items-end gap-1">
+          <span className="text-[8px] font-semibold uppercase tracking-[0.12em] text-[#68736e]">Mode</span>
+          <button type="button" onClick={() => setSlippageOpen(true)} aria-label={`Open slippage settings. ${slippageLabel}`} className="inline-flex h-8 min-w-[104px] items-center justify-center gap-1.5 rounded-[7px] border border-[#303936] bg-[#151817] px-2.5 text-[10px] font-semibold text-[#c7d0cc] shadow-[inset_0_1px_rgba(255,255,255,0.025)] transition hover:border-[#3a4742] hover:bg-[#181d1b] hover:text-[#edf2ef] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#18c98e]/45">
+            <SlidersHorizontal className="h-3.5 w-3.5 text-[#18c98e]" strokeWidth={1.8} aria-hidden />
+            <span className="font-mono">{slippageLabel}</span>
+            <ChevronDown className="h-3 w-3 text-[#69736f]" strokeWidth={1.8} aria-hidden />
+          </button>
+        </div>
       </div>
 
       <div className="mt-2.5 grid h-9 grid-cols-2 gap-1 rounded-[9px] border border-[#28312e] bg-black/25 p-1">
@@ -990,13 +1360,13 @@ function TradeTicket({ token }: { token: LbpTokenDetail }) {
       <div className="relative mt-[10px] overflow-visible rounded-xl border border-[#2a3330] bg-[linear-gradient(145deg,rgba(20,23,23,0.99),rgba(15,17,17,0.99))] shadow-[0_14px_34px_rgba(0,0,0,0.16),inset_0_1px_rgba(255,255,255,0.018)]">
         <label className="grid h-[96px] gap-1.5 rounded-t-[11px] p-[11px] transition focus-within:bg-[linear-gradient(90deg,rgba(24,201,142,0.045),rgba(24,201,142,0.008)_48%,transparent_78%)]">
         <span className="flex items-center justify-between text-[10px] text-[#9ba6a1]"><span>You pay</span><span className="font-mono text-[9px] text-[#7b8681]">Balance {balance.toLocaleString("en-US", { maximumFractionDigits: 4 })} {paySymbol}</span></span>
-        <span className="flex items-center justify-between gap-3"><input value={amount} onChange={(event) => updateAmount(event.target.value)} inputMode="decimal" placeholder="0" aria-label={`Amount of ${paySymbol} to pay`} className="min-w-0 w-[56%] bg-transparent font-mono text-[24px] font-medium tracking-[-0.05em] text-[#edf2ef] caret-[#18c98e] outline-none placeholder:text-[#56625d] focus:text-[#eef7f3] focus:drop-shadow-[0_0_9px_rgba(24,201,142,0.08)]" /><span className="inline-flex items-center gap-1.5 rounded-full border border-[#354149]/80 bg-black/35 py-0.5 pl-1 pr-1.5 text-[11px] font-semibold text-[#edf2ef]">{side === "buy" ? <QuoteMark symbol={paySymbol} /> : <TokenMark token={token} size="h-[25px] w-[25px]" />}{paySymbol}</span></span>
+        <span className="flex items-center justify-between gap-3"><input value={amount} onChange={(event) => updateAmount(event.target.value)} inputMode="decimal" placeholder="0" aria-label={`Amount of ${paySymbol} to pay`} className="min-w-0 w-[56%] bg-transparent font-mono text-[24px] font-medium tracking-[-0.05em] text-[#edf2ef] caret-[#18c98e] outline-none placeholder:text-[#56625d] focus:text-[#eef7f3] focus:drop-shadow-[0_0_9px_rgba(24,201,142,0.08)]" /><span className="inline-flex items-center gap-1.5 rounded-full border border-[#354149]/80 bg-black/35 py-0.5 pl-1 pr-1.5 text-[11px] font-semibold text-[#edf2ef]">{side === "buy" ? <QuoteMark symbol={paySymbol} /> : <TokenMark token={token} size="h-[25px] w-[25px]" showNetwork={false} />}{paySymbol}</span></span>
         <span className="font-mono text-[10px] text-[#7d8984]">{formatUsd(side === "buy" ? numericAmount * quoteUsd : numericAmount * quotedTokenPrice * quoteUsd)}</span>
         </label>
         <button type="button" onClick={flip} aria-label="Switch trade direction" className="bb-swap-flip absolute left-1/2 top-1/2 z-10 grid h-[34px] w-[34px] -translate-x-1/2 -translate-y-1/2 place-items-center overflow-hidden rounded-full border-4 border-[#111414] bg-[#1a201e] text-[#9aa6a1] shadow-[0_6px_14px_rgba(0,0,0,0.34),inset_0_1px_rgba(255,255,255,0.06),0_0_0_1px_rgba(24,201,142,0.1)] transition hover:bg-[#1d2925] hover:text-[#78e99d] hover:shadow-[0_7px_16px_rgba(0,0,0,0.38),inset_0_1px_rgba(255,255,255,0.07),0_0_0_1px_rgba(24,201,142,0.2)]"><span className="bb-swap-flip-motion grid place-items-center"><ArrowDownUp className="h-3.5 w-3.5" /></span></button>
         <div className="grid h-[96px] gap-1.5 rounded-b-[11px] border-t border-[#2a3330] bg-black/[0.18] p-[11px]">
         <span className="flex items-center justify-between text-[10px] text-[#9ba6a1]"><span>You receive</span><span className="text-[9px] text-[#7b8681]">Estimated</span></span>
-        <span className="flex items-center justify-between gap-3"><output className="min-w-0 w-[56%] truncate font-mono text-[24px] font-medium tracking-[-0.05em] text-[#edf2ef]">{receive ? receive.toLocaleString("en-US", { maximumFractionDigits: side === "buy" ? 2 : 5 }) : "0"}</output><span className="inline-flex items-center gap-1.5 rounded-full border border-[#354149]/80 bg-black/35 py-0.5 pl-1 pr-1.5 text-[11px] font-semibold text-[#edf2ef]">{side === "buy" ? <TokenMark token={token} size="h-[25px] w-[25px]" /> : <QuoteMark symbol={receiveSymbol} />}{receiveSymbol}</span></span>
+        <span className="flex items-center justify-between gap-3"><output className="min-w-0 w-[56%] truncate font-mono text-[24px] font-medium tracking-[-0.05em] text-[#edf2ef]">{receive ? receive.toLocaleString("en-US", { maximumFractionDigits: side === "buy" ? 2 : 5 }) : "0"}</output><span className="inline-flex items-center gap-1.5 rounded-full border border-[#354149]/80 bg-black/35 py-0.5 pl-1 pr-1.5 text-[11px] font-semibold text-[#edf2ef]">{side === "buy" ? <TokenMark token={token} size="h-[25px] w-[25px]" showNetwork={false} /> : <QuoteMark symbol={receiveSymbol} />}{receiveSymbol}</span></span>
         <span className="font-mono text-[10px] text-[#7d8984]">{formatUsd(side === "buy" ? receive * quotedTokenPrice * quoteUsd : receive * quoteUsd)}</span>
         </div>
       </div>
@@ -1018,7 +1388,6 @@ function TradeTicket({ token }: { token: LbpTokenDetail }) {
         <div className="flex min-h-[19px] items-center justify-between gap-3"><dt className="text-[#7f8a85]">{token.quoteSymbol} value</dt><dd className="inline-flex items-center gap-1.5 font-mono font-semibold text-[#d1d8da]"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#18c98e] shadow-[0_0_8px_rgba(24,201,142,0.45)]" /><span>{formatQuoteUsd(quoteUsd)}</span><span className="text-[8.5px] font-normal text-[#68736e]">quote in {quoteCountdown}s</span></dd></div>
         <div className="flex min-h-[19px] items-center justify-between gap-3"><dt className="text-[#7f8a85]">Rate</dt><dd className="font-mono font-semibold text-[#d1d8da]">1 {token.ticker} = {quotedTokenPrice.toFixed(6)} {token.quoteSymbol}</dd></div>
         <div className="flex min-h-[19px] items-center justify-between gap-3"><dt className="text-[#7f8a85]">Minimum received</dt><dd className="font-mono font-semibold text-[#d1d8da]">{receive ? (receive * (1 - slippage / 100)).toLocaleString("en-US", { maximumFractionDigits: 4 }) : "0"} {receiveSymbol}</dd></div>
-        <div className="flex min-h-[19px] items-center justify-between gap-3"><dt className="text-[#7f8a85]">Slippage tolerance</dt><dd><button type="button" onClick={() => setSlippageOpen(true)} className="inline-flex min-h-5 items-center rounded-[5px] border border-[#18c98e]/25 bg-[#18c98e]/[0.08] px-1.5 font-mono text-[10px] font-semibold text-[#78e99d]">{slippageMode === "auto" ? "Auto · " : ""}{slippage.toFixed(2)}%</button></dd></div>
       </dl>
 
       </div>
@@ -1055,7 +1424,36 @@ function TradeTicket({ token }: { token: LbpTokenDetail }) {
 export default function TokenTerminalPage({ token }: { token: LbpTokenDetail }) {
   const [activityHeight, setActivityHeight] = React.useState(292);
   const [commentsFocus, setCommentsFocus] = React.useState(false);
+  const [feeBuilderOpen, setFeeBuilderOpen] = React.useState(false);
+  const [liveMetrics, setLiveMetrics] = React.useState<LiveMarketMetrics>(() => initialLiveMarketMetrics(token));
   const lastExpandedHeight = React.useRef(292);
+  const marketSequence = React.useRef(0);
+  React.useEffect(() => setFeeBuilderOpen(false), [token.id]);
+  React.useEffect(() => {
+    marketSequence.current = 0;
+    setLiveMetrics(initialLiveMarketMetrics(token));
+  }, [token]);
+  React.useEffect(() => {
+    if (token.upcoming) return;
+    const quoteUsd = initialQuoteUsd(token.quoteSymbol);
+    const timer = window.setInterval(() => {
+      marketSequence.current += 1;
+      const sequence = marketSequence.current;
+      const movement = (seeded(token.seed + 401, sequence) - 0.47) * 0.0042;
+      const tradeUsd = 240 + seeded(token.seed + 419, sequence) * 3_200;
+      setLiveMetrics((current) => {
+        const price = Math.min(token.price * 1.16, Math.max(token.price * 0.88, current.price * (1 + movement)));
+        return {
+          price,
+          change24h: token.change24h + ((price / Math.max(token.price, 0.0000001)) - 1) * 100,
+          volume24h: current.volume24h + tradeUsd,
+          poolQuote: current.poolQuote + (tradeUsd * 0.18) / quoteUsd,
+          marketCap: token.marketCap * (price / Math.max(token.price, 0.0000001)),
+        };
+      });
+    }, 4_600);
+    return () => window.clearInterval(timer);
+  }, [token]);
   const updateActivityHeight = (nextHeight: number) => {
     const resolved = Math.round(nextHeight);
     if (resolved > 42) lastExpandedHeight.current = resolved;
@@ -1072,15 +1470,32 @@ export default function TokenTerminalPage({ token }: { token: LbpTokenDetail }) 
     setCommentsFocus(false);
   };
   return (
-    <main className="relative grid h-[calc(100vh-100px)] min-h-[680px] min-w-0 grid-cols-[minmax(0,1fr)_350px] overflow-hidden bg-[#090a0a] text-white max-[1040px]:h-auto max-[1040px]:min-h-0 max-[1040px]:grid-cols-1 max-[1040px]:overflow-visible">
+    <main
+      className={cx(
+        "relative grid h-[calc(100vh-100px)] min-h-[680px] min-w-0 overflow-hidden bg-[#090a0a] text-white transition-[grid-template-columns] duration-[240ms] ease-[cubic-bezier(0.2,0.72,0.2,1)] max-[1040px]:h-auto max-[1040px]:min-h-0 max-[1040px]:!grid-cols-1 max-[1040px]:overflow-visible",
+        token.feeBuilderEnabled
+          ? feeBuilderOpen
+            ? "grid-cols-[minmax(0,1fr)_350px_440px] max-[1420px]:!grid-cols-[minmax(0,1fr)_350px_42px]"
+            : "grid-cols-[minmax(0,1fr)_350px_42px] max-[1420px]:!grid-cols-[minmax(0,1fr)_350px_42px]"
+          : "grid-cols-[minmax(0,1fr)_350px] max-[1420px]:!grid-cols-[minmax(0,1fr)_350px]",
+      )}
+    >
       <style jsx global>{TERMINAL_CONTROL_CSS}</style>
       <div className="flex min-h-0 min-w-0 flex-col overflow-hidden max-[1040px]:overflow-visible">
-        <InstrumentHeader token={token} />
-        <PriceChart token={token} focusHidden={commentsFocus} />
-        <ActivityPanel token={token} height={activityHeight} focusMode={commentsFocus} onHeightChange={updateActivityHeight} onToggleCollapsed={toggleActivity} onCommentsFocusChange={setCommentsFocus} />
+        <InstrumentHeader token={token} liveMetrics={liveMetrics} />
+        <PriceChart token={token} livePrice={liveMetrics.price} focusHidden={commentsFocus} />
+        <ActivityPanel token={token} liveMetrics={liveMetrics} height={activityHeight} focusMode={commentsFocus} onHeightChange={updateActivityHeight} onToggleCollapsed={toggleActivity} onCommentsFocusChange={setCommentsFocus} />
       </div>
-      <TradeTicket token={token} />
-      <AnimatePresence>{commentsFocus ? <FloatingChart token={token} onRestore={restoreChartFromComments} /> : null}</AnimatePresence>
+      <TradeTicket token={token} livePrice={liveMetrics.price} />
+      {token.feeBuilderEnabled ? (
+        <FeeBuilderDrawer
+          token={token}
+          expanded={feeBuilderOpen}
+          onExpand={() => setFeeBuilderOpen(true)}
+          onCollapse={() => setFeeBuilderOpen(false)}
+        />
+      ) : null}
+      <AnimatePresence>{commentsFocus ? <FloatingChart token={token} onRestore={restoreChartFromComments} rightOffset={token.feeBuilderEnabled ? (feeBuilderOpen ? 456 : 58) : 14} /> : null}</AnimatePresence>
     </main>
   );
 }

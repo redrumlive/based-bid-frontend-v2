@@ -25,6 +25,7 @@ export type LbpTokenDetail = {
   holders: number;
   comments: number;
   maxBuyTokens?: number;
+  feeBuilderEnabled?: boolean;
   seed: number;
   upcoming?: boolean;
 };
@@ -65,6 +66,7 @@ const TOKENS: Record<string, Omit<LbpTokenDetail, "contract">> = {
     holders: 684,
     comments: 6,
     maxBuyTokens: 50_000_000,
+    feeBuilderEnabled: true,
     seed: 17,
   },
   "chain-reaction": {
@@ -90,6 +92,7 @@ const TOKENS: Record<string, Omit<LbpTokenDetail, "contract">> = {
     transactions: 0,
     holders: 0,
     comments: 0,
+    feeBuilderEnabled: false,
     seed: 29,
     upcoming: true,
   },
@@ -116,6 +119,7 @@ const TOKENS: Record<string, Omit<LbpTokenDetail, "contract">> = {
     transactions: 466,
     holders: 291,
     comments: 8,
+    feeBuilderEnabled: true,
     seed: 41,
   },
   "robin-index": {
@@ -141,6 +145,7 @@ const TOKENS: Record<string, Omit<LbpTokenDetail, "contract">> = {
     transactions: 958,
     holders: 447,
     comments: 22,
+    feeBuilderEnabled: true,
     seed: 53,
   },
   "neon-relay": {
@@ -166,6 +171,7 @@ const TOKENS: Record<string, Omit<LbpTokenDetail, "contract">> = {
     transactions: 726,
     holders: 318,
     comments: 12,
+    feeBuilderEnabled: true,
     seed: 67,
   },
 };

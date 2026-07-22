@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
-import { Check, ChevronDown, Coins, HandCoins, Hash, Wallet, X } from "lucide-react";
+import { Check, ChevronDown, Coins, HandCoins, Hash, LoaderCircle, Wallet, X } from "lucide-react";
 import React from "react";
 
 type Network = "eth" | "bsc" | "base" | "sol" | "robinhood" | "megaeth";
@@ -204,6 +204,7 @@ export default function CollectFeesModal({
   const [collectionProgress, setCollectionProgress] = React.useState(0);
   const collectionTimerRef = React.useRef<number | null>(null);
   const networkMenuRef = React.useRef<HTMLDivElement | null>(null);
+  const dialogRef = React.useRef<HTMLElement | null>(null);
   const chainTargets = React.useMemo(() => availableTargets.filter((target) => target.network === activeNetwork), [activeNetwork, availableTargets]);
   const chainBoards = React.useMemo(() => availableBoards.filter((board) => chainTargets.some((target) => target.boardId === board.id)), [availableBoards, chainTargets]);
   const selectedTargets = chainTargets.filter((target) => selectedIds.has(target.id));
@@ -247,6 +248,15 @@ export default function CollectFeesModal({
     window.addEventListener("keydown", closeOnEscape);
     return () => window.removeEventListener("keydown", closeOnEscape);
   }, [closeModal, networkMenuOpen, open]);
+
+  React.useEffect(() => {
+    if (!open) return;
+    const closeOnOutsidePointer = (event: PointerEvent) => {
+      if (!dialogRef.current?.contains(event.target as Node)) closeModal();
+    };
+    document.addEventListener("pointerdown", closeOnOutsidePointer, true);
+    return () => document.removeEventListener("pointerdown", closeOnOutsidePointer, true);
+  }, [closeModal, open]);
 
   React.useEffect(() => {
     if (!networkMenuOpen) return;
@@ -333,18 +343,17 @@ export default function CollectFeesModal({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}
-          onMouseDown={(event) => event.target === event.currentTarget && closeModal()}
         >
           <motion.section
-            layout
+            ref={dialogRef}
             role="dialog"
             aria-modal="true"
             aria-labelledby="collect-fees-title"
             initial={{ opacity: 0, y: 14, scale: 0.985 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.99 }}
-            transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1], layout: { duration: 0.3, ease: [0.22, 1, 0.36, 1] } }}
-            className="flex max-h-[calc(100vh-24px)] w-full max-w-[780px] flex-col overflow-hidden rounded-[24px] border border-white/[0.1] bg-[linear-gradient(180deg,#101212_0%,#0a0c0b_100%)] shadow-[0_38px_126px_rgba(0,0,0,0.72),inset_0_1px_0_rgba(255,255,255,0.035)] sm:max-h-[calc(100vh-48px)]"
+            transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+            className="flex h-[min(720px,calc(100vh-24px))] w-full max-w-[780px] flex-col overflow-hidden rounded-[24px] border border-white/[0.1] bg-[linear-gradient(180deg,#101212_0%,#0a0c0b_100%)] shadow-[0_38px_126px_rgba(0,0,0,0.72),inset_0_1px_0_rgba(255,255,255,0.035)] sm:h-[min(720px,calc(100vh-48px))]"
           >
             <header className="flex items-start gap-4 border-b border-white/[0.065] px-4 py-4 sm:px-6 sm:py-5">
               <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[12px] border border-white/[0.095] bg-white/[0.028] text-[#18c98e]/72 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]">
@@ -571,22 +580,29 @@ export default function CollectFeesModal({
                 onClick={collectSelectedFees}
                 disabled={!selectedTargets.length || collectionState !== "idle"}
                 className={cx(
-                  "group inline-flex h-10 w-[132px] shrink-0 items-center justify-center gap-2 rounded-[13px] border text-[11px] font-semibold transition-[background-color,border-color,color,box-shadow,transform] duration-200",
+                  "group relative inline-flex h-11 w-[152px] shrink-0 items-center justify-center overflow-hidden rounded-full border text-[11px] font-semibold transition-[background-color,border-color,color,box-shadow,transform] duration-500 ease-[cubic-bezier(.22,1,.36,1)]",
                   collectionState === "success"
-                    ? "border-[#18c98e]/14 bg-[#18c98e]/[0.055] text-[#18c98e]/68"
+                    ? "border-[#18c98e]/28 bg-[#18c98e]/[0.075] text-[#9df0c5] shadow-[0_12px_30px_rgba(24,201,142,0.10)]"
                     : collectionState === "collecting"
-                      ? "border-white/[0.08] bg-white/[0.025] text-white/42"
-                      : "border-[#18c98e]/24 bg-[#18c98e]/[0.065] text-[#b7f7ca] shadow-[inset_0_1px_0_rgba(255,255,255,0.035),0_10px_28px_rgba(0,0,0,0.18)] hover:-translate-y-px hover:border-[#18c98e]/38 hover:bg-[#18c98e]/[0.1] hover:text-[#d9ffe4] disabled:cursor-default disabled:opacity-36 disabled:hover:translate-y-0",
+                      ? "border-[#F5D97A]/24 bg-[#F5D97A]/[0.055] text-[#F5D97A]/74"
+                      : "border-[#E8C65E]/72 bg-[linear-gradient(110deg,#D8B248_0%,#F5D97A_45%,#E7C45C_78%,#B9D98A_112%)] text-[#171307] shadow-[0_14px_32px_rgba(213,176,73,0.18),inset_0_1px_0_rgba(255,255,255,0.34)] hover:-translate-y-px hover:border-[#F5D97A] hover:shadow-[0_18px_38px_rgba(213,176,73,0.25),inset_0_1px_0_rgba(255,255,255,0.40)] disabled:cursor-default disabled:border-white/[0.09] disabled:bg-none disabled:bg-white/[0.025] disabled:text-white/34 disabled:shadow-none disabled:hover:translate-y-0",
                 )}
               >
-                {collectionState === "success" ? <Check className="h-3.5 w-3.5" /> : <Coins className="h-3.5 w-3.5" />}
-                {collectionState === "collecting"
-                  ? `Confirm ${Math.min(collectionProgress + 1, selectedTargets.length)} of ${selectedTargets.length}`
-                  : collectionState === "success"
-                    ? `${selectedTargets.length} collected`
-                    : selectedTargets.length > 1
-                      ? `Collect ${selectedTargets.length} pools`
-                      : "Collect fees"}
+                {collectionState === "idle" && selectedTargets.length ? (
+                  <span aria-hidden className="absolute inset-y-[-35%] left-[-30%] w-[42%] -skew-x-[18deg] bg-white/30 blur-md transition-transform duration-700 ease-[cubic-bezier(.22,1,.36,1)] group-hover:translate-x-[390%]" />
+                ) : null}
+                <span className="relative inline-flex items-center justify-center gap-2">
+                  {collectionState === "success" ? <Check className="h-3.5 w-3.5" /> : collectionState === "collecting" ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <Coins className="h-3.5 w-3.5" />}
+                  <span>
+                    {collectionState === "collecting"
+                      ? `Confirm ${Math.min(collectionProgress + 1, selectedTargets.length)} of ${selectedTargets.length}`
+                      : collectionState === "success"
+                        ? `${selectedTargets.length} collected`
+                        : selectedTargets.length > 1
+                          ? `Collect ${selectedTargets.length} pools`
+                          : "Collect fees"}
+                  </span>
+                </span>
               </button>
             </footer>
           </motion.section>

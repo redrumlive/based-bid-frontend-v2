@@ -4,13 +4,8 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Image from 'next/image';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import FeeEngineCard, {
-  type FeeEngineAsset,
-  type FeeEngineRewardPayment,
-  type FeeEngineRoute,
-  type FeeEngineRouteKind,
-} from './FeeEngineCard';
 import { featheredFeeGradient } from './feeGradient';
+import { normalizeFeeBuilderRouteOrder, persistFeeBuilderRouteOrder } from './feeBuilderRouteOrder';
 import {
   BriefcaseBusiness,
   Check,
@@ -23,6 +18,7 @@ import {
   Flame,
   Landmark,
   Minus,
+  MousePointer2,
   Plus,
   TriangleAlert,
   RotateCcw,
@@ -44,15 +40,6 @@ const S = {
 
 export type ChainId = 'eth' | 'base' | 'bsc' | 'sol' | 'robinhood' | 'megaeth';
 export type RewardAsset = 'ETH' | 'BNB' | 'SOL' | 'USDC' | 'USDT' | 'USD1' | 'USDG';
-
-const ADDRESS_EXPLORERS: Record<ChainId, string> = {
-  eth: 'https://etherscan.io/address/',
-  base: 'https://basescan.org/address/',
-  bsc: 'https://bscscan.com/address/',
-  sol: 'https://solscan.io/account/',
-  robinhood: 'https://robinhoodchain.blockscout.com/address/',
-  megaeth: 'https://mega.etherscan.io/address/',
-};
 
 export type FeeWallet = {
   id: string;
@@ -106,6 +93,10 @@ type RowProps = {
   bind?: (el: HTMLDivElement | null) => void;
   attention?: boolean;
   onExpand?: (id: string) => void;
+  forceRewardsOpen?: boolean;
+  demoPointerAssetId?: string;
+  demoPointerPressed?: boolean;
+  demoSuppressValidation?: boolean;
 };
 
 const LOCKED = new Set(['creator', 'rewards', 'rwa', 'buybacks', 'liq', 'ops']);
@@ -284,36 +275,6 @@ const noDragTarget = (t: EventTarget | null) =>
   !(t as HTMLElement | null)?.closest('[data-drag-handle]');
 
 const shortLabel = (t: FeeType) => ({ creator: 'Creator', rewards: 'Rewards', rwa: 'Rewards Basket', buybacks: 'Buybacks', liq: 'Liquidity', ops: 'Treasury', custom: 'Custom' }[t]);
-
-const feeEngineKind = (fee: FeeWallet): FeeEngineRouteKind => {
-  const type = classify(fee.id, fee.name);
-  return type === 'rwa' ? 'basket' : type === 'ops' ? 'treasury' : type === 'liq' ? 'liquidity' : type;
-};
-
-const feeEngineAsset = (id: string, weight?: number): FeeEngineAsset => {
-  const asset = [...TOKEN_CATALOG, ...RWA_ASSETS].find((candidate) => assetId(candidate) === id);
-  const symbol = asset?.symbol ?? id.replace(/^TOKEN:/, '');
-  return {
-    id,
-    symbol,
-    name: asset?.name ?? symbol,
-    icon: asset?.icon ?? (asset?.category === 'stock' || asset?.category === 'etf' ? `/rwa/${symbol.toLowerCase()}.png` : undefined),
-    weight,
-    address: asset?.address,
-    decimals: symbol === 'BTC' ? 8 : symbol === 'USDC' || symbol === 'USDT' ? 6 : 18,
-  };
-};
-
-const feeEngineDetail = (fee: FeeWallet, chain: ChainId) => {
-  const type = classify(fee.id, fee.name);
-  if (type === 'creator') return 'Trading fees paid directly to the creator.';
-  if (type === 'rewards') return `Pays eligible holders in ${fee.rewardAsset ?? rewardOf(chain)}.`;
-  if (type === 'rwa') return 'Pays eligible holders in the configured asset basket.';
-  if (type === 'buybacks') return 'Automatically buys & burns your token.';
-  if (type === 'liq') return 'Adds trading fees back to liquidity and market depth.';
-  if (type === 'ops') return 'Routes trading fees to the treasury wallet.';
-  return 'Routes trading fees to the custom recipient.';
-};
 
 const needsAddress = (f: FeeWallet) =>
   !(f.pct <= 0) && (ADDRESS_REQUIRED.has(f.id) || !LOCKED.has(f.id));
@@ -728,7 +689,7 @@ function InfoHint({ label, children, maxWidth = 290, desktopAlign = 'center', po
   }, [hovered, open, positionTooltip]);
 
   const tooltipContent = (
-    <div className='rounded-xl border border-white/16 bg-[#171719] px-3.5 py-3 text-[12px] font-normal leading-5 tracking-[0.01em] text-white/82 shadow-[0_22px_56px_rgba(0,0,0,0.64),0_0_0_1px_rgba(255,255,255,0.045)_inset] ring-1 ring-inset ring-white/8 backdrop-blur-xl'>
+    <div className='rounded-xl border border-white/12 bg-[#121413] px-3.5 py-3 text-[11px] font-light leading-[1.6] tracking-[0.012em] text-white/62 shadow-[0_22px_56px_rgba(0,0,0,0.64),0_0_0_1px_rgba(255,255,255,0.03)_inset] ring-1 ring-inset ring-white/5 backdrop-blur-xl'>
       {children}
     </div>
   );
@@ -781,16 +742,16 @@ function RwaDistributionModeControl({ value, onChange, disabled, portalHint = fa
         <InfoHint label='Basket mode helper' maxWidth={340} portal={portalHint}>
           <div className='space-y-2'>
             <div>
-              <div className='text-[9.5px] font-semibold uppercase leading-4 tracking-[0.12em] text-white/88'>Rotating</div>
-              <p className='mt-0.5 text-[11.5px] leading-[17px] text-white/62'>One selected asset per cycle, advancing to the next. Lowest gas cost.</p>
+              <div className='text-[9.5px] font-medium uppercase leading-4 tracking-[0.12em] text-white/72'>Rotating</div>
+              <p className='mt-0.5 text-[11px] font-light leading-[17px] text-white/48'>One selected asset per cycle, advancing to the next. Lowest gas cost.</p>
             </div>
             <div className='border-t border-white/8 pt-2'>
-              <div className='text-[9.5px] font-semibold uppercase leading-4 tracking-[0.12em] text-white/88'>All at once</div>
-              <p className='mt-0.5 text-[11.5px] leading-[17px] text-white/62'>Every selected asset is distributed each cycle. Higher gas cost.</p>
+              <div className='text-[9.5px] font-medium uppercase leading-4 tracking-[0.12em] text-white/72'>All at once</div>
+              <p className='mt-0.5 text-[11px] font-light leading-[17px] text-white/48'>Every selected asset is distributed each cycle. Higher gas cost.</p>
             </div>
             <div className='rounded-lg border px-2.5 py-1.5' style={{ color: '#B7F34A', background: 'rgba(183,243,74,0.045)', borderColor: 'rgba(183,243,74,0.15)' }}>
-              <div className='text-[9px] font-semibold uppercase leading-4 tracking-[0.12em]'>Ratio allocation</div>
-              <p className='mt-0.5 text-[11.5px] leading-[17px] text-white/68'>Starts evenly split and always totals 100%. Editing one asset automatically rebalances the rest.</p>
+              <div className='text-[9px] font-medium uppercase leading-4 tracking-[0.12em]'>Ratio allocation</div>
+              <p className='mt-0.5 text-[11px] font-light leading-[17px] text-white/52'>Starts evenly split and always totals 100%. Editing one asset automatically rebalances the rest.</p>
             </div>
           </div>
         </InfoHint>
@@ -867,7 +828,7 @@ function RewardAssetLogo({ asset, active, accent }: { asset: RewardBasketAsset; 
   );
 }
 
-function RewardBasketSelector({ chain, context = 'holders', selectionMode = 'basket', value, onChange, distributionMode, weights, pinnedAssets, onWeightsChange, disabled, invalid, accent }: { chain: ChainId; context?: 'holders' | 'route'; selectionMode?: RouteRewardMode; value: string[]; onChange: (next: string[], preserveCustom?: boolean) => void; distributionMode: RwaDistributionMode; weights: Record<string, number>; pinnedAssets: string[]; onWeightsChange: (next: Record<string, number>, nextPinned?: string[]) => void; disabled: boolean; invalid: boolean; accent: string }) {
+export function RewardBasketSelector({ chain, context = 'holders', selectionMode = 'basket', value, onChange, distributionMode, weights, pinnedAssets, onWeightsChange, disabled, invalid, accent, demoPointerAssetId, demoPointerPressed = false }: { chain: ChainId; context?: 'holders' | 'route'; selectionMode?: RouteRewardMode; value: string[]; onChange: (next: string[], preserveCustom?: boolean) => void; distributionMode: RwaDistributionMode; weights: Record<string, number>; pinnedAssets: string[]; onWeightsChange: (next: Record<string, number>, nextPinned?: string[]) => void; disabled: boolean; invalid: boolean; accent: string; demoPointerAssetId?: string; demoPointerPressed?: boolean }) {
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<'all' | RwaCategory>('all');
   const [showSelectedOnly, setShowSelectedOnly] = useState(false);
@@ -1037,7 +998,7 @@ function RewardBasketSelector({ chain, context = 'holders', selectionMode = 'bas
               className={`group relative flex min-w-0 items-center justify-between gap-2 border-b border-r px-2.5 py-2 text-left transition-[background-color,box-shadow,opacity,transform] duration-180 ${draggingThisAsset ? 'scale-[0.985] opacity-55' : ''}`}
               style={{ color: active ? T.text : 'rgba(244,249,246,0.68)', background: active ? `linear-gradient(110deg, ${rgba(accent, 0.105)}, rgba(8,12,10,0.98) 78%)` : 'rgba(8,11,10,0.98)', borderColor: 'rgba(244,249,246,0.075)', boxShadow: draggingThisAsset ? `inset 2px 0 0 ${accent}, 0 0 20px ${rgba(accent, 0.12)}` : active ? `inset 2px 0 0 ${rgba(accent, 0.72)}` : 'none' }}
             >
-              <button type='button' aria-pressed={active} aria-label={`${active ? 'Remove' : 'Add'} ${asset.name} ${active ? 'from' : 'to'} rewards basket`} onClick={() => toggleAsset(id)} className='absolute inset-0 z-0 bg-transparent outline-none transition-colors duration-180 hover:bg-white/[0.045] focus-visible:bg-white/[0.055]' />
+              <button type='button' data-reward-asset={id} aria-pressed={active} aria-label={`${active ? 'Remove' : 'Add'} ${asset.name} ${active ? 'from' : 'to'} rewards basket`} onClick={() => toggleAsset(id)} className='absolute inset-0 z-0 bg-transparent outline-none transition-colors duration-180 hover:bg-white/[0.045] focus-visible:bg-white/[0.055]' />
               <span className='pointer-events-none relative z-[1] flex min-w-0 items-center gap-2'>
                 <RewardAssetLogo asset={asset} active={active} accent={accent} />
                 <span className='min-w-0'>
@@ -1169,6 +1130,12 @@ function RewardBasketSelector({ chain, context = 'holders', selectionMode = 'bas
                   <span className='absolute inset-y-1 left-0 w-px bg-gradient-to-b from-transparent via-white/10 to-transparent' aria-hidden />
                   <GripVertical size={11.5} strokeWidth={2} aria-hidden />
                 </button>
+              ) : null}
+              {demoPointerAssetId === id ? (
+                <span data-demo-inline-pointer className={`pointer-events-none absolute left-1/2 top-1/2 z-30 drop-shadow-[0_3px_8px_rgba(0,0,0,0.88)] transition-transform duration-150 ${demoPointerPressed ? 'scale-[0.82]' : 'scale-100'}`}>
+                  <MousePointer2 className='h-[18px] w-[18px] fill-[#0B0D0C] text-white' strokeWidth={1.6} />
+                  {demoPointerPressed ? <span className='absolute left-[-5px] top-[-5px] h-7 w-7 animate-ping rounded-full border border-[#F3C969]/70' /> : null}
+                </span>
               ) : null}
             </div>
           );
@@ -1356,7 +1323,7 @@ function ProtectionCard({ title, description, enabled, onToggle, children }: { t
   );
 }
 
-function Row({ fee, chain, walletAddress, max, disabled, dragging, ghost, patch, setPct, remove, onDrag, bind, attention, onExpand }: RowProps) {
+function Row({ fee, chain, walletAddress, max, disabled, dragging, ghost, patch, setPct, remove, onDrag, bind, attention, onExpand, forceRewardsOpen = false, demoPointerAssetId, demoPointerPressed = false, demoSuppressValidation = false }: RowProps) {
   const [hover, setHover] = useState(false);
   const [routeRewardsOpen, setRouteRewardsOpen] = useState(false);
   const [routeRewardsTouched, setRouteRewardsTouched] = useState(false);
@@ -1368,6 +1335,12 @@ function Row({ fee, chain, walletAddress, max, disabled, dragging, ghost, patch,
   const custom = !LOCKED.has(fee.id);
   const rewardRoute = treasury || custom;
   const routeRewardsNeedAttention = rewardRoute && !routeRewardsTouched && !routeRewardsOpen && !disabled && !dragging && !ghost;
+
+  useEffect(() => {
+    if (!forceRewardsOpen) return;
+    setRouteRewardsTouched(true);
+    setRouteRewardsOpen(true);
+  }, [forceRewardsOpen]);
   const routeRewardMode = fee.routeRewardMode ?? 'single';
   const rwaAssets = fee.rwaAssets ?? (rewardRoute ? [nativeRewardAssetId(chain)] : []);
   const rwaDistributionMode = fee.rwaDistributionMode ?? 'rotating';
@@ -1381,6 +1354,7 @@ function Row({ fee, chain, walletAddress, max, disabled, dragging, ghost, patch,
   const addrInvalid = needsAddress(fee) && !isRecipientAddressValid(recipientAddress, chain);
   const addressErrorLabel = recipientAddress ? `Invalid ${chain === 'sol' ? 'SOL' : 'EVM'}` : 'Required';
   const invalid = addrInvalid || rwaAssetsInvalid || routeAssetsInvalid;
+  const displayInvalid = invalid && !demoSuppressValidation;
   const routeTitle = rwa ? 'Rewards Basket' : fee.name;
   const routeRewardSummary = routeRewardMode === 'single'
     ? (rwaAssets[0]?.replace(/^TOKEN:/, '') ?? 'Choose asset')
@@ -1399,7 +1373,7 @@ function Row({ fee, chain, walletAddress, max, disabled, dragging, ghost, patch,
             <div className='flex shrink-0 flex-col items-center gap-0.5 sm:block'>
               <span className='relative inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-lg sm:h-8 sm:w-8 sm:rounded-xl' style={{ background: 'linear-gradient(180deg, rgba(24,27,26,0.98), rgba(12,14,13,0.96))', border: `1px solid ${rgba(color, 0.28)}`, boxShadow: `inset 0 1px 0 rgba(255,255,255,0.050), 0 0 18px ${rgba(color, hover || attention ? 0.13 : 0.055)}` }} aria-hidden>
                 <Icon t={type} color={color} size={14} />
-                {invalid ? <span className='absolute -right-1 -top-1 inline-flex h-4 w-4 items-center justify-center rounded-full border' style={{ background: 'rgba(255,113,132,0.17)', borderColor: 'rgba(255,113,132,0.42)', color: '#FF7184', boxShadow: '0 0 14px rgba(255,113,132,0.22)' }}><TriangleAlert size={9.5} strokeWidth={2} /></span> : null}
+                {displayInvalid ? <span className='absolute -right-1 -top-1 inline-flex h-4 w-4 items-center justify-center rounded-full border' style={{ background: 'rgba(255,113,132,0.17)', borderColor: 'rgba(255,113,132,0.42)', color: '#FF7184', boxShadow: '0 0 14px rgba(255,113,132,0.22)' }}><TriangleAlert size={9.5} strokeWidth={2} /></span> : null}
               </span>
               <button data-drag-handle disabled={disabled} onPointerDown={onDrag} className='bbGrip inline-flex h-4 w-5 shrink-0 cursor-grab items-center justify-center active:cursor-grabbing sm:hidden' style={{ color: 'rgba(244,249,246,0.34)' }} type='button' aria-label={`Move ${fee.name}`}>
                 <GripVertical size={10} />
@@ -1411,7 +1385,7 @@ function Row({ fee, chain, walletAddress, max, disabled, dragging, ghost, patch,
                   <div className='min-w-0 pr-[78px] sm:pr-[122px]'>
                     <TextField disabled={disabled} accent={color} label='Route' value={fee.name} onChange={(v) => patch(fee.id, { name: v })} placeholder='Custom fee' className='min-w-0' />
                   </div>
-                  <p className='bbRouteDesc mt-1 overflow-hidden text-[9.5px] leading-[13px] sm:text-[11px] sm:leading-5' style={{ color: 'rgba(244,249,246,0.56)' }}>{desc(fee)}</p>
+                  <p className='bbRouteDesc mt-1 overflow-hidden text-[9.5px] font-light leading-[13px] tracking-[0.008em] sm:text-[11px] sm:leading-5' style={{ color: 'rgba(244,249,246,0.48)' }}>{desc(fee)}</p>
                   <div className='mt-2.5 flex min-w-0 items-center gap-1.5 sm:pr-6'>
                     <TextField disabled={disabled} accent={color} invalid={addrInvalid} invalidLabel={addressErrorLabel} label='Recipient' value={fee.address ?? ''} onChange={(v) => patch(fee.id, { address: v })} placeholder={chain === 'sol' ? 'Paste Solana recipient address' : 'Paste EVM recipient address'} className='min-w-0 flex-1' />
                     <UseWalletPill chain={chain} walletAddress={walletAddress} value={fee.address ?? ''} disabled={disabled} accent={color} className='w-[58px] sm:w-[66px]' onUse={(address) => patch(fee.id, { address })} />
@@ -1427,7 +1401,7 @@ function Row({ fee, chain, walletAddress, max, disabled, dragging, ghost, patch,
                       </div>
                     ) : null}
                   </div>
-                  <p className='bbRouteDesc mt-0.5 overflow-hidden text-[9.5px] leading-[13px] sm:text-[11px] sm:leading-5' style={{ color: 'rgba(244,249,246,0.56)' }}>{desc(fee)}</p>
+                  <p className='bbRouteDesc mt-0.5 overflow-hidden text-[9.5px] font-light leading-[13px] tracking-[0.008em] sm:text-[11px] sm:leading-5' style={{ color: 'rgba(244,249,246,0.48)' }}>{desc(fee)}</p>
                   {treasury ? (
                     <div className='mt-2.5 flex min-w-0 items-center gap-1.5 sm:pr-6'>
                       <TextField disabled={disabled} accent={color} invalid={addrInvalid} invalidLabel={addressErrorLabel} label='Recipient' value={fee.address ?? ''} onChange={(v) => patch(fee.id, { address: v })} placeholder={chain === 'sol' ? 'Paste Solana treasury address' : 'Paste EVM treasury address'} className='min-w-0 flex-1' />
@@ -1440,10 +1414,10 @@ function Row({ fee, chain, walletAddress, max, disabled, dragging, ghost, patch,
           </div>
         </div>
 
-        <div className='absolute right-0 top-0 flex shrink-0 items-center gap-0.5 sm:gap-1.5' style={{ opacity: hover || !LOCKED.has(fee.id) ? 1 : 0.72, transition: 'opacity 160ms ease' }}>
-          <div className='inline-flex h-5 items-center overflow-hidden rounded-full border sm:h-7' style={{ color: 'rgba(244,249,246,0.92)', background: 'rgba(244,249,246,0.04)', borderColor: rgba(color, 0.24), boxShadow: `0 0 0 1px ${rgba(color, 0.05)} inset` }}>
-            <div className='flex h-5 w-[34px] items-center justify-center text-[9px] font-semibold leading-none tabular-nums sm:h-7 sm:w-[52px] sm:text-[12px]'>{fmtPct(fee.pct)}</div>
-            <button data-no-drag disabled={disabled} onClick={() => remove(fee.id)} className='bbRemoveBtn flex h-5 w-[21px] items-center justify-center border-l sm:h-7 sm:w-[26px]' style={{ borderColor: rgba(color, 0.16), '--removeColor': color } as CssVarStyle} type='button' aria-label={`Remove ${fee.name}`}>
+        <div className='absolute right-0 top-0 flex shrink-0 items-center gap-1 sm:gap-1.5' style={{ opacity: hover || !LOCKED.has(fee.id) ? 1 : 0.78, transition: 'opacity 160ms ease' }}>
+          <div className='inline-flex h-5 items-center overflow-hidden rounded-full border sm:h-7' style={{ background: 'rgba(244,249,246,0.035)', borderColor: rgba(color, 0.24), boxShadow: `inset 0 1px 0 rgba(255,255,255,0.035), 0 0 0 1px ${rgba(color, 0.035)}` }}>
+            <div className='flex h-5 min-w-[35px] items-center justify-center px-1.5 text-[9px] font-semibold leading-none tabular-nums tracking-[-0.01em] sm:h-7 sm:min-w-[48px] sm:text-[12px]' style={{ color: rgba(color, 0.9) }}>{fmtPct(fee.pct)}</div>
+            <button data-no-drag disabled={disabled} onClick={() => remove(fee.id)} className='bbRemoveBtn flex h-5 w-[21px] items-center justify-center border-l sm:h-7 sm:w-[25px]' style={{ borderColor: rgba(color, 0.15), '--removeColor': color } as CssVarStyle} type='button' aria-label={`Remove ${fee.name}`}>
               <X className='-translate-x-[0.5px]' size={10.5} strokeWidth={2} />
             </button>
           </div>
@@ -1460,7 +1434,7 @@ function Row({ fee, chain, walletAddress, max, disabled, dragging, ghost, patch,
           chain={chain}
           disabled={disabled}
           accent={color}
-          invalid={rwaAssetsInvalid}
+          invalid={rwaAssetsInvalid && !demoSuppressValidation}
           value={rwaAssets}
           distributionMode={rwaDistributionMode}
           weights={rwaAssetWeights}
@@ -1474,6 +1448,8 @@ function Row({ fee, chain, walletAddress, max, disabled, dragging, ghost, patch,
             const reconciled = reconcileAssetWeights(next, rwaAssetWeights, rwaPinnedAssets);
             patch(fee.id, { rwaAssets: next, rwaAssetWeights: reconciled.weights, rwaPinnedAssets: reconciled.pinnedIds });
           }}
+          demoPointerAssetId={demoPointerAssetId}
+          demoPointerPressed={demoPointerPressed}
         />
       ) : null}
 
@@ -1539,7 +1515,7 @@ function Row({ fee, chain, walletAddress, max, disabled, dragging, ghost, patch,
                   selectionMode={routeRewardMode}
                   disabled={disabled}
                   accent={color}
-                  invalid={routeAssetsInvalid}
+                  invalid={routeAssetsInvalid && !demoSuppressValidation}
                   value={rwaAssets}
                   distributionMode={rwaDistributionMode}
                   weights={rwaAssetWeights}
@@ -1554,6 +1530,8 @@ function Row({ fee, chain, walletAddress, max, disabled, dragging, ghost, patch,
                     const reconciled = reconcileAssetWeights(next, rwaAssetWeights, rwaPinnedAssets);
                     patch(fee.id, { routeRewardMode: nextMode, rwaAssets: next, rwaAssetWeights: reconciled.weights, rwaPinnedAssets: reconciled.pinnedIds });
                   }}
+                  demoPointerAssetId={demoPointerAssetId}
+                  demoPointerPressed={demoPointerPressed}
                 />
                 <AnimatePresence initial={false} mode='popLayout'>
                   {routeRewardMode === 'basket' && rwaAssets.length >= 2 ? (
@@ -1627,7 +1605,7 @@ function Row({ fee, chain, walletAddress, max, disabled, dragging, ghost, patch,
   );
 }
 
-export function FeeStructureBuilder({ chain, fees, onChange, walletAddress, onAdvancedProtectionChange, onIssuesChange, focusIssueRequest = 0, maxTotal = 10, className = '' }: { chain: ChainId; fees: FeeWallet[]; onChange: (next: FeeWallet[]) => void; walletAddress?: string | null; onAdvancedProtectionChange?: (count: number) => void; onIssuesChange?: (count: number) => void; focusIssueRequest?: number; maxTotal?: number; className?: string }) {
+export function FeeStructureBuilder({ chain, fees, onChange, walletAddress, onAdvancedProtectionChange, onIssuesChange, focusIssueRequest = 0, maxTotal = 10, className = '', openRewardRouteId, demoPointerRouteId, demoPointerAssetId, demoPointerPressed = false, demoSuppressValidation = false }: { chain: ChainId; fees: FeeWallet[]; onChange: (next: FeeWallet[]) => void; walletAddress?: string | null; onAdvancedProtectionChange?: (count: number) => void; onIssuesChange?: (count: number) => void; focusIssueRequest?: number; maxTotal?: number; className?: string; openRewardRouteId?: string; demoPointerRouteId?: string; demoPointerAssetId?: string; demoPointerPressed?: boolean; demoSuppressValidation?: boolean }) {
   const enabled = true;
   const [selectedPreset, setSelectedPreset] = useState<PresetKey | null>('creator');
   const [distributionTrigger, setDistributionTrigger] = useState<number>(0.05);
@@ -1670,48 +1648,6 @@ export function FeeStructureBuilder({ chain, fees, onChange, walletAddress, onAd
   const nearCap = !atCap && available <= 0.5;
   const ids = useMemo(() => new Set(fees.map((f) => f.id)), [fees]);
   const bar = useMemo(() => (enabled ? totalBar(list) : { t: 0, bg: 'rgba(0,0,0,0)' }), [enabled, list]);
-  const feeEngineRoutes = useMemo<FeeEngineRoute[]>(() => list.map((fee) => {
-    const selectedAssetIds = [...new Set(fee.id === 'rewards'
-      ? [`TOKEN:${fee.rewardAsset ?? rewardOf(chain)}`]
-      : (fee.id === 'rwa' || fee.routeRewardMode ? fee.rwaAssets ?? [] : []))];
-    const weights = selectedAssetIds.length
-      ? normalizeAssetWeights(selectedAssetIds, fee.rwaAssetWeights)
-      : {};
-    const kind = feeEngineKind(fee);
-    const configuredRecipient = (kind === 'treasury' || kind === 'custom') ? fee.address?.trim() ?? '' : '';
-    const recipientAddress = configuredRecipient && isRecipientAddressValid(configuredRecipient, chain) ? configuredRecipient : undefined;
-    return {
-      id: fee.id,
-      label: fee.id === 'rwa' ? 'Rewards Basket' : fee.name,
-      percent: fee.pct ?? 0,
-      color: tint(fee.id, fee.name),
-      kind,
-      detail: feeEngineDetail(fee, chain),
-      recipientAddress,
-      recipientExplorerUrl: recipientAddress ? `${ADDRESS_EXPLORERS[chain]}${encodeURIComponent(recipientAddress)}` : undefined,
-      distributionMode: fee.rwaDistributionMode ?? 'rotating',
-      minimumWalletShare: kind === 'basket' || kind === 'rewards' ? fee.rewardThresholdPct ?? 0.1 : undefined,
-      assets: selectedAssetIds.map((id) => feeEngineAsset(id, weights[id])),
-    };
-  }), [chain, list]);
-  const feeEngineRewardPayments = useMemo<FeeEngineRewardPayment[]>(() => {
-    const seen = new Set<string>();
-    const assets = feeEngineRoutes
-      .filter((route) => route.kind === 'basket' || route.kind === 'rewards')
-      .flatMap((route) => route.assets ?? [])
-      .filter((asset) => {
-        if (seen.has(asset.id)) return false;
-        seen.add(asset.id);
-        return true;
-      });
-    const sampleAmounts = [0.0184, 0.1126, 0.0382, 0.0841, 0.0067, 0.0248, 0.0513, 0.0096];
-    const sampleUsdValues = [31.42, 28.16, 24.83, 22.09, 18.61, 16.48, 14.72, 11.36];
-    return assets.map((asset, index) => ({
-      assetId: asset.id,
-      amount: sampleAmounts[index % sampleAmounts.length],
-      usdValue: sampleUsdValues[index % sampleUsdValues.length],
-    }));
-  }, [feeEngineRoutes]);
   const missing = useMemo(() => fees.filter((fee) => isMissingAddr(fee, chain)), [chain, fees]);
   const addableOptions = useMemo(() => ADD.filter((t) => canAdd(t, ids)), [ids]);
   const routeCount = fees.length;
@@ -2027,10 +1963,10 @@ export function FeeStructureBuilder({ chain, fees, onChange, walletAddress, onAd
                   };
                   return ghost && drag ? (
                     <div key={fee.id} style={{ height: drag.h }}>
-                      <Row fee={fee} chain={chain} walletAddress={walletAddress} max={maxTotal} disabled={!enabled} dragging ghost patch={patch} setPct={setPct} remove={remove} onDrag={start(fee.id)} bind={bind} attention={attentionId === fee.id} onExpand={(id) => centerFeeRow(id, 70, 940)} />
+                      <Row fee={fee} chain={chain} walletAddress={walletAddress} max={maxTotal} disabled={!enabled} dragging ghost patch={patch} setPct={setPct} remove={remove} onDrag={start(fee.id)} bind={bind} attention={attentionId === fee.id} onExpand={(id) => centerFeeRow(id, 70, 940)} forceRewardsOpen={openRewardRouteId === fee.id} demoPointerAssetId={demoPointerRouteId === fee.id ? demoPointerAssetId : undefined} demoPointerPressed={demoPointerPressed} demoSuppressValidation={demoSuppressValidation} />
                     </div>
                   ) : (
-                    <Row key={fee.id} fee={fee} chain={chain} walletAddress={walletAddress} max={maxTotal} disabled={!enabled} dragging={Boolean(drag)} patch={patch} setPct={setPct} remove={remove} onDrag={start(fee.id)} bind={bind} attention={attentionId === fee.id} onExpand={(id) => centerFeeRow(id, 70, 940)} />
+                    <Row key={fee.id} fee={fee} chain={chain} walletAddress={walletAddress} max={maxTotal} disabled={!enabled} dragging={Boolean(drag)} patch={patch} setPct={setPct} remove={remove} onDrag={start(fee.id)} bind={bind} attention={attentionId === fee.id} onExpand={(id) => centerFeeRow(id, 70, 940)} forceRewardsOpen={openRewardRouteId === fee.id} demoPointerAssetId={demoPointerRouteId === fee.id ? demoPointerAssetId : undefined} demoPointerPressed={demoPointerPressed} demoSuppressValidation={demoSuppressValidation} />
                   );
                 })}
                 {floating ? (
@@ -2040,7 +1976,7 @@ export function FeeStructureBuilder({ chain, fees, onChange, walletAddress, onAd
                 ) : null}
               </div>
 
-              <div className='mt-5' data-no-drag style={{ opacity: enabled ? 1 : 0.52, transition: 'opacity 160ms ease' }}>
+              <div className='mt-5' data-fee-builder-route-dock data-no-drag style={{ opacity: enabled ? 1 : 0.52, transition: 'opacity 160ms ease' }}>
                 <div className='rounded-[16px] border px-3 py-2.5 sm:rounded-[18px] sm:px-3.5 sm:py-3' style={routeDockStyle}>
                   <div className='flex flex-wrap items-center justify-between gap-2 sm:gap-3'>
                     <div className='min-w-[140px] flex-1 sm:min-w-[190px]'>
@@ -2068,7 +2004,7 @@ export function FeeStructureBuilder({ chain, fees, onChange, walletAddress, onAd
                     const col = META[t].c;
                     const custom = t === 'custom';
                     return (
-                        <button key={t} type='button' disabled={!enabled} onClick={() => addFee(t)} className='bbPill bbRouteAdd inline-flex h-8 w-full items-center justify-start gap-1.5 rounded-full px-2.5 text-[10px] font-semibold transition-[border-color,background-color,box-shadow] duration-200 sm:h-auto sm:w-auto sm:gap-2 sm:px-2.5 sm:py-1.5 sm:text-[11px]' style={{ color: enabled ? T.text : T.muted, background: custom ? 'rgba(244,249,246,0.026)' : `linear-gradient(135deg, ${rgba(col, 0.075)}, rgba(244,249,246,0.016))`, border: custom ? `1px solid ${rgba(col, 0.18)}` : `1px solid ${rgba(col, 0.20)}`, boxShadow: custom ? 'none' : `0 0 16px ${rgba(col, 0.028)}` }}>
+                        <button key={t} type='button' data-add-fee-route={t} disabled={!enabled} onClick={() => addFee(t)} className='bbPill bbRouteAdd inline-flex h-8 w-full items-center justify-start gap-1.5 rounded-full px-2.5 text-[10px] font-semibold transition-[border-color,background-color,box-shadow] duration-200 sm:h-auto sm:w-auto sm:gap-2 sm:px-2.5 sm:py-1.5 sm:text-[11px]' style={{ color: enabled ? T.text : T.muted, background: custom ? 'rgba(244,249,246,0.026)' : `linear-gradient(135deg, ${rgba(col, 0.075)}, rgba(244,249,246,0.016))`, border: custom ? `1px solid ${rgba(col, 0.18)}` : `1px solid ${rgba(col, 0.20)}`, boxShadow: custom ? 'none' : `0 0 16px ${rgba(col, 0.028)}` }}>
                         <span className='inline-flex h-4 w-4 items-center justify-center rounded-md sm:h-5 sm:w-5' style={{ background: 'linear-gradient(180deg, rgba(24,27,26,0.96), rgba(12,14,13,0.94))', border: `1px solid ${rgba(col, custom ? 0.18 : 0.24)}`, boxShadow: `inset 0 1px 0 rgba(255,255,255,0.035), 0 0 10px ${rgba(col, 0.042)}` }} aria-hidden>
                           <Plus size={11} strokeWidth={2.1} style={{ color: col }} />
                         </span>
@@ -2109,28 +2045,6 @@ export function FeeStructureBuilder({ chain, fees, onChange, walletAddress, onAd
                 </div>
               </div>
             </div>
-
-        <div className='mt-5 border-t border-white/[0.075] pt-5' data-no-drag>
-          <div className='mb-3 flex items-end justify-between gap-3 px-1'>
-            <div className='min-w-0'>
-              <p className='text-[10px] font-semibold uppercase tracking-[0.18em] text-[#9dffd0]/62'>Token page preview</p>
-              <p className='mt-1 text-[10px] text-white/38 sm:text-[11px]'>Preview how configured routes, basket sequencing, and sample payout activity appear after launch.</p>
-            </div>
-          </div>
-          <FeeEngineCard
-            routes={feeEngineRoutes}
-            maxTotal={maxTotal}
-            accruedAmount={distributionTrigger * 0.64}
-            distributionThreshold={distributionTrigger}
-            settlementAsset={rewardOf(chain)}
-            totalPaidOut={4.82}
-            lastPayoutAt='18 min ago'
-            lastPayoutExact='Example activity: most recent automatic distribution was 18 minutes ago.'
-            payoutCount={27}
-            viewerRewardPayments={feeEngineRewardPayments}
-            className='mx-auto max-w-[560px]'
-          />
-        </div>
 
         <div ref={advancedProtectionRef} className='mt-5 pt-1' data-no-drag>
           <div className={`grid grid-cols-[auto_minmax(0,1fr)] items-center gap-2 transition-[margin] duration-300 ease-[cubic-bezier(.22,1,.36,1)] sm:grid-cols-[auto_minmax(24px,1fr)_auto_minmax(24px,1fr)_auto] sm:gap-3 ${advancedProtectionOpen ? 'mb-4' : 'mb-0'}`}>
@@ -2231,6 +2145,14 @@ export default function FeeBuilderPanel({ chain: chainValue, walletAddress, onTo
   const previousChain = useRef(chain);
   const [fees, setFees] = useState<FeeWallet[]>(() => presetFees(chain, 'creator'));
   const total = useMemo(() => fees.reduce((sum, fee) => sum + (fee.pct ?? 0), 0), [fees]);
+  const routeOrder = useMemo(
+    () => normalizeFeeBuilderRouteOrder(fees.map((fee) => ({ id: fee.id, label: fee.name }))),
+    [fees],
+  );
+
+  useEffect(() => {
+    persistFeeBuilderRouteOrder(routeOrder);
+  }, [routeOrder]);
 
   useEffect(() => {
     if (previousChain.current === chain) return;

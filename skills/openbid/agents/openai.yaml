@@ -1,0 +1,4 @@
+interface:
+  display_name: "OpenBid"
+  short_description: "Build and operate OpenBid launch workflows"
+  default_prompt: "Use $openbid to prepare a safe OpenBid launch workflow."

@@ -12,14 +12,15 @@ import {
   ArrowUpRight,
   Calculator,
   ChevronDown,
-  CircleHelp,
   Cookie,
+  Megaphone,
   MessageCircleMore,
   Presentation,
   Send,
   Settings,
   ShieldCheck,
 } from "lucide-react";
+import { openReleaseUpdates } from "./releaseUpdates";
 
 const cx = (...values: Array<string | false | null | undefined>) => values.filter(Boolean).join(" ");
 
@@ -97,7 +98,10 @@ function LiveChatMenu() {
                 <a key={contact.handle} href={contact.href} target="_blank" rel="noreferrer" onClick={() => setOpen(false)} className="group/contact flex items-center gap-2.5 rounded-lg px-2 py-2 transition-colors hover:bg-white/[0.045]">
                   <Image unoptimized src={contact.avatar} alt="" width={28} height={28} className="h-7 w-7 shrink-0 rounded-full object-cover ring-1 ring-white/[0.12] transition-[filter,box-shadow] group-hover/contact:brightness-110 group-hover/contact:shadow-[0_0_12px_rgba(24,201,142,0.12)]" />
                   <span className="min-w-0 flex-1">
-                    <span className="block text-[11px] font-medium text-white/76 group-hover/contact:text-white/92">{contact.name}</span>
+                    <span className="flex items-center gap-2">
+                      <span className="text-[11px] font-medium text-white/76 group-hover/contact:text-white/92">{contact.name}</span>
+                      <span className={cx("text-[7.5px] font-semibold uppercase tracking-[0.12em]", contact.role === "OpenBid" ? "text-[#18c98e]/62" : contact.role === "Support" ? "text-[#69aef8]/62" : "text-white/27")}>{contact.role}</span>
+                    </span>
                     <span className="block truncate text-[9px] text-white/34">{contact.handle}</span>
                   </span>
                   <ArrowUpRight className="h-3 w-3 text-white/22 transition-colors group-hover/contact:text-white/52" />
@@ -147,14 +151,15 @@ function CookieControl({ enabled, onToggle }: { enabled: boolean; onToggle: () =
 }
 
 function PlatformLinks() {
-  const linkClass = "inline-flex h-6 items-center justify-center gap-1.5 rounded-md px-2.5 text-[10px] font-medium text-white/48 transition hover:bg-white/[0.055] hover:text-white/82";
+  const linkClass = "group inline-flex h-6 items-center justify-center gap-1.5 rounded-md px-2.5 text-[10px] font-medium text-white/48 transition hover:bg-white/[0.055] hover:text-white/82";
+  const iconClass = "h-3 w-3 text-white/34 transition-colors group-hover:text-white/70";
   return (
     <div className="inline-flex h-7 items-center rounded-lg bg-black/15 p-0.5 ring-1 ring-white/[0.09] shadow-[inset_0_1px_0_rgba(255,255,255,0.025)]">
-      <a href="/how-it-works" className={linkClass}><CircleHelp className="h-3 w-3" />How it works</a>
+      <button type="button" onClick={openReleaseUpdates} className={linkClass}><Megaphone className={iconClass} />Updates</button>
       <span className="h-3.5 w-px bg-white/[0.08]" aria-hidden="true" />
-      <a href="/calculator" className={linkClass}><Calculator className="h-3 w-3" />Fee calculator</a>
+      <a href="/calculator" className={linkClass}><Calculator className={iconClass} />Fee calculator</a>
       <span className="h-3.5 w-px bg-white/[0.08]" aria-hidden="true" />
-      <a href="/deck" target="_blank" rel="noreferrer" className={linkClass}><Presentation className="h-3 w-3" />Pitch deck</a>
+      <a href="/deck" target="_blank" rel="noreferrer" className={linkClass}><Presentation className={iconClass} />Pitch deck</a>
     </div>
   );
 }
@@ -164,14 +169,14 @@ function FooterBar({ settings, cookiesEnabled, onToggleCookies, fixed = false, c
     <footer
       data-app-footer="true"
       className={cx(
-        "z-[200] flex h-[44px] w-full items-center border-t border-white/[0.08] bg-[#090a0a]/96 backdrop-blur-xl",
+        "z-[260] flex h-[44px] w-full items-center border-t border-white/[0.08] bg-[#090a0a]/96 backdrop-blur-xl",
         fixed ? "fixed inset-x-0 bottom-0" : "relative",
       )}
     >
-      <div className={cx("hidden h-full shrink-0 border-r border-white/[0.08] transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] md:block", compactTerminalSidebar ? "w-[66px] min-[1800px]:w-[272px]" : "w-[272px]")}>
-        <div className={cx("relative flex h-full items-center", compactTerminalSidebar ? "justify-center px-0 min-[1800px]:justify-start min-[1800px]:px-3 min-[1800px]:pr-[6px]" : "px-3 pr-[6px]")}>
+      <div className={cx("hidden h-full shrink-0 border-r border-white/[0.08] transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] md:block", compactTerminalSidebar ? "w-[66px]" : "w-[272px]")}>
+        <div className={cx("relative flex h-full items-center", compactTerminalSidebar ? "justify-center px-0" : "px-3 pr-[6px]")}>
           {settings}
-          <div className={cx("absolute left-[55%] top-1/2 -translate-x-1/2 -translate-y-1/2 items-center gap-2", compactTerminalSidebar ? "hidden min-[1800px]:flex" : "flex")}><SocialLinks /></div>
+          <div className={cx("absolute left-[55%] top-1/2 -translate-x-1/2 -translate-y-1/2 items-center gap-2", compactTerminalSidebar ? "hidden" : "flex")}><SocialLinks /></div>
         </div>
       </div>
       <div className="relative flex h-full min-w-0 flex-1 items-center px-3 sm:px-4">
@@ -222,7 +227,7 @@ function GlobalFooterSettings() {
       </button>
       <AnimatePresence>
         {open ? (
-          <FooterDropdown className="absolute bottom-[46px] left-0 w-64 overflow-hidden rounded-2xl bg-[#0a0a0a] shadow-[0_16px_40px_rgba(0,0,0,0.55)] ring-1 ring-white/12">
+          <FooterDropdown className="absolute bottom-[46px] left-0 z-20 w-64 overflow-hidden rounded-2xl bg-[#0a0a0a] shadow-[0_16px_40px_rgba(0,0,0,0.55)] ring-1 ring-white/12">
             <div className="px-3 py-2 text-[11px] font-medium text-white/60">Preferences</div>
             <div className="border-t border-white/10 px-3 py-2.5">
               <div className="flex items-center justify-between gap-3">

@@ -43,7 +43,7 @@ export default function CreateSelectorPage() {
       <main className="relative z-10 mx-auto flex w-full max-w-[1060px] flex-col px-5 pb-16 pt-5 sm:px-7 sm:pb-20 sm:pt-7">
         <CreateBackLink href="/" />
         <motion.section
-          initial="hidden"
+          initial={false}
           animate="visible"
           variants={reveal}
           transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
@@ -72,13 +72,13 @@ export default function CreateSelectorPage() {
         </motion.section>
 
         <motion.div
-          initial="hidden"
+          initial={false}
           animate="visible"
           variants={reveal}
           transition={{ duration: 0.45, delay: 0.07, ease: [0.22, 1, 0.36, 1] }}
           className="mt-10 grid gap-4 md:grid-cols-[1.06fr_0.94fr]"
         >
-          <a href="https://www.based.bid/launch-flash" className={launchCardClass}>
+          <Link href="/create/token" className={launchCardClass}>
             <span className="absolute -top-px left-6 z-20 rounded-b-[9px] bg-[#18c98e] px-3 py-1.5 text-[8px] font-bold uppercase tracking-[0.13em] text-[#071009] shadow-[0_5px_18px_rgba(24,201,142,0.16)]">Recommended</span>
             <span aria-hidden="true" className="pointer-events-none absolute inset-x-8 bottom-0 z-[1] h-px bg-gradient-to-r from-transparent via-white/18 to-transparent opacity-0 blur-[0.4px] transition-opacity duration-700 ease-out group-hover:opacity-100" />
             <Image
@@ -107,7 +107,7 @@ export default function CreateSelectorPage() {
               <Tag tone="gold">No upfront liquidity</Tag>
               <Tag tone="gold">Direct to DEX</Tag>
             </span>
-          </a>
+          </Link>
 
           <Link href="/create/lbp" className={launchCardClass}>
             <span aria-hidden="true" className="pointer-events-none absolute inset-x-8 bottom-0 z-[1] h-px bg-gradient-to-r from-transparent via-white/18 to-transparent opacity-0 blur-[0.4px] transition-opacity duration-700 ease-out group-hover:opacity-100" />
@@ -141,7 +141,7 @@ export default function CreateSelectorPage() {
         </motion.div>
 
         <motion.section
-          initial="hidden"
+          initial={false}
           animate="visible"
           variants={reveal}
           transition={{ duration: 0.45, delay: 0.13, ease: [0.22, 1, 0.36, 1] }}
@@ -166,7 +166,7 @@ export default function CreateSelectorPage() {
           href="https://basedinc.gitbook.io/basedbid/projects-how-to-guides"
           target="_blank"
           rel="noreferrer"
-          initial="hidden"
+          initial={false}
           animate="visible"
           variants={reveal}
           transition={{ duration: 0.4, delay: 0.18, ease: [0.22, 1, 0.36, 1] }}

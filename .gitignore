@@ -19,3 +19,6 @@ releases/
 
 # Local design/reference material
 based-bid-deck/
+
+# Previous local checkout retained only as a recovery copy
+based-bid-frontend-v2-worktree/

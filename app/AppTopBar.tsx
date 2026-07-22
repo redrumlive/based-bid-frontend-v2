@@ -267,16 +267,16 @@ function TradeButton() {
 
 export default function AppTopBar() {
   const pathname = usePathname();
-  const { expanded: sidebarExpanded } = useTerminalSidebar();
+  const { expanded: sidebarExpanded, expand: expandSidebar } = useTerminalSidebar();
 
   if (isStandaloneDeckRoute(pathname)) return null;
 
   return (
     <header className="sticky top-0 z-[240] flex h-14 w-full shrink-0 items-center border-b border-white/[0.08] bg-[#0b0c0c]/96 shadow-[0_1px_0_rgba(255,255,255,0.015)] backdrop-blur-xl">
-      <div className={cx("flex h-full shrink-0 items-center justify-start border-r border-white/[0.08] px-3 transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]", sidebarExpanded ? "w-[272px]" : "w-[66px] min-[1800px]:w-[272px]")}>
-        <Link href="/" className={cx("flex items-center px-1 py-1 transition-[gap,opacity] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:opacity-90", sidebarExpanded ? "gap-2.5" : "gap-0 min-[1800px]:gap-2.5")} aria-label="Based Bid home">
+      <div className={cx("flex h-full shrink-0 items-center justify-start border-r border-white/[0.08] px-3 transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]", sidebarExpanded ? "w-[272px]" : "w-[66px]")}>
+        <Link href="/" onClick={() => { if (!sidebarExpanded) expandSidebar(); }} className={cx("flex items-center px-1 py-1 transition-[gap,opacity] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:opacity-90", sidebarExpanded ? "gap-2.5" : "gap-0")} aria-label="Based Bid home">
           <Image unoptimized src={BRAND_ICON} alt="Based Bid" width={36} height={36} className="h-9 w-9 rounded-2xl object-cover" priority />
-          <span className={cx("flex min-w-0 flex-col overflow-hidden whitespace-nowrap leading-tight transition-[max-width,opacity,transform] duration-200 ease-out", sidebarExpanded ? "max-w-[150px] translate-x-0 opacity-100 delay-100" : "max-w-0 -translate-x-1 opacity-0 min-[1800px]:max-w-[150px] min-[1800px]:translate-x-0 min-[1800px]:opacity-100")}>
+          <span className={cx("flex min-w-0 flex-col overflow-hidden whitespace-nowrap leading-tight transition-[max-width,opacity,transform] duration-200 ease-out", sidebarExpanded ? "max-w-[150px] translate-x-0 opacity-100 delay-100" : "max-w-0 -translate-x-1 opacity-0")}>
             <span className="text-[15px] font-medium tracking-tight text-white">based <span className="text-[#18c98e]">bid</span></span>
             <span className="mt-0.5 text-[7.5px] font-semibold uppercase tracking-[0.225em] text-white/38">
               Programmable <span className="text-[#d8b75f]/80">economies</span>

@@ -5,6 +5,7 @@ import { AppPreferencesProvider } from './AppPreferences';
 import AppShell from './AppShell';
 import AppTopBar from './AppTopBar';
 import ChunkLoadRecovery from './ChunkLoadRecovery';
+import ReleaseUpdateModal from './ReleaseUpdateModal';
 import { TerminalSidebarProvider } from './TerminalSidebarContext';
 import './globals.css';
 
@@ -30,6 +31,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <body>
         <AppPreferencesProvider>
           <ChunkLoadRecovery />
+          <ReleaseUpdateModal />
           <TerminalSidebarProvider>
             <AppTopBar />
             <AppShell>{children}</AppShell>

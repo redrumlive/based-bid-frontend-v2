@@ -4,7 +4,7 @@ import React from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { FaXTwitter } from "react-icons/fa6";
 import { useAppPreferences, type AmbientPreference, type AnimationPreference } from "./AppPreferences";
 import { LIVE_CHAT_CONTACTS } from "./appConfig";
@@ -15,7 +15,8 @@ import {
   Calculator,
   Check,
   ChevronDown,
-  CircleHelp,
+  ChevronLeft,
+  ChevronRight,
   Clock3,
   Code2,
   Coins,
@@ -26,6 +27,7 @@ import {
   Hash,
   LayoutGrid,
   MessageCircleMore,
+  Megaphone,
   Pin,
   Plus,
   Presentation,
@@ -39,6 +41,9 @@ import {
   TrendingUp,
   X,
 } from "lucide-react";
+import { openReleaseUpdates } from "./releaseUpdates";
+import { useTerminalSidebar } from "./TerminalSidebarContext";
+import { openGlobalSearch } from "./GlobalSearchModal";
 
 type SortMode = "smart" | "pinned" | "favorites";
 type ContentSortMode = "smart" | "hot" | "newest" | "full";
@@ -1227,16 +1232,11 @@ function MiniTokenChart({ card, idle = false }: { card: TokenCardData; idle?: bo
 }
 
 function TokenFeedCard({ card, spotlight, currentTime }: { card: TokenCardData; spotlight?: SmartSpotlightKind; currentTime: number }) {
-  const router = useRouter();
   const isUp = card.change >= 0;
   const upcoming = typeof card.startsAt === "number" && card.startsAt > currentTime;
   const liveEmpty = card.kind === "lbp" && !upcoming && card.mcCurrent <= 0;
   const upcomingCountdown = card.startsAt ? formatCountdown(card.startsAt - currentTime) : "";
   const detailHref = card.kind === "lbp" ? `/token/${encodeURIComponent(card.id)}` : null;
-  const openDetail = (event: React.MouseEvent<HTMLElement>) => {
-    if (!detailHref || (event.target as HTMLElement).closest("a, button")) return;
-    router.push(detailHref);
-  };
   return (
     <motion.article
       layout
@@ -1246,18 +1246,15 @@ function TokenFeedCard({ card, spotlight, currentTime }: { card: TokenCardData; 
       transition={{ duration: 0.26, ease: [0.22, 1, 0.36, 1] }}
       whileHover={{ y: -2 }}
       data-smart-event={spotlight}
-      onClick={openDetail}
-      onKeyDown={(event) => {
-        if (detailHref && (event.key === "Enter" || event.key === " ")) {
-          event.preventDefault();
-          router.push(detailHref);
-        }
-      }}
-      role={detailHref ? "link" : undefined}
-      tabIndex={detailHref ? 0 : undefined}
-      aria-label={detailHref ? `Open ${card.title} LBP terminal` : undefined}
-      className={cx("group relative h-[210px] min-w-0 overflow-hidden rounded-[22px] border border-white/[0.055] bg-[#0f1111] p-3.5 shadow-[0_12px_34px_rgba(0,0,0,0.25)] transition-[border-color,box-shadow] duration-300 hover:border-white/[0.11] hover:shadow-[0_18px_44px_rgba(0,0,0,0.34)] focus-visible:border-[#18c98e]/28 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#18c98e]/18", detailHref && "cursor-pointer", spotlight && "bb-smart-spotlight")}
+      className={cx("group relative h-[210px] min-w-0 overflow-hidden rounded-[22px] border border-white/[0.055] bg-[#0f1111] p-3.5 shadow-[0_12px_34px_rgba(0,0,0,0.25)] transition-[border-color,box-shadow] duration-300 hover:border-white/[0.11] hover:shadow-[0_18px_44px_rgba(0,0,0,0.34)]", detailHref && "cursor-pointer pointer-events-none [&_a]:pointer-events-auto [&_button]:pointer-events-auto", spotlight && "bb-smart-spotlight")}
     >
+      {detailHref ? (
+        <Link
+          href={detailHref}
+          aria-label={`Open ${card.title} LBP terminal`}
+          className="absolute inset-0 z-[9] rounded-[22px] pointer-events-auto outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#18c98e]/24"
+        />
+      ) : null}
       <span
         aria-hidden="true"
         className="bb-ambient-effect pointer-events-none absolute -inset-x-[4%] -top-5 h-[138px] scale-[1.04] opacity-0 blur-[16px] transition-opacity duration-500 group-hover:opacity-100"
@@ -1389,7 +1386,7 @@ function PrefToggle({ label, value, onChange, options }: ToggleProps) {
   );
 }
 
-function NavItem({ icon, label, href, tone = "emerald", onClick, activeOverride }: { icon: React.ReactNode; label: string; href: string; tone?: "emerald" | "gold" | "violet"; onClick?: React.MouseEventHandler<HTMLAnchorElement>; activeOverride?: boolean }) {
+function NavItem({ icon, label, href, tone = "emerald", onClick, activeOverride, compact = false }: { icon: React.ReactNode; label: string; href: string; tone?: "emerald" | "gold" | "violet"; onClick?: React.MouseEventHandler<HTMLAnchorElement>; activeOverride?: boolean; compact?: boolean }) {
   const ref = React.useRef<HTMLAnchorElement | null>(null);
   const pathname = usePathname();
   const active = activeOverride ?? (pathname === href || pathname.startsWith(`${href}/`));
@@ -1434,12 +1431,14 @@ function NavItem({ icon, label, href, tone = "emerald", onClick, activeOverride 
         updateSpot(`${event.clientX - bounds.left}px`, `${event.clientY - bounds.top}px`);
       }}
       onMouseLeave={() => updateSpot("-999px", "-999px")}
-      className={cx("group relative isolate flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-sm text-white/68 transition-[background-color,color,box-shadow] duration-300", active ? "" : hoverTone)}
+      aria-label={compact ? label : undefined}
+      className={cx("group relative isolate flex w-full items-center rounded-lg py-1.5 text-left text-sm text-white/68 transition-[background-color,color,box-shadow] duration-300", compact ? "justify-center px-1" : "gap-2 px-2.5", active ? "" : hoverTone)}
       style={{ "--sx": "-999px", "--sy": "-999px" } as React.CSSProperties}
     >
       <span aria-hidden="true" className={cx("pointer-events-none absolute inset-0 -z-10 rounded-lg opacity-0 transition-opacity duration-300", active ? "" : "group-hover:opacity-100")} style={{ background: spotlight }} />
       <span className={cx("grid h-8 w-8 place-items-center rounded-lg ring-1 transition-colors duration-300", iconTone)}>{icon}</span>
-      <span className="truncate">{label}</span>
+      <span className={compact ? "sr-only" : "truncate"}>{label}</span>
+      {compact ? <span className="pointer-events-none absolute left-[calc(100%+9px)] top-1/2 z-50 -translate-y-1/2 whitespace-nowrap rounded-lg border border-white/[0.09] bg-[#111513]/96 px-2.5 py-1.5 text-[10px] font-medium text-white/72 opacity-0 shadow-[0_12px_28px_rgba(0,0,0,0.42)] backdrop-blur-xl transition duration-150 group-hover:translate-x-0.5 group-hover:opacity-100">{label}</span> : null}
     </Link>
   );
 }
@@ -1452,7 +1451,7 @@ function ToastViewport({ toast, onDismiss }: { toast: AppToast | null; onDismiss
   }, [onDismiss, toast]);
 
   return (
-    <div className="pointer-events-none fixed bottom-[62px] left-1/2 z-[160] flex w-[min(336px,calc(100vw-32px))] -translate-x-1/2 justify-center">
+    <div className="pointer-events-none fixed bottom-[62px] left-1/2 z-[240] flex w-[min(336px,calc(100vw-32px))] -translate-x-1/2 justify-center">
       <AnimatePresence mode="wait">
         {toast ? (
           <motion.div
@@ -1545,7 +1544,10 @@ function LiveChatMenu() {
                 <a key={contact.handle} href={contact.href} target="_blank" rel="noreferrer" onClick={() => setOpen(false)} className="group/contact flex items-center gap-2.5 rounded-lg px-2 py-2 transition-colors hover:bg-white/[0.045]">
                   <Image unoptimized src={contact.avatar} alt="" width={28} height={28} className="h-7 w-7 shrink-0 rounded-full object-cover ring-1 ring-white/[0.12] transition-[filter,box-shadow] group-hover/contact:brightness-110 group-hover/contact:shadow-[0_0_12px_rgba(24,201,142,0.12)]" />
                   <span className="min-w-0 flex-1">
-                    <span className="block text-[11px] font-medium text-white/76 group-hover/contact:text-white/92">{contact.name}</span>
+                    <span className="flex items-center gap-2">
+                      <span className="text-[11px] font-medium text-white/76 group-hover/contact:text-white/92">{contact.name}</span>
+                      <span className={cx("text-[7.5px] font-semibold uppercase tracking-[0.12em]", contact.role === "OpenBid" ? "text-[#18c98e]/62" : contact.role === "Support" ? "text-[#69aef8]/62" : "text-white/27")}>{contact.role}</span>
+                    </span>
                     <span className="block truncate text-[9px] text-white/34">{contact.handle}</span>
                   </span>
                   <ArrowUpRight className="h-3 w-3 text-white/22 transition-colors group-hover/contact:text-white/52" />
@@ -1559,37 +1561,49 @@ function LiveChatMenu() {
   );
 }
 
-function SidebarPanel({ query, onQuery, searchRef, sortLabel, onCycleSort, boards, activeBoard, onSelectBoard, onTogglePin, onOpenCollectFees, collectFeesOpen }: { query: string; onQuery: (v: string) => void; searchRef: React.RefObject<HTMLInputElement | null>; sortLabel: string; onCycleSort: () => void; boards: Board[]; activeBoard: string; onSelectBoard: (id: string) => void; onTogglePin: (id: string) => void; onOpenCollectFees: () => void; collectFeesOpen: boolean }) {
+function SidebarPanel({ query, onQuery, searchRef, sortLabel, onCycleSort, boards, activeBoard, onSelectBoard, onTogglePin, onOpenCollectFees, onCloseCollectFees, collectFeesOpen, compact, onToggleCompact }: { query: string; onQuery: (v: string) => void; searchRef: React.RefObject<HTMLInputElement | null>; sortLabel: string; onCycleSort: () => void; boards: Board[]; activeBoard: string; onSelectBoard: (id: string) => void; onTogglePin: (id: string) => void; onOpenCollectFees: () => void; onCloseCollectFees: () => void; collectFeesOpen: boolean; compact: boolean; onToggleCompact: () => void }) {
   return (
-    <aside className="relative flex h-full w-[272px] flex-col border-r border-white/[0.08] bg-[linear-gradient(180deg,#0b0c0c_0%,#090a0a_100%)] shadow-[8px_0_32px_rgba(0,0,0,0.12)]">
-      <div className="bb-scroll min-h-0 flex-1 overflow-y-auto px-3 pr-[6px] pb-6 pt-3">
-        <div className="relative">
+    <aside
+      onPointerDownCapture={(event) => {
+        if (!collectFeesOpen || (event.target as Element).closest('a[href="#collect-fees"]')) return;
+        onCloseCollectFees();
+      }}
+      className={`relative flex h-full shrink-0 flex-col border-r border-white/[0.08] bg-[linear-gradient(180deg,#0b0c0c_0%,#090a0a_100%)] shadow-[8px_0_32px_rgba(0,0,0,0.12)] transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${compact ? "w-[66px]" : "w-[272px]"}`}
+    >
+      <button type="button" onClick={onToggleCompact} aria-label={compact ? "Open sidebar" : "Collapse sidebar"} className="absolute right-0 top-2 z-50 grid h-7 w-6 translate-x-1/2 place-items-center bg-transparent text-white/34 outline-none transition-colors duration-180 hover:text-[#52dfb2] focus-visible:text-[#52dfb2]">
+        {compact ? <ChevronRight className="h-3.5 w-3.5" strokeWidth={1.65} /> : <ChevronLeft className="h-3.5 w-3.5" strokeWidth={1.65} />}
+      </button>
+      <div className={`bb-scroll min-h-0 flex-1 overflow-y-auto pb-6 pt-3 ${compact ? "px-2" : "px-3 pr-[6px]"}`}>
+        {compact ? (
+          <button type="button" onClick={openGlobalSearch} aria-label="Search" className="group relative grid h-10 w-full place-items-center rounded-xl border border-white/[0.085] bg-white/[0.025] text-white/42 outline-none transition hover:border-[#18c98e]/24 hover:bg-[#18c98e]/[0.055] hover:text-[#18c98e] focus-visible:border-[#18c98e]/38"><Search className="h-4 w-4" /><span className="pointer-events-none absolute left-[calc(100%+9px)] top-1/2 z-50 -translate-y-1/2 whitespace-nowrap rounded-lg border border-white/[0.09] bg-[#111513]/96 px-2.5 py-1.5 text-[10px] font-medium text-white/72 opacity-0 shadow-[0_12px_28px_rgba(0,0,0,0.42)] backdrop-blur-xl transition duration-150 group-hover:translate-x-0.5 group-hover:opacity-100">Search</span></button>
+        ) : <div className="relative">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/45" />
           <kbd className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded-md bg-white/5 px-1.5 py-0.5 text-[10px] font-medium text-white/50 ring-1 ring-white/10">/</kbd>
-          <input ref={searchRef} value={query} onChange={(e) => onQuery(e.target.value)} placeholder="Search tokens, boards..." className="w-full rounded-2xl bg-white/5 py-2.5 pl-10 pr-10 text-sm ring-1 ring-white/10 outline-none focus:ring-2 focus:ring-white/15" />
+          <input ref={searchRef} value={query} readOnly onFocus={openGlobalSearch} onClick={openGlobalSearch} placeholder="Search tokens, boards..." className="w-full cursor-pointer rounded-2xl bg-white/5 py-2.5 pl-10 pr-10 text-sm ring-1 ring-white/10 outline-none transition hover:bg-white/[0.065] hover:ring-white/15 focus:ring-2 focus:ring-white/15" />
+        </div>}
+        <div className={`mt-3 ${compact ? "space-y-1" : "space-y-2"}`}>
+          <NavItem compact={compact} icon={<Plus className="h-4 w-4" />} label="Create" href="/create" tone="emerald" />
+          <NavItem compact={compact} icon={<Coins className="h-4 w-4" />} label="Collect Fees" href="#collect-fees" tone="gold" activeOverride={collectFeesOpen} onClick={(event) => { event.preventDefault(); onOpenCollectFees(); }} />
+          <NavItem compact={compact} icon={<Code2 className="h-4 w-4" />} label="OpenBid" href="/openbid" tone="violet" />
         </div>
-        <div className="mt-3 space-y-2">
-          <NavItem icon={<Plus className="h-4 w-4" />} label="Create" href="/create" tone="emerald" />
-          <NavItem icon={<Coins className="h-4 w-4" />} label="Collect Fees" href="#collect-fees" tone="gold" activeOverride={collectFeesOpen} onClick={(event) => { event.preventDefault(); onOpenCollectFees(); }} />
-          <NavItem icon={<Code2 className="h-4 w-4" />} label="OpenBid" href="/openbid" tone="violet" />
-        </div>
-        <div className="mt-5 flex items-center justify-between px-1">
+        <div className={`mt-5 items-center justify-between px-1 ${compact ? "hidden" : "flex"}`}>
           <div className="text-xs font-semibold uppercase text-white/45">Boards</div>
           <button onClick={onCycleSort} className="flex items-center gap-2 rounded-xl px-2 py-1 text-xs text-white/60 hover:bg-white/5" aria-label="Change board sort"><span>{sortLabel}</span><ChevronDown className="h-3.5 w-3.5" /></button>
         </div>
-        <div className="mt-2">
-          <motion.div layout className="space-y-0.5" transition={LAYOUT_SPRING}>
+        <div className={compact ? "mt-4" : "mt-2"}>
+          <motion.div layout className={compact ? "space-y-1" : "space-y-0.5"} transition={LAYOUT_SPRING}>
             {boards.map((b) => {
               const active = activeBoard === b.id;
               const pinned = !!b.isPinned;
               const isBased = b.id === "based";
               return (
-              <motion.div layout key={b.id} transition={LAYOUT_SPRING} className={cx("group relative flex w-full items-center rounded-xl text-sm transition-[background-color,box-shadow] duration-300 focus-within:ring-1 focus-within:ring-white/15", active && "before:absolute before:bottom-2 before:left-0 before:top-2 before:w-[2px] before:rounded-full before:bg-[#18c98e]/85 before:shadow-[0_0_12px_rgba(24,201,142,0.34)] before:content-['']", active ? "bg-gradient-to-r from-white/[0.075] to-white/[0.035] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.025)]" : "text-white/72 hover:bg-white/[0.045] hover:text-white/92")}>
-                  <button type="button" onClick={() => onSelectBoard(b.id)} className="flex min-w-0 flex-1 items-center gap-2 px-2.5 py-1.5 text-left outline-none">
+              <motion.div layout key={b.id} transition={LAYOUT_SPRING} className={cx("group relative flex w-full items-center rounded-xl text-sm transition-[background-color,box-shadow] duration-300 focus-within:ring-1 focus-within:ring-white/15", compact && "justify-center", active && "before:absolute before:bottom-2 before:left-0 before:top-2 before:w-[2px] before:rounded-full before:bg-[#18c98e]/85 before:shadow-[0_0_12px_rgba(24,201,142,0.34)] before:content-['']", active ? "bg-gradient-to-r from-white/[0.075] to-white/[0.035] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.025)]" : "text-white/72 hover:bg-white/[0.045] hover:text-white/92")}>
+                  <button type="button" onClick={() => onSelectBoard(b.id)} aria-label={compact ? b.name : undefined} className={`relative flex min-w-0 items-center py-1.5 text-left outline-none ${compact ? "justify-center px-1" : "flex-1 gap-2 px-2.5"}`}>
                     <span className={cx("flex h-7 w-7 shrink-0 items-center justify-center rounded-full ring-1 transition-colors duration-300", active ? "bg-white/10 ring-white/15" : "bg-white/[0.035] ring-white/10 group-hover:bg-white/[0.07]")}>{b.icon ?? <BoardAvatar name={b.name} />}</span>
-                    <span className="truncate font-normal">{b.name}</span>
+                    <span className={compact ? "sr-only" : "truncate font-normal"}>{b.name}</span>
+                    {compact ? <span className="pointer-events-none absolute left-[calc(100%+9px)] top-1/2 z-50 -translate-y-1/2 whitespace-nowrap rounded-lg border border-white/[0.09] bg-[#111513]/96 px-2.5 py-1.5 text-[10px] font-medium text-white/72 opacity-0 shadow-[0_12px_28px_rgba(0,0,0,0.42)] backdrop-blur-xl transition duration-150 group-hover:translate-x-0.5 group-hover:opacity-100">{b.name}</span> : null}
                   </button>
-                  {!isBased ? (
+                  {!compact && !isBased ? (
                     <button type="button" onClick={() => onTogglePin(b.id)} className={cx("mr-1 grid h-7 w-7 shrink-0 cursor-pointer place-items-center rounded-lg outline-none transition-all duration-300 hover:bg-white/[0.06]", pinned ? "text-[#18c98e]/85" : "text-white/28 opacity-0 group-hover:opacity-100 hover:text-white/75 focus:opacity-100")} aria-label={pinned ? "Unpin board" : "Pin board"} data-ui-hint={pinned ? "Unpin" : "Pin"}>
                       <Pin className={cx("h-3.5 w-3.5 transition-transform", pinned && "rotate-45")} />
                     </button>
@@ -1663,14 +1677,15 @@ function CookieControl({ enabled, onToggle }: { enabled: boolean; onToggle: () =
 }
 
 function PlatformLinks() {
-  const linkClass = "inline-flex h-6 items-center justify-center gap-1.5 rounded-md px-2.5 text-[10px] font-medium text-white/48 transition hover:bg-white/[0.055] hover:text-white/82";
+  const linkClass = "group inline-flex h-6 items-center justify-center gap-1.5 rounded-md px-2.5 text-[10px] font-medium text-white/48 transition hover:bg-white/[0.055] hover:text-white/82";
+  const iconClass = "h-3 w-3 text-white/34 transition-colors group-hover:text-white/70";
   return (
     <div className="inline-flex h-7 items-center rounded-lg bg-black/15 p-0.5 ring-1 ring-white/[0.09] shadow-[inset_0_1px_0_rgba(255,255,255,0.025)]">
-      <a href="/how-it-works" className={linkClass}><CircleHelp className="h-3 w-3" />How it works</a>
+      <button type="button" onClick={openReleaseUpdates} className={linkClass}><Megaphone className={iconClass} />Updates</button>
       <span className="h-3.5 w-px bg-white/[0.08]" aria-hidden="true" />
-      <a href="/calculator" className={linkClass}><Calculator className="h-3 w-3" />Fee calculator</a>
+      <a href="/calculator" className={linkClass}><Calculator className={iconClass} />Fee calculator</a>
       <span className="h-3.5 w-px bg-white/[0.08]" aria-hidden="true" />
-      <a href="/deck" target="_blank" rel="noreferrer" className={linkClass}><Presentation className="h-3 w-3" />Pitch deck</a>
+      <a href="/deck" target="_blank" rel="noreferrer" className={linkClass}><Presentation className={iconClass} />Pitch deck</a>
     </div>
   );
 }
@@ -1765,6 +1780,7 @@ function MainContentHeader({ contentSort, onSetContentSort, selectedNetworks, on
 }
 
 export default function BBLayout() {
+  const { expanded: sidebarExpanded, toggle: toggleSidebar } = useTerminalSidebar();
   const [activeBoard, setActiveBoard] = React.useState("based");
   const [query, setQuery] = React.useState("");
   const [sortMode, setSortMode] = React.useState<SortMode>("smart");
@@ -1870,7 +1886,7 @@ export default function BBLayout() {
 
   return (
     <div className="bb-app relative flex h-[calc(100vh-56px)] w-full flex-col overflow-hidden bg-[#090a0a] text-white">
-      <style jsx global>{GLOBAL_CSS}</style>
+      <style>{GLOBAL_CSS}</style>
 
       <div className="flex h-full w-full flex-col">
         <div className="flex min-h-0 flex-1">
@@ -1885,7 +1901,10 @@ export default function BBLayout() {
             onSelectBoard={setActiveBoard}
             onTogglePin={togglePin}
             onOpenCollectFees={openCollectFees}
+            onCloseCollectFees={() => setCollectFeesOpen(false)}
             collectFeesOpen={collectFeesOpen}
+            compact={!sidebarExpanded}
+            onToggleCompact={toggleSidebar}
           />
           <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-[#090a0a]">
             <MainContentHeader contentSort={contentSort} onSetContentSort={setContentSort} selectedNetworks={selectedNetworks} onToggleNetwork={toggleNetworkFilter} onSelectAllNetworks={() => setSelectedNetworks(createAllNetworkSet())} onReset={resetContentFilters} />

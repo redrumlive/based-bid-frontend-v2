@@ -8,6 +8,7 @@ import {
   ChevronDown,
   ChevronRight,
   Globe,
+  MousePointer2,
   Send,
   TriangleAlert,
   TrendingUp,
@@ -155,27 +156,32 @@ const LBP_SLIDERS0: Sliders = {
 };
 const MAX_BUY = 80.4;
 const BASE_MARKET_CAP = 9000;
-const MAX_CUSTOM_MARKET_CAP = 10_000_000;
-const STARTING_MC = "$9K";
+const MAX_TOKEN_CUSTOM_MARKET_CAP = 20_000;
+const MAX_LBP_CUSTOM_MARKET_CAP = 1_000_000;
 const CAPS = [
-  1000, 9000, 49000, 69000, 99000, 420000, 777000, 999000,
+  1000, 4200, 6900, 9000, 21000, 42000, 69000, 99000,
 ] as const;
-const marketCapAtPosition = (position: number) => {
-  const clamped = Math.min(CAPS.length - 1, Math.max(0, position));
+const TOKEN_STARTING_CAPS = [690, 1000, 2000, 4200, 5000, 6900, 7700, 9000, 10000] as const;
+const marketCapAtPosition = (position: number, stops: readonly number[] = CAPS) => {
+  const clamped = Math.min(stops.length - 1, Math.max(0, position));
   const lowerIndex = Math.floor(clamped);
-  const upperIndex = Math.min(CAPS.length - 1, Math.ceil(clamped));
-  const lower = CAPS[lowerIndex];
-  const upper = CAPS[upperIndex];
+  const upperIndex = Math.min(stops.length - 1, Math.ceil(clamped));
+  const lower = stops[lowerIndex];
+  const upper = stops[upperIndex];
   return Math.round(lower + (upper - lower) * (clamped - lowerIndex));
 };
-const marketCapPositionForValue = (value: number) => {
-  const clamped = Math.min(CAPS[CAPS.length - 1], Math.max(CAPS[0], value));
-  const upperIndex = CAPS.findIndex((cap) => cap >= clamped);
+const marketCapPositionForValue = (value: number, stops: readonly number[] = CAPS) => {
+  const clamped = Math.min(stops[stops.length - 1], Math.max(stops[0], value));
+  const upperIndex = stops.findIndex((cap) => cap >= clamped);
   if (upperIndex <= 0) return 0;
   const lowerIndex = upperIndex - 1;
-  const lower = CAPS[lowerIndex];
-  const upper = CAPS[upperIndex];
+  const lower = stops[lowerIndex];
+  const upper = stops[upperIndex];
   return lowerIndex + (clamped - lower) / (upper - lower);
+};
+const formatTokenStartingCapStop = (value: number) => {
+  const thousands = value / 1000;
+  return `${Number.isInteger(thousands) ? thousands.toFixed(0) : thousands.toFixed(2).replace(/0$/, "")}k`;
 };
 const formatMarketCapInput = (value: number) =>
   Math.round(value).toLocaleString("en-US");
@@ -571,10 +577,6 @@ const getEstimatedMarketCapValue = (
   initialBuy > 0
     ? Math.round(baseMarketCap * (1 + Math.min(initialBuy, MAX_BUY) / MAX_BUY))
     : null;
-const getEstimatedMarketCap = (initialBuy: number) => {
-  const value = getEstimatedMarketCapValue(initialBuy);
-  return value === null ? null : fmtCap(value);
-};
 const formatSupply = (value: number) =>
   Math.round(value).toLocaleString("en-US");
 const parseSupply = (value: string) => {
@@ -1070,6 +1072,8 @@ function LbpSettingsPanel({
   whitelistText,
   whitelistCount,
   openWhitelist,
+  graduationPayoutAmount,
+  graduationPayoutAsset,
 }: {
   toggles: Toggles;
   sliders: Sliders;
@@ -1078,6 +1082,8 @@ function LbpSettingsPanel({
   whitelistText: string;
   whitelistCount: number;
   openWhitelist: () => void;
+  graduationPayoutAmount: number;
+  graduationPayoutAsset: string;
 }) {
   const s = (
     title: string,
@@ -1138,15 +1144,25 @@ function LbpSettingsPanel({
             suffix="%"
             onChange={(v) => setSlider("buyReferralFee", v)}
           />
-          <SliderFieldRow
-            label="Graduation Fee"
-            value={sliders.graduationFee}
-            min={0}
-            max={2.5}
-            step={0.1}
-            suffix="%"
-            onChange={(v) => setSlider("graduationFee", v)}
-          />
+          <div>
+            <SliderFieldRow
+              label="Graduation Fee"
+              value={sliders.graduationFee}
+              min={0}
+              max={5}
+              step={0.1}
+              suffix="%"
+              onChange={(v) => setSlider("graduationFee", v)}
+            />
+            <div className="mt-2 flex min-h-9 items-center justify-between gap-3 rounded-xl border border-[#F5C451]/14 bg-[#F5C451]/[0.025] px-3 py-2 text-[10.5px] leading-4">
+              <span className="text-white/42">
+                You will receive upon graduation
+              </span>
+              <strong className="shrink-0 font-semibold tabular-nums text-[#F5D97A]">
+                {fmtAssetAmount(graduationPayoutAmount)} {graduationPayoutAsset}
+              </strong>
+            </div>
+          </div>
         </div>,
       )}
       {s(
@@ -1961,7 +1977,7 @@ function DescriptionSocialsPanel({
   );
 }
 
-function DexSettingsPanel({
+export function DexSettingsPanel({
   dexFee,
   setDexFee,
   marketCap,
@@ -1977,8 +1993,13 @@ function DexSettingsPanel({
   supplyText,
   setSupplyText,
   chain,
-  graduationFee,
   onOpenFeeBuilder,
+  demoLiquidityTokenOpen,
+  demoPointerTarget,
+  demoPointerPressed = false,
+  demoHideSupply = false,
+  launchType = "lbp",
+  onOverlayOpenChange,
 }: {
   dexFee: number;
   setDexFee: (v: number) => void;
@@ -1995,19 +2016,28 @@ function DexSettingsPanel({
   supplyText: string;
   setSupplyText: (v: string) => void;
   chain: string;
-  graduationFee: number;
   onOpenFeeBuilder: () => void;
+  demoLiquidityTokenOpen?: boolean;
+  demoPointerTarget?: "quote-trigger" | string;
+  demoPointerPressed?: boolean;
+  demoHideSupply?: boolean;
+  launchType?: "lbp" | "token";
+  onOverlayOpenChange?: (open: boolean) => void;
 }) {
   const [burnTokenFees, setBurnTokenFees] = useState(false);
-  const [capEditing, setCapEditing] = useState(false);
   const [liquidityTokenOpen, setLiquidityTokenOpen] = useState(false);
   const [capDraft, setCapDraft] = useState(() =>
     formatMarketCapInput(marketCap),
   );
   const supplyValue = parseSupply(supplyText);
   const cap = marketCap;
-  const capPosition = marketCapPositionForValue(cap);
-  const capProgress = (capPosition / (CAPS.length - 1)) * 100;
+  const isTokenLaunch = launchType === "token";
+  const customMarketCapMax = isTokenLaunch
+    ? MAX_TOKEN_CUSTOM_MARKET_CAP
+    : MAX_LBP_CUSTOM_MARKET_CAP;
+  const capStops = isTokenLaunch ? TOKEN_STARTING_CAPS : CAPS;
+  const capPosition = marketCapPositionForValue(cap, capStops);
+  const capProgress = (capPosition / (capStops.length - 1)) * 100;
   const liquidityIndex = Math.max(
     0,
     DEX_LIQUIDITY_STOPS.indexOf(
@@ -2023,11 +2053,40 @@ function DexSettingsPanel({
   const liquidityMarketValue = cap * liquidityShare;
   const quoteAsset = getLiquidityTokenOption(liquidityToken);
   const liquidityAssetAmount = liquidityMarketValue / quoteAsset.usdPrice;
-  const graduationFeeAmount =
-    liquidityAssetAmount * (Math.max(0, graduationFee) / 100);
+  const startingMarketCapAssetAmount = cap / quoteAsset.usdPrice;
   const liquidityLevel =
     DEX_LIQUIDITY_LEVELS.find((level) => level.value === dexLiquidity) ??
     DEX_LIQUIDITY_LEVELS[3];
+  const tokenMarketHealth =
+    cap >= 10_000
+      ? { label: "Very thick", color: "#45D6A5" }
+      : cap >= 7_500
+        ? { label: "Thick", color: "#52DFB2" }
+        : cap >= 5_000
+          ? { label: "Healthy", color: "#66E3A2" }
+          : cap > 2_500
+            ? { label: "Balanced", color: "#7ADFA0" }
+            : cap > 1_000
+              ? { label: "Volatile", color: "#86DDA3" }
+              : { label: "High volatility", color: "#98E3AF" };
+  const lbpMarketCapTier =
+    cap <= 2_500
+      ? { label: "Micro cap", color: "#98E3AF" }
+      : cap <= 5_000
+        ? { label: "Very low cap", color: "#86DDA3" }
+        : cap <= 12_000
+          ? { label: "Low cap", color: "#72D99A" }
+          : cap <= 21_000
+            ? { label: "Emerging cap", color: "#5FD49D" }
+            : cap <= 30_000
+              ? { label: "Emerging cap", color: "#E5D58A" }
+            : cap <= 55_000
+              ? { label: "Mid cap", color: "#E7CE77" }
+              : cap <= 80_000
+                ? { label: "Growth cap", color: "#E7BD6D" }
+                : cap <= 99_000
+                  ? { label: "Upper cap", color: "#E6AA64" }
+                  : { label: "Custom cap", color: "#D8955F" };
   const selected = getDexOption(dexSel);
   const selectedLiquidityToken = getLiquidityTokenOption(liquidityToken);
   const liquidityGroups = getLiquidityTokenGroups(chain);
@@ -2045,9 +2104,16 @@ function DexSettingsPanel({
     liquidityTokenAmount > 0 ? liquidityMarketValue / liquidityTokenAmount : 0;
   const priceNode = formatStartingPrice(startingPrice);
   const isV3Dex = /\bv3\b/i.test(dexSel);
+  useEffect(() => {
+    if (demoLiquidityTokenOpen === undefined) return;
+    setLiquidityTokenOpen(demoLiquidityTokenOpen);
+  }, [demoLiquidityTokenOpen]);
+  useEffect(() => {
+    onOverlayOpenChange?.(dexOpen || liquidityTokenOpen);
+  }, [dexOpen, liquidityTokenOpen, onOverlayOpenChange]);
   const updateCapPosition = (position: number) => {
-    const nextPosition = Math.min(CAPS.length - 1, Math.max(0, position));
-    const nextMarketCap = marketCapAtPosition(nextPosition);
+    const nextPosition = Math.min(capStops.length - 1, Math.max(0, position));
+    const nextMarketCap = marketCapAtPosition(nextPosition, capStops);
     setMarketCap(nextMarketCap);
     setCapDraft(formatMarketCapInput(nextMarketCap));
   };
@@ -2060,18 +2126,17 @@ function DexSettingsPanel({
     const normalized = digits.replace(/^0+(?=\d)/, "");
     const numericValue = Number(normalized);
     if (!Number.isFinite(numericValue) || numericValue <= 0) return;
-    const cappedValue = Math.min(numericValue, MAX_CUSTOM_MARKET_CAP);
+    const cappedValue = Math.min(numericValue, customMarketCapMax);
     setCapDraft(formatMarketCapInput(cappedValue));
     setMarketCap(cappedValue);
   };
   const finishCapEditing = () => {
     setCapDraft(formatMarketCapInput(cap));
-    setCapEditing(false);
   };
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 lg:grid-cols-[1fr_1fr] lg:items-start">
+      <div className="grid gap-4 lg:grid-cols-[minmax(470px,1.16fr)_minmax(300px,0.84fr)] lg:items-start">
         <div
           className={`grid grid-cols-[minmax(0,1fr)_152px] items-end gap-3 ${dexOpen || liquidityTokenOpen ? "z-30" : "z-10"}`}
         >
@@ -2131,7 +2196,7 @@ function DexSettingsPanel({
             ) : null}
           </div>
           <div className="relative min-w-0">
-            <div className="mb-2 flex h-5 items-center justify-end gap-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-white/36">
+            <div className="mb-2 flex h-5 items-center justify-start gap-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-white/36">
               <span>Quote asset</span>
               <div className="group relative inline-flex items-center">
                 <button
@@ -2156,11 +2221,12 @@ function DexSettingsPanel({
             </div>
             <button
               type="button"
+              data-demo-liquidity-trigger
               onClick={() => {
                 setLiquidityTokenOpen(!liquidityTokenOpen);
                 setDexOpen(false);
               }}
-              className={`flex h-11 w-full items-center justify-between gap-2 px-3 text-sm text-white/82 ${UI.input} hover:border-white/16`}
+              className={`relative flex h-11 w-full items-center justify-between gap-2 px-3 text-sm text-white/82 ${UI.input} hover:border-white/16`}
             >
               <span className="inline-flex min-w-0 items-center gap-2.5">
                 <LiquidityTokenIcon option={selectedLiquidityToken} size={18} />
@@ -2178,6 +2244,11 @@ function DexSettingsPanel({
               >
                 {"\u25BE"}
               </span>
+              {demoPointerTarget === "quote-trigger" ? (
+                <span className={`pointer-events-none absolute right-5 top-7 z-30 text-white drop-shadow-[0_3px_8px_rgba(0,0,0,.9)] transition-transform duration-150 ${demoPointerPressed ? "scale-[0.82]" : "scale-100"}`}>
+                  <MousePointer2 className="h-[18px] w-[18px] fill-[#0b0d0c]" strokeWidth={1.6} />
+                </span>
+              ) : null}
             </button>
             {liquidityTokenOpen ? (
               <div className="smooth-pop absolute right-0 top-full z-20 mt-2 w-[min(430px,calc(100vw-32px))] overflow-hidden rounded-xl border border-white/10 bg-[#101010] shadow-[0_18px_50px_rgba(0,0,0,0.38)]">
@@ -2196,12 +2267,13 @@ function DexSettingsPanel({
                         {group.items.map((option) => (
                           <button
                             key={option.id}
+                            data-demo-liquidity-option={option.id}
                             type="button"
                             onClick={() => {
                               setLiquidityToken(option.id);
                               setLiquidityTokenOpen(false);
                             }}
-                            className={`flex min-w-0 items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left transition ${option.id === liquidityToken ? "border-[#18C98E]/32 bg-[#18C98E]/10 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.025)]" : "border-white/8 bg-[#121212] text-white/72 hover:border-white/14 hover:bg-[#151515] hover:text-white"}`}
+                            className={`relative flex min-w-0 items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left transition ${option.id === liquidityToken ? "border-[#18C98E]/32 bg-[#18C98E]/10 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.025)]" : "border-white/8 bg-[#121212] text-white/72 hover:border-white/14 hover:bg-[#151515] hover:text-white"}`}
                           >
                             <LiquidityTokenIcon option={option} size={18} />
                             <span className="min-w-0 flex-1">
@@ -2215,6 +2287,12 @@ function DexSettingsPanel({
                             {option.id === liquidityToken ? (
                               <span className="shrink-0 text-[#BFF7D7]">
                                 {"\u2713"}
+                              </span>
+                            ) : null}
+                            {demoPointerTarget === option.id ? (
+                              <span className={`pointer-events-none absolute left-1/2 top-1/2 z-30 text-white drop-shadow-[0_3px_8px_rgba(0,0,0,.9)] transition-transform duration-150 ${demoPointerPressed ? "scale-[0.82]" : "scale-100"}`}>
+                                <MousePointer2 className="h-[18px] w-[18px] fill-[#0b0d0c]" strokeWidth={1.6} />
+                                {demoPointerPressed ? <span className="absolute -left-2 -top-2 h-8 w-8 animate-ping rounded-full border border-[#F5C451]/60" /> : null}
                               </span>
                             ) : null}
                           </button>
@@ -2337,52 +2415,61 @@ function DexSettingsPanel({
         <div className="mb-3 flex items-end justify-between gap-4 max-sm:grid max-sm:grid-cols-[minmax(0,1fr)_auto] max-sm:items-start max-sm:gap-x-3 max-sm:gap-y-1">
           <div className="max-sm:contents">
             <div className="text-sm font-semibold text-white max-sm:col-start-1 max-sm:row-start-1">
-              Market Cap
+              {isTokenLaunch ? "Starting Market Cap" : "Market Cap"}
             </div>
             <div className="mt-1 text-xs text-white/55 max-sm:col-span-2 max-sm:row-start-2 max-sm:mt-0 max-sm:max-w-[28rem] max-sm:leading-[1.45]">
-              Set the market cap target your token must reach before it
-              graduates to the selected DEX.
+              {isTokenLaunch
+                ? "Set the starting market cap for your token."
+                : "Set the market cap target your token must reach before it graduates to the selected DEX."}
             </div>
           </div>
-          <div className="flex h-11 min-w-[132px] shrink-0 items-center justify-end text-right max-sm:col-start-2 max-sm:row-start-1">
-            {capEditing ? (
-              <label className="flex h-11 w-[132px] items-center rounded-xl border border-[#18C98E]/30 bg-[#18C98E]/[0.055] px-3 text-[#52DFB2] shadow-[inset_0_1px_0_rgba(255,255,255,0.025)] transition focus-within:border-[#52DFB2]/55 focus-within:bg-[#18C98E]/[0.08]">
-                <span className="mr-1 text-sm font-medium">$</span>
-                <input
-                  autoFocus
-                  aria-label="Custom market cap"
-                  inputMode="numeric"
-                  value={capDraft}
-                  onChange={(event) => updateCapDraft(event.target.value)}
-                  onBlur={finishCapEditing}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") event.currentTarget.blur();
-                    if (event.key === "Escape") {
-                      setCapDraft(formatMarketCapInput(cap));
-                      event.currentTarget.blur();
-                    }
-                  }}
-                  className="min-w-0 flex-1 bg-transparent text-right text-sm font-semibold text-[#52DFB2] outline-none"
-                />
-              </label>
-            ) : (
-              <button
-                type="button"
-                aria-label="Edit market cap"
-                onClick={() => {
-                  setCapDraft(formatMarketCapInput(cap));
-                  setCapEditing(true);
-                }}
-                className="group inline-flex h-11 flex-col items-end justify-center rounded-lg px-1 transition hover:bg-white/[0.025]"
-              >
-                <span className="text-lg font-semibold text-[#18C98E] transition group-hover:text-[#52DFB2]">
+          <div className="flex h-11 min-w-[170px] shrink-0 items-center justify-end text-right max-sm:col-start-2 max-sm:row-start-1">
+            <label
+              className="group relative flex h-11 w-[190px] cursor-text items-center justify-end rounded-xl border border-transparent px-3 transition-[border-color,background-color,box-shadow] duration-200 ease-out focus-within:border-[#18C98E]/30 focus-within:bg-[#18C98E]/[0.055] focus-within:shadow-[inset_0_1px_0_rgba(255,255,255,0.025)]"
+              title={`Click to enter a custom value. Maximum ${fmtCap(customMarketCapMax)}`}
+            >
+              <span className="pointer-events-none inline-flex flex-col items-end justify-center">
+                <span className="text-lg font-semibold text-[#18C98E] transition-opacity duration-200 ease-out group-hover:text-[#52DFB2] group-focus-within:opacity-0">
                   {fmtCap(cap)}
                 </span>
-                <span className="text-[11px] text-[#18C98E]/72">
-                  {fmtAssetAmount(liquidityAssetAmount)} {quoteAsset.symbol}
-                </span>
-              </button>
-            )}
+                {isTokenLaunch ? (
+                  <span className="mt-0.5 flex items-center justify-end gap-1.5 whitespace-nowrap text-[11px] sm:text-[11.5px]">
+                    <span className="font-medium" style={{ color: tokenMarketHealth.color }}>
+                      {tokenMarketHealth.label}
+                    </span>
+                    <span className="text-white/42">
+                      {fmtAssetAmount(startingMarketCapAssetAmount)} {quoteAsset.symbol}
+                    </span>
+                  </span>
+                ) : (
+                  <span className="mt-0.5 flex items-center justify-end gap-1.5 whitespace-nowrap text-[11px] sm:text-[11.5px]">
+                    <span className="font-medium" style={{ color: lbpMarketCapTier.color }}>
+                      {lbpMarketCapTier.label}
+                    </span>
+                    <span className="text-white/42">
+                      {fmtAssetAmount(liquidityAssetAmount)} {quoteAsset.symbol}
+                    </span>
+                  </span>
+                )}
+              </span>
+              <span className="pointer-events-none absolute left-3 top-[6px] text-lg font-semibold leading-none text-[#52DFB2] opacity-0 transition-opacity duration-200 ease-out group-focus-within:opacity-100">$</span>
+              <input
+                aria-label={`${isTokenLaunch ? "Token" : "LBP"} custom market cap`}
+                inputMode="numeric"
+                value={capDraft}
+                onFocus={(event) => event.currentTarget.select()}
+                onChange={(event) => updateCapDraft(event.target.value)}
+                onBlur={finishCapEditing}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") event.currentTarget.blur();
+                  if (event.key === "Escape") {
+                    setCapDraft(formatMarketCapInput(cap));
+                    event.currentTarget.blur();
+                  }
+                }}
+                className="absolute inset-x-0 top-0 h-7 w-full cursor-text bg-transparent pl-7 pr-3 text-right text-lg font-semibold tabular-nums text-[#52DFB2] opacity-0 outline-none transition-opacity duration-200 ease-out group-focus-within:opacity-100"
+              />
+            </label>
           </div>
         </div>
         <div className="relative w-full min-w-0 pt-1">
@@ -2393,11 +2480,11 @@ function DexSettingsPanel({
               style={{ width: `${capProgress}%` }}
             />
             <div className="relative z-10 h-8 w-full">
-              {CAPS.map((step, index) => (
+              {capStops.map((step, index) => (
                 <div
                   key={step}
                   className="absolute top-0 h-6 w-0"
-                  style={{ left: `${(index / (CAPS.length - 1)) * 100}%` }}
+                  style={{ left: `${(index / (capStops.length - 1)) * 100}%` }}
                 >
                   <button
                     type="button"
@@ -2421,7 +2508,7 @@ function DexSettingsPanel({
             <input
               type="range"
               min={0}
-              max={CAPS.length - 1}
+              max={capStops.length - 1}
               step={0.01}
               value={capPosition}
               onChange={(e) => updateCapPosition(Number(e.target.value))}
@@ -2430,11 +2517,11 @@ function DexSettingsPanel({
             />
           </div>
           <div className="relative mt-2 h-4 w-full">
-            {CAPS.map((step, index) => {
+            {capStops.map((step, index) => {
               const edgeClass =
                 index === 0
                   ? "left-0 text-left"
-                  : index === CAPS.length - 1
+                  : index === capStops.length - 1
                     ? "right-0 text-right"
                     : "left-1/2 -translate-x-1/2 text-center";
               return (
@@ -2444,19 +2531,25 @@ function DexSettingsPanel({
                   onClick={() => updateCapPosition(index)}
                   className={`absolute top-0 px-0.5 text-[11px] font-medium tabular-nums transition focus:outline-none max-sm:text-[9px] max-sm:tracking-[-0.035em] ${edgeClass} ${cap === step ? "text-[#52DFB2]" : "text-white/40 hover:text-white"}`}
                   style={
-                    index > 0 && index < CAPS.length - 1
-                      ? { left: `${(index / (CAPS.length - 1)) * 100}%` }
+                    index > 0 && index < capStops.length - 1
+                      ? { left: `${(index / (capStops.length - 1)) * 100}%` }
                       : undefined
                   }
                 >
-                  <span className="sm:hidden">{fmtCap(step).slice(1)}</span>
-                  <span className="max-sm:hidden">{fmtCap(step)}</span>
+                  {isTokenLaunch ? (
+                    <span>{formatTokenStartingCapStop(step)}</span>
+                  ) : (
+                    <>
+                      <span className="sm:hidden">{fmtCap(step).slice(1)}</span>
+                      <span className="max-sm:hidden">{fmtCap(step)}</span>
+                    </>
+                  )}
                 </button>
               );
             })}
           </div>
         </div>
-        <div
+        {!isTokenLaunch ? <div
           data-testid="dex-liquidity-control"
           className="mt-5 border-t border-white/[0.07] pt-4"
         >
@@ -2568,7 +2661,8 @@ function DexSettingsPanel({
               ))}
             </div>
           </div>
-        </div>
+        </div> : null}
+        {!demoHideSupply ? (
         <div className="mt-5 grid gap-5 border-t border-white/[0.07] pt-4 md:grid-cols-[minmax(0,1.05fr)_minmax(180px,0.65fr)] md:items-start">
           <div>
             <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
@@ -2615,12 +2709,14 @@ function DexSettingsPanel({
                 {priceNode}
               </div>
               <div className="mt-1.5 text-[10.5px] leading-4 text-white/36">
-                You will receive {fmtAssetAmount(graduationFeeAmount)}{" "}
-                {quoteAsset.symbol} upon graduation.
+                {isTokenLaunch
+                  ? "Uses the selected market cap and total supply."
+                  : "Uses market cap, DEX liquidity and total supply."}
               </div>
             </div>
           </div>
         </div>
+        ) : null}
       </div>
     </div>
   );
@@ -2852,11 +2948,13 @@ function InitialBuyPanel({
   setInitialBuy,
   preset,
   setPreset,
+  baseMarketCap,
 }: {
   initialBuy: number;
   setInitialBuy: (v: number) => void;
   preset: number | null;
   setPreset: (v: number | null) => void;
+  baseMarketCap: number;
 }) {
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
   const [draftAddresses, setDraftAddresses] = useState("");
@@ -2871,7 +2969,12 @@ function InitialBuyPanel({
   const lp = 19.6;
   const lbp = Number(Math.max(0, 100 - buyNow - lp).toFixed(1));
   const instant = buyNow >= MAX_BUY;
-  const estimatedMarketCap = getEstimatedMarketCap(buyNow);
+  const estimatedMarketCapValue = getEstimatedMarketCapValue(
+    buyNow,
+    baseMarketCap,
+  );
+  const estimatedMarketCap =
+    estimatedMarketCapValue === null ? null : fmtCap(estimatedMarketCapValue);
   const legend = [
     { label: "Creator", value: buyNow, color: "#18C98E" },
     { label: "Uniswap", value: lp, color: "#3B82F6" },
@@ -3121,7 +3224,7 @@ function InitialBuyPanel({
                       Estimated Market Cap
                     </div>
                     <div className="text-right text-sm font-semibold text-white/86">
-                      {estimatedMarketCap ?? STARTING_MC}
+                      {estimatedMarketCap ?? fmtCap(baseMarketCap)}
                     </div>
                   </div>
                 </div>
@@ -3186,6 +3289,7 @@ function InitialBuyPanel({
 }
 
 function MobileLaunchDock({
+  launchType,
   ready,
   missing,
   dexFee,
@@ -3206,6 +3310,7 @@ function MobileLaunchDock({
   onJump,
   onLaunch,
 }: {
+  launchType: "lbp" | "token";
   ready: boolean;
   missing: string[];
   dexFee: number;
@@ -3244,7 +3349,6 @@ function MobileLaunchDock({
         : "text-[#18C98E]";
   const dexOption = getDexOption(dexSel);
   const dexName = dexSel.replace(/\s+v\d+$/, "");
-  const quoteAsset = getLiquidityTokenOption(liquidityToken);
   const feeBuilderDisplay = feeBuilderValue ? (
     feeBuilderIssues > 0 ? (
       <span className="inline-flex items-center justify-end gap-1.5 whitespace-nowrap">
@@ -3267,7 +3371,6 @@ function MobileLaunchDock({
         <span className="inline-flex min-w-0 items-center justify-end gap-1.5 whitespace-nowrap leading-none">
           <DexLogo option={dexOption} size={14} />
           <span className="truncate">{dexName}</span>
-          <span className="shrink-0 text-white/38">/{quoteAsset.symbol}</span>
           <span className="shrink-0 text-white/38">{dexFee}%</span>
         </span>
       ),
@@ -3332,7 +3435,9 @@ function MobileLaunchDock({
     },
   ];
   const mobileRows = items.filter(
-    (item) => item.ok || item.label === "Fee Builder Fees",
+    (item) =>
+      (launchType === "lbp" || item.label !== "LBP Settings")
+      && (item.ok || item.label === "Fee Builder Fees"),
   );
   const launchNote = walletFundingWarning ? (
     <div className="mt-1.5 text-center text-[10px] font-normal leading-4 text-[#F5D97A]/72">
@@ -3392,7 +3497,7 @@ function MobileLaunchDock({
                     Applied settings
                   </div>
                   <div className="mt-0.5 text-xs text-white/50">
-                    Review launch configuration before opening the pool.
+                    Review launch configuration before {launchType === "token" ? "creating the token" : "opening the pool"}.
                   </div>
                 </div>
                 <button
@@ -3494,7 +3599,7 @@ function MobileLaunchDock({
                   {walletFundingWarning
                     ? "Review Wallet Balance"
                     : ready
-                      ? "Launch Pool"
+                      ? launchType === "token" ? "Create Token" : "Launch Pool"
                       : "Complete Core Fields"}
                 </span>
                 <ChevronRight
@@ -3565,6 +3670,7 @@ function WalletFundingWarning({
 }
 
 function Sidebar({
+  launchType,
   name,
   symbol,
   chain,
@@ -3589,6 +3695,7 @@ function Sidebar({
   onOpenFeeBuilderIssue,
   onJump,
 }: {
+  launchType: "lbp" | "token";
   name: string;
   symbol: string;
   chain: string;
@@ -3638,7 +3745,6 @@ function Sidebar({
         : "text-[#18C98E]";
   const dexOption = getDexOption(dexSel);
   const dexName = dexSel.replace(/\s+v\d+$/, "");
-  const quoteAsset = getLiquidityTokenOption(liquidityToken);
   const feeBuilderDisplay = feeBuilderValue ? (
     feeBuilderIssues > 0 ? (
       <span className="inline-flex items-center justify-end gap-1.5 whitespace-nowrap">
@@ -3661,7 +3767,6 @@ function Sidebar({
         <span className="inline-flex min-w-0 items-center justify-end gap-1.5 whitespace-nowrap leading-none">
           <DexLogo option={dexOption} size={14} />
           <span className="truncate">{dexName}</span>
-          <span className="shrink-0 text-white/38">/{quoteAsset.symbol}</span>
           <span className="shrink-0 text-white/38">{dexFee}%</span>
         </span>
       ),
@@ -3690,7 +3795,7 @@ function Sidebar({
       onClick: feeBuilderIssues > 0 ? onOpenFeeBuilderIssue : undefined,
     },
   ];
-  const hiddenItems: RowItem[] = [
+  const allHiddenItems: RowItem[] = [
     {
       key: "descriptions",
       label: "Description & Socials",
@@ -3719,6 +3824,9 @@ function Sidebar({
       ok: lbpEnabledCount > 0,
     },
   ];
+  const hiddenItems = allHiddenItems.filter(
+    (item) => launchType === "lbp" || item.label !== "LBP Settings",
+  );
   const planItem: RowItem = {
     key: "lbp",
     label: "Launch Plan",
@@ -3879,7 +3987,7 @@ function Sidebar({
               }}
               className={`transition-[color,letter-spacing,filter] duration-500 ${ready ? "text-[14px] font-semibold tracking-[-0.006em] text-[#07331F]" : "text-[13px] font-medium tracking-[0.004em] text-white/62"}`}
             >
-              {ready ? "Launch Pool" : "Complete Core Fields"}
+              {ready ? launchType === "token" ? "Create Token" : "Launch Pool" : "Complete Core Fields"}
             </span>
             <ChevronRight
               className={`h-4 w-4 transition duration-500 ${ready ? "translate-x-0 text-[#07331F] opacity-70" : "-translate-x-1 opacity-0"}`}
@@ -3933,7 +4041,8 @@ function Sidebar({
   );
 }
 
-export default function BBLbpCreationReworkPreview() {
+export default function BBLbpCreationReworkPreview({ launchType = "lbp" }: { launchType?: "lbp" | "token" }) {
+  const isTokenLaunch = launchType === "token";
   const [plan, setPlan] = useState("based"),
     [name, setName] = useState(""),
     [symbol, setSymbol] = useState(""),
@@ -3942,7 +4051,7 @@ export default function BBLbpCreationReworkPreview() {
     [moreOpen, setMoreOpen] = useState(false),
     [open, setOpen] = useState(OPEN0),
     [dexFee, setDexFee] = useState(1),
-    [marketCap, setMarketCap] = useState(BASE_MARKET_CAP),
+    [marketCap, setMarketCap] = useState(() => isTokenLaunch ? TOKEN_STARTING_CAPS[4] : BASE_MARKET_CAP),
     [dexLiquidity, setDexLiquidity] = useState(10),
     [initialBuy, setInitialBuy] = useState(0),
     [dexSel, setDexSel] = useState("Uniswap v4"),
@@ -3964,6 +4073,7 @@ export default function BBLbpCreationReworkPreview() {
   const [whitelistDraft, setWhitelistDraft] = useState("");
   const [whitelistOpen, setWhitelistOpen] = useState(false);
   const [feeBuilderTotal, setFeeBuilderTotal] = useState(0);
+  const [dexOverlayOpen, setDexOverlayOpen] = useState(false);
   const [feeBuilderIssues, setFeeBuilderIssues] = useState(0);
   const [feeBuilderIssueFocusRequest, setFeeBuilderIssueFocusRequest] =
     useState(0);
@@ -4015,6 +4125,10 @@ export default function BBLbpCreationReworkPreview() {
   const selectedMarketCap = marketCap;
   const marketCapSummary = fmtCap(selectedMarketCap);
   const selectedLiquidityToken = getLiquidityTokenOption(liquidityToken);
+  const graduationPayoutAmount =
+    ((selectedMarketCap * (dexLiquidity / 100)) /
+      selectedLiquidityToken.usdPrice) *
+    (Math.max(0, lbpSliders.graduationFee) / 100);
   const applyChainSelection = useCallback((nextChain: string) => {
     setChain(nextChain);
     setLiquidityToken((current) => {
@@ -4224,8 +4338,9 @@ export default function BBLbpCreationReworkPreview() {
     {
       key: "dex" as Sec,
       title: "DEX Settings",
-      description:
-        "Choose your launch DEX, tier, define market cap and token supply.",
+      description: isTokenLaunch
+        ? "Choose your launch DEX, tier, starting market cap and token supply."
+        : "Choose your launch DEX, tier, define market cap and token supply.",
       /*
       summary: `${dexSel} • ${dexFee}% • ${marketCapSummary}`,
       ...{
@@ -4250,8 +4365,9 @@ export default function BBLbpCreationReworkPreview() {
           supplyText={supplyText}
           setSupplyText={setSupplyText}
           chain={chain}
-          graduationFee={lbpSliders.graduationFee}
           onOpenFeeBuilder={openFeeBuilder}
+          launchType={launchType}
+          onOverlayOpenChange={setDexOverlayOpen}
         />
       ),
     },
@@ -4288,6 +4404,7 @@ export default function BBLbpCreationReworkPreview() {
           setInitialBuy={setInitialBuy}
           preset={preset}
           setPreset={setPreset}
+          baseMarketCap={marketCap}
         />
       ),
     },
@@ -4309,10 +4426,12 @@ export default function BBLbpCreationReworkPreview() {
           whitelistText={whitelistText}
           whitelistCount={whitelistCount}
           openWhitelist={openWhitelistEditor}
+          graduationPayoutAmount={graduationPayoutAmount}
+          graduationPayoutAsset={selectedLiquidityToken.symbol}
         />
       ),
     },
-  ];
+  ].filter((section) => !isTokenLaunch || section.key !== "lbp");
 
   const chainPills = (
     <div className="flex flex-wrap justify-center gap-2 md:justify-end">
@@ -4398,7 +4517,7 @@ export default function BBLbpCreationReworkPreview() {
                         Select chain
                       </div>
                       <div className="mt-1 text-xs text-white/58">
-                        Choose where you want to launch your pool.
+                        Choose where you want to launch your {isTokenLaunch ? "token" : "pool"}.
                       </div>
                     </div>
                     <div className="hidden md:block">{chainPills}</div>
@@ -4535,7 +4654,7 @@ export default function BBLbpCreationReworkPreview() {
                     <div
                       key={s.key}
                       id={`section-${s.key}`}
-                      className="scroll-mt-24"
+                      className={`relative scroll-mt-24 ${s.key === "dex" && dexOverlayOpen ? "z-40" : "z-0"}`}
                     >
                       <Expandable
                         title={s.title}
@@ -4603,6 +4722,7 @@ export default function BBLbpCreationReworkPreview() {
             </div>
             <div className="hidden lg:block xl:hidden sticky top-8 self-start">
               <Sidebar
+                launchType={launchType}
                 name={name}
                 symbol={symbol}
                 chain={chain}
@@ -4631,6 +4751,7 @@ export default function BBLbpCreationReworkPreview() {
             <div className="hidden xl:block">
               <div className="fixed top-[76px] right-[max(3rem,calc((100vw-272px-88rem)/2+3rem))] z-30 w-[360px]">
                 <Sidebar
+                  launchType={launchType}
                   name={name}
                   symbol={symbol}
                   chain={chain}
@@ -4660,6 +4781,7 @@ export default function BBLbpCreationReworkPreview() {
           </div>
         </main>
         <MobileLaunchDock
+          launchType={launchType}
           ready={ready}
           missing={missing}
           dexFee={dexFee}

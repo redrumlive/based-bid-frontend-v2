@@ -296,7 +296,7 @@ export default function OpenBidPage() {
   return (
     <main className="min-h-[calc(100vh-3.5rem)] bg-[#090a0a] pb-28 text-white">
       <div className="mx-auto max-w-[1320px] px-4 py-5 sm:px-6 sm:py-7 lg:px-8">
-        <CreateBackLink href="/" />
+        <CreateBackLink href="/openbid" />
 
         <header className="mt-3 flex flex-col gap-5 border-b border-white/[0.075] pb-6 sm:flex-row sm:items-end sm:justify-between">
           <div>
