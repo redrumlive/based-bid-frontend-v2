@@ -105,7 +105,6 @@ const ADD: FeeType[] = ['creator', 'rwa', 'ops', 'buybacks', 'liq', 'custom'];
 const RP = [0.01, 0.1, 1, 5] as const;
 const RWA_DISTRIBUTION_MODES = ['rotating', 'all'] as const;
 const REWARD_GAS_PAYERS = ['project', 'user'] as const;
-const ROUTE_REWARD_MODES = ['single', 'basket'] as const;
 const TRIGGER_PRESETS = [0.01, 0.05, 0.1, 0.25] as const;
 const CONTROL_REVEAL_TRANSITION = { duration: 0.24, ease: [0.22, 1, 0.36, 1] as const };
 const PRESETS: Array<{ key: PresetKey; label: string; mobileLabel: string; hint: string }> = [
@@ -738,8 +737,8 @@ function RwaDistributionModeControl({ value, onChange, disabled, portalHint = fa
   return (
     <div className='flex min-w-0 flex-wrap items-center gap-1 sm:flex-nowrap sm:gap-1.5' data-no-drag>
       <div className='flex shrink-0 items-center gap-1'>
-        <span className='text-[8px] font-medium uppercase tracking-[0.10em] sm:text-[9px] sm:tracking-[0.13em]' style={{ color: T.muted }}><span className='sm:hidden'>Mode</span><span className='hidden sm:inline'>Basket mode</span></span>
-        <InfoHint label='Basket mode helper' maxWidth={340} portal={portalHint}>
+        <span className='text-[8px] font-medium uppercase tracking-[0.10em] sm:text-[9px] sm:tracking-[0.13em]' style={{ color: T.muted }}><span className='sm:hidden'>Payout</span><span className='hidden sm:inline'>Payout mode</span></span>
+        <InfoHint label='Payout mode helper' maxWidth={340} portal={portalHint}>
           <div className='space-y-2'>
             <div>
               <div className='text-[9.5px] font-medium uppercase leading-4 tracking-[0.12em] text-white/72'>Rotating</div>
@@ -784,27 +783,6 @@ function RewardGasPayerControl({ value, onChange, disabled }: { value: RewardGas
         value={value}
         onChange={onChange}
         format={(payer) => payer === 'project' ? 'Project' : 'User'}
-      />
-    </div>
-  );
-}
-
-function RouteRewardModeControl({ value, onChange, disabled }: { value: RouteRewardMode; onChange: (value: RouteRewardMode) => void; disabled: boolean }) {
-  return (
-    <div className='flex min-w-0 items-center gap-1.5' data-no-drag>
-      <div className='flex shrink-0 items-center gap-1'>
-        <span className='text-[8px] font-medium uppercase tracking-[0.10em] sm:text-[9px] sm:tracking-[0.13em]' style={{ color: T.muted }}>Format</span>
-        <InfoHint label='Asset payout format helper' maxWidth={230} desktopAlign='start'>
-          <span className='font-semibold text-white/88'>Single</span><span className='text-white/58'> distributes one selected asset. </span><span className='font-semibold text-white/88'>Basket</span><span className='text-white/58'> distributes multiple selected assets each cycle.</span>
-        </InfoHint>
-      </div>
-      <Pills
-        compact
-        disabled={disabled}
-        options={ROUTE_REWARD_MODES}
-        value={value}
-        onChange={onChange}
-        format={(mode) => mode === 'single' ? 'Single' : 'Basket'}
       />
     </div>
   );
@@ -1341,8 +1319,8 @@ function Row({ fee, chain, walletAddress, max, disabled, dragging, ghost, patch,
     setRouteRewardsTouched(true);
     setRouteRewardsOpen(true);
   }, [forceRewardsOpen]);
-  const routeRewardMode = fee.routeRewardMode ?? 'single';
   const rwaAssets = fee.rwaAssets ?? (rewardRoute ? [nativeRewardAssetId(chain)] : []);
+  const routeRewardMode: RouteRewardMode = rwaAssets.length >= 2 ? 'basket' : 'single';
   const rwaDistributionMode = fee.rwaDistributionMode ?? 'rotating';
   const rewardGasPayer = fee.rewardGasPayer ?? 'user';
   const rwaAssetWeights = normalizeAssetWeights(rwaAssets, fee.rwaAssetWeights);
@@ -1356,9 +1334,9 @@ function Row({ fee, chain, walletAddress, max, disabled, dragging, ghost, patch,
   const invalid = addrInvalid || rwaAssetsInvalid || routeAssetsInvalid;
   const displayInvalid = invalid && !demoSuppressValidation;
   const routeTitle = rwa ? 'Rewards Basket' : fee.name;
-  const routeRewardSummary = routeRewardMode === 'single'
-    ? (rwaAssets[0]?.replace(/^TOKEN:/, '') ?? 'Choose asset')
-    : `${rwaAssets.length} asset${rwaAssets.length === 1 ? '' : 's'}`;
+  const routeRewardSummary = rwaAssets.length
+    ? `${rwaAssets.length} asset${rwaAssets.length === 1 ? '' : 's'}`
+    : 'Choose asset';
   const feeSlider = (
     <div className='mt-2 flex items-center gap-2 sm:mt-3'>
       <input data-no-drag disabled={disabled} className='bbRange h-5 flex-1 sm:h-8' type='range' min={0} max={max} step={0.1} value={fee.pct} onChange={(e) => setPct(fee.id, parseFloat(e.target.value))} style={{ '--feeColor': color, '--fillPct': fillPct(fee.pct, 0, max) } as CssVarStyle} />
@@ -1483,7 +1461,7 @@ function Row({ fee, chain, walletAddress, max, disabled, dragging, ghost, patch,
               </span>
             </span>
             <span className='flex shrink-0 items-center gap-2 px-1'>
-              <span className='text-[9px] font-medium text-white/62 sm:text-[10.5px]'>{routeRewardMode === 'single' ? `Single / ${routeRewardSummary}` : `Basket / ${routeRewardSummary}`}</span>
+              <span className='text-[9px] font-medium text-white/62 sm:text-[10.5px]'>{routeRewardSummary}</span>
               <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-300 ${routeRewardsOpen ? 'rotate-180' : ''}`} style={{ color: routeRewardsOpen ? rgba(color, 0.76) : 'rgba(244,249,246,0.38)' }} strokeWidth={1.8} />
             </span>
           </button>
@@ -1496,23 +1474,10 @@ function Row({ fee, chain, walletAddress, max, disabled, dragging, ghost, patch,
           >
             <div className='min-h-0 overflow-hidden'>
               <div className='px-1 pb-1 pt-2'>
-                <RouteRewardModeControl
-                  disabled={disabled}
-                  value={routeRewardMode}
-                  onChange={(mode) => {
-                    const nextAssets = mode === 'single' ? [rwaAssets[0] ?? nativeRewardAssetId(chain)] : rwaAssets;
-                    patch(fee.id, {
-                      routeRewardMode: mode,
-                      rwaAssets: nextAssets,
-                      rwaAssetWeights: equalAssetWeights(nextAssets),
-                      rwaPinnedAssets: [],
-                    });
-                  }}
-                />
                 <RewardBasketSelector
                   chain={chain}
                   context='route'
-                  selectionMode={routeRewardMode}
+                  selectionMode='basket'
                   disabled={disabled}
                   accent={color}
                   invalid={routeAssetsInvalid && !demoSuppressValidation}
@@ -1522,7 +1487,7 @@ function Row({ fee, chain, walletAddress, max, disabled, dragging, ghost, patch,
                   pinnedAssets={rwaPinnedAssets}
                   onWeightsChange={(next, nextPinned = rwaPinnedAssets) => patch(fee.id, { rwaAssetWeights: next, rwaPinnedAssets: nextPinned })}
                   onChange={(next, preserveCustom = true) => {
-                    const nextMode = preserveCustom ? routeRewardMode : next.length <= 1 ? 'single' : 'basket';
+                    const nextMode: RouteRewardMode = next.length >= 2 ? 'basket' : 'single';
                     if (!preserveCustom) {
                       patch(fee.id, { routeRewardMode: nextMode, rwaAssets: next, rwaAssetWeights: equalAssetWeights(next), rwaPinnedAssets: [] });
                       return;
@@ -1534,8 +1499,8 @@ function Row({ fee, chain, walletAddress, max, disabled, dragging, ghost, patch,
                   demoPointerPressed={demoPointerPressed}
                 />
                 <AnimatePresence initial={false} mode='popLayout'>
-                  {routeRewardMode === 'basket' && rwaAssets.length >= 2 ? (
-                    <motion.div key='route-basket-mode' layout initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -3 }} transition={CONTROL_REVEAL_TRANSITION} className='mt-2 flex justify-end'>
+                  {routeRewardMode === 'basket' ? (
+                    <motion.div key='route-payout-mode' layout initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -3 }} transition={CONTROL_REVEAL_TRANSITION} className='mt-2 flex justify-end border-t pt-2' style={{ borderColor: rgba(color, 0.10) }}>
                       <RwaDistributionModeControl
                         disabled={disabled}
                         value={rwaDistributionMode}
@@ -1605,9 +1570,9 @@ function Row({ fee, chain, walletAddress, max, disabled, dragging, ghost, patch,
   );
 }
 
-export function FeeStructureBuilder({ chain, fees, onChange, walletAddress, onAdvancedProtectionChange, onIssuesChange, focusIssueRequest = 0, maxTotal = 10, className = '', openRewardRouteId, demoPointerRouteId, demoPointerAssetId, demoPointerPressed = false, demoSuppressValidation = false }: { chain: ChainId; fees: FeeWallet[]; onChange: (next: FeeWallet[]) => void; walletAddress?: string | null; onAdvancedProtectionChange?: (count: number) => void; onIssuesChange?: (count: number) => void; focusIssueRequest?: number; maxTotal?: number; className?: string; openRewardRouteId?: string; demoPointerRouteId?: string; demoPointerAssetId?: string; demoPointerPressed?: boolean; demoSuppressValidation?: boolean }) {
+export function FeeStructureBuilder({ chain, fees, onChange, walletAddress, onAdvancedProtectionChange, onIssuesChange, focusIssueRequest = 0, maxTotal = 10, className = '', openRewardRouteId, demoPointerRouteId, demoPointerAssetId, demoPointerPressed = false, demoSuppressValidation = false, initialSelectedPreset = 'creator' }: { chain: ChainId; fees: FeeWallet[]; onChange: (next: FeeWallet[]) => void; walletAddress?: string | null; onAdvancedProtectionChange?: (count: number) => void; onIssuesChange?: (count: number) => void; focusIssueRequest?: number; maxTotal?: number; className?: string; openRewardRouteId?: string; demoPointerRouteId?: string; demoPointerAssetId?: string; demoPointerPressed?: boolean; demoSuppressValidation?: boolean; initialSelectedPreset?: PresetKey | null }) {
   const enabled = true;
-  const [selectedPreset, setSelectedPreset] = useState<PresetKey | null>('creator');
+  const [selectedPreset, setSelectedPreset] = useState<PresetKey | null>(initialSelectedPreset);
   const [distributionTrigger, setDistributionTrigger] = useState<number>(0.05);
   const [drag, setDrag] = useState<Drag | null>(null);
   const [draft, setDraft] = useState<FeeWallet[] | null>(null);
@@ -2140,10 +2105,12 @@ export function FeeStructureBuilder({ chain, fees, onChange, walletAddress, onAd
   );
 }
 
-export default function FeeBuilderPanel({ chain: chainValue, walletAddress, onTotalChange, onAdvancedProtectionChange, onIssuesChange, focusIssueRequest }: { chain?: string; walletAddress?: string | null; onTotalChange?: (total: number) => void; onAdvancedProtectionChange?: (count: number) => void; onIssuesChange?: (count: number) => void; focusIssueRequest?: number }) {
+export default function FeeBuilderPanel({ chain: chainValue, walletAddress, onTotalChange, onAdvancedProtectionChange, onIssuesChange, focusIssueRequest, initialFees }: { chain?: string; walletAddress?: string | null; onTotalChange?: (total: number) => void; onAdvancedProtectionChange?: (count: number) => void; onIssuesChange?: (count: number) => void; focusIssueRequest?: number; initialFees?: FeeWallet[] }) {
   const chain = normalizeChain(chainValue);
   const previousChain = useRef(chain);
-  const [fees, setFees] = useState<FeeWallet[]>(() => presetFees(chain, 'creator'));
+  const [fees, setFees] = useState<FeeWallet[]>(() => initialFees
+    ? initialFees.map((fee) => ({ ...fee, rwaAssets: fee.rwaAssets ? [...fee.rwaAssets] : undefined, rwaAssetWeights: fee.rwaAssetWeights ? { ...fee.rwaAssetWeights } : undefined }))
+    : presetFees(chain, 'creator'));
   const total = useMemo(() => fees.reduce((sum, fee) => sum + (fee.pct ?? 0), 0), [fees]);
   const routeOrder = useMemo(
     () => normalizeFeeBuilderRouteOrder(fees.map((fee) => ({ id: fee.id, label: fee.name }))),
@@ -2185,5 +2152,5 @@ export default function FeeBuilderPanel({ chain: chainValue, walletAddress, onTo
     onTotalChange?.(total);
   }, [onTotalChange, total]);
 
-  return <FeeStructureBuilder chain={chain} fees={fees} onChange={setFees} walletAddress={walletAddress} onAdvancedProtectionChange={onAdvancedProtectionChange} onIssuesChange={onIssuesChange} focusIssueRequest={focusIssueRequest} />;
+  return <FeeStructureBuilder chain={chain} fees={fees} onChange={setFees} walletAddress={walletAddress} onAdvancedProtectionChange={onAdvancedProtectionChange} onIssuesChange={onIssuesChange} focusIssueRequest={focusIssueRequest} initialSelectedPreset={initialFees ? null : 'creator'} />;
 }

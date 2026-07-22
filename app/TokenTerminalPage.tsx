@@ -677,6 +677,15 @@ function InstrumentHeader({ token, liveMetrics }: { token: LbpTokenDetail; liveM
         <div className="flex items-center gap-2"><span className="uppercase tracking-[0.1em] text-[#515b57]">DEX</span><span className="hidden" aria-hidden="true">◆</span>{dex.icon ? <Image unoptimized src={dex.icon} alt="" width={16} height={16} className="h-4 w-4 shrink-0 object-contain" /> : null}<strong className="-ml-1 font-medium text-[#aeb8b4]">{dex.name}</strong><span className="font-mono text-[#66716c]">{dex.version}</span><span className="font-mono text-[#78847e]">{token.poolFee.toFixed(2)}%</span></div>
         <div className="flex items-center gap-2"><span className="uppercase tracking-[0.1em] text-[#515b57]">Contract</span><a href={`${EXPLORERS[token.network]}${token.contract}`} target="_blank" rel="noreferrer" className="font-mono text-[#aeb8b4] transition hover:text-white/88">{shortAddress(token.contract)}</a><CopyAddress value={token.contract} /></div>
         <div className="hidden items-center gap-2 min-[1120px]:flex"><span className="uppercase tracking-[0.1em] text-[#515b57]"><span className="min-[1780px]:hidden">by</span><span className="hidden min-[1780px]:inline">Created by</span></span><Link href={`/u/${token.creator}`} className="font-medium text-[#aeb8b4] hover:text-white/90">{token.creator}</Link><span className="hidden text-[#515b57] min-[1320px]:inline">on</span><a href={`/?board=${token.board}`} className="hidden font-medium text-[#aeb8b4] hover:text-white/90 min-[1320px]:inline">b/{token.board}</a></div>
+        {token.viewerCanManage ? (
+          <Link
+            href={`/token/${token.id}/manage`}
+            className="group inline-flex h-7 items-center gap-1.5 rounded-md border border-[#18c98e]/16 bg-[#18c98e]/[0.045] px-2.5 text-[9px] font-semibold uppercase tracking-[0.08em] text-[#8eddbd] transition hover:border-[#18c98e]/34 hover:bg-[#18c98e]/[0.085] hover:text-[#b8f2d8]"
+          >
+            <SlidersHorizontal className="h-3 w-3 text-[#18c98e]/72 transition group-hover:text-[#18c98e]" />
+            <span>Manage</span>
+          </Link>
+        ) : null}
         <div className="ml-auto flex min-w-[220px] items-center gap-3 max-[1400px]:min-w-[150px] max-[1400px]:gap-2">
           <div className="h-[3px] min-w-[90px] flex-1 overflow-hidden rounded-full bg-white/[0.08]"><span className="block h-full rounded-full bg-[#18c98e] shadow-[0_0_10px_rgba(24,201,142,0.3)]" style={{ width: `${progress}%` }} /></div>
           <strong className="w-10 font-mono text-[10px] text-[#18c98e]">{progress.toFixed(0)}%</strong>

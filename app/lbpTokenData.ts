@@ -26,6 +26,7 @@ export type LbpTokenDetail = {
   comments: number;
   maxBuyTokens?: number;
   feeBuilderEnabled?: boolean;
+  viewerCanManage?: boolean;
   seed: number;
   upcoming?: boolean;
 };
@@ -146,6 +147,7 @@ const TOKENS: Record<string, Omit<LbpTokenDetail, "contract">> = {
     holders: 447,
     comments: 22,
     feeBuilderEnabled: true,
+    viewerCanManage: true,
     seed: 53,
   },
   "neon-relay": {
@@ -172,6 +174,7 @@ const TOKENS: Record<string, Omit<LbpTokenDetail, "contract">> = {
     holders: 318,
     comments: 12,
     feeBuilderEnabled: true,
+    viewerCanManage: true,
     seed: 67,
   },
 };
