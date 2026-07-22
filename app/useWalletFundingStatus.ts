@@ -29,6 +29,8 @@ const DISCONNECTED: WalletFundingStatus = {
   isCdpGaslessSmartWallet: false,
 };
 
+let lastKnownWalletStatus: WalletFundingStatus = DISCONNECTED;
+
 const getProvider = () =>
   (window as Window & { ethereum?: EthereumProvider }).ethereum;
 
@@ -101,8 +103,14 @@ const normalizeEventDetail = (
     detail.walletType === "coinbase-cdp-smart-wallet",
 });
 
+export function publishWalletStatus(detail: WalletStatusEventDetail) {
+  const next = normalizeEventDetail(detail);
+  lastKnownWalletStatus = next;
+  window.dispatchEvent(new CustomEvent(BB_WALLET_STATUS_EVENT, { detail: next }));
+}
+
 export function useWalletFundingStatus() {
-  const [status, setStatus] = useState<WalletFundingStatus>(DISCONNECTED);
+  const [status, setStatus] = useState<WalletFundingStatus>(() => lastKnownWalletStatus);
 
   useEffect(() => {
     let active = true;
@@ -112,15 +120,23 @@ export function useWalletFundingStatus() {
       if (!provider) return;
       try {
         const nextStatus = await readInjectedWallet(provider);
-        if (active) setStatus(nextStatus);
+        if (active) {
+          lastKnownWalletStatus = nextStatus;
+          setStatus(nextStatus);
+        }
       } catch {
-        if (active) setStatus(DISCONNECTED);
+        if (active) {
+          lastKnownWalletStatus = DISCONNECTED;
+          setStatus(DISCONNECTED);
+        }
       }
     };
 
     const handleWalletStatus = (event: Event) => {
       const detail = (event as CustomEvent<WalletStatusEventDetail>).detail;
-      setStatus(normalizeEventDetail(detail ?? {}));
+      const next = normalizeEventDetail(detail ?? {});
+      lastKnownWalletStatus = next;
+      setStatus(next);
     };
     const handleProviderChange = () => void refresh();
 
@@ -139,4 +155,3 @@ export function useWalletFundingStatus() {
 
   return status;
 }
-

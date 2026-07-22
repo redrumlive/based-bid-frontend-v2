@@ -4,6 +4,7 @@ import AppFooter from './AppFooter';
 import { AppPreferencesProvider } from './AppPreferences';
 import AppShell from './AppShell';
 import AppTopBar from './AppTopBar';
+import { AppToastProvider } from './AppToast';
 import ChunkLoadRecovery from './ChunkLoadRecovery';
 import ReleaseUpdateModal from './ReleaseUpdateModal';
 import { TerminalSidebarProvider } from './TerminalSidebarContext';
@@ -30,13 +31,15 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="en" data-animation="on" data-ambient="on" suppressHydrationWarning className={`${spaceGrotesk.className} ${spaceGrotesk.variable}`}>
       <body>
         <AppPreferencesProvider>
-          <ChunkLoadRecovery />
-          <ReleaseUpdateModal />
-          <TerminalSidebarProvider>
-            <AppTopBar />
-            <AppShell>{children}</AppShell>
-            <AppFooter />
-          </TerminalSidebarProvider>
+          <AppToastProvider>
+            <ChunkLoadRecovery />
+            <ReleaseUpdateModal />
+            <TerminalSidebarProvider>
+              <AppTopBar />
+              <AppShell>{children}</AppShell>
+              <AppFooter />
+            </TerminalSidebarProvider>
+          </AppToastProvider>
         </AppPreferencesProvider>
       </body>
     </html>

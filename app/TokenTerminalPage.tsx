@@ -21,18 +21,20 @@ import {
   Crown,
   EyeOff,
   Gauge,
+  Globe2,
   Italic,
   LineChart,
   Link2,
   List,
   Maximize2,
-  Minimize2,
-  Minus,
+  MessageCircleMore,
   Pencil,
   Pin,
-  Plus,
+  Pause,
+  Play,
   Quote,
   Reply,
+  Send,
   Smile,
   SlidersHorizontal,
   Star,
@@ -40,6 +42,7 @@ import {
   Wallet,
   X,
 } from "lucide-react";
+import { FaXTwitter } from "react-icons/fa6";
 import type { LbpTokenDetail } from "./lbpTokenData";
 import FeeEngineCard, {
   type FeeEngineRewardPayment,
@@ -52,6 +55,10 @@ import {
   readFeeBuilderRouteOrder,
   type FeeBuilderRouteOrderKey,
 } from "./feeBuilderRouteOrder";
+import { useWalletFundingStatus } from "./useWalletFundingStatus";
+import SmartBackButton from "./SmartBackButton";
+import TokenManagePage from "./TokenManagePage";
+import LightweightTerminalChart, { type LightweightCreatorMarker } from "./LightweightTerminalChart";
 
 type ChartMode = "candles" | "line";
 type ChartBasis = "marketCap" | "price";
@@ -460,7 +467,7 @@ function seeded(seed: number, index: number) {
   return value - Math.floor(value);
 }
 
-function createCandles(token: LbpTokenDetail, count = 78): Candle[] {
+function createCandles(token: LbpTokenDetail, count = 112): Candle[] {
   if (token.upcoming) {
     return Array.from({ length: count }, (_, index) => {
       const movement = 1 + (seeded(token.seed, index) - 0.5) * 0.003;
@@ -634,21 +641,36 @@ function CopyAddress({ value }: { value: string }) {
 
 function Metric({ label, value, accent = false, className }: { label: string; value: string; accent?: boolean; className?: string }) {
   return (
-    <div className={cx("flex min-w-[104px] flex-1 flex-col justify-center border-l border-[#1d2220] px-[18px] first:border-l-0 max-[1400px]:min-w-[90px] max-[1400px]:px-3", className)}>
+    <div className={cx("relative flex min-w-[104px] flex-1 flex-col justify-center px-[18px] before:absolute before:bottom-[14px] before:left-0 before:top-[14px] before:w-px before:bg-[#242a27] max-[1400px]:min-w-[90px] max-[1400px]:px-3", className)}>
       <dt className={cx("text-[9.5px] font-bold uppercase tracking-[0.105em] text-[#73807a]", accent ? "whitespace-normal leading-[1.05] max-[1400px]:text-[7.5px] max-[1400px]:tracking-[0.035em]" : "truncate")}>{label}</dt>
       <motion.dd key={value} initial={{ opacity: 0.62, y: 1 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.22 }} className={cx("mt-[5px] truncate font-mono text-[12.5px] font-semibold tracking-[-0.018em] tabular-nums", accent ? "text-[#52dfb2]" : "text-[#edf2f0]")}>{value}</motion.dd>
     </div>
   );
 }
 
-function InstrumentHeader({ token, liveMetrics }: { token: LbpTokenDetail; liveMetrics: LiveMarketMetrics }) {
+function InstrumentHeader({ token, liveMetrics, onManage }: { token: LbpTokenDetail; liveMetrics: LiveMarketMetrics; onManage: () => void }) {
   const progress = Math.min(100, token.target ? (liveMetrics.marketCap / token.target) * 100 : 0);
   const dex = DEX_CONFIG[token.network];
+  const projectSocials = [
+    token.socials?.website ? { key: "website", label: "Project website", href: token.socials.website, icon: Globe2 } : null,
+    token.socials?.x ? { key: "x", label: "Project on X", href: token.socials.x, icon: FaXTwitter } : null,
+    token.socials?.telegram ? { key: "telegram", label: "Project on Telegram", href: token.socials.telegram, icon: Send } : null,
+    token.socials?.discord ? { key: "discord", label: "Project Discord", href: token.socials.discord, icon: MessageCircleMore } : null,
+  ].filter(Boolean) as Array<{ key: string; label: string; href: string; icon: React.ComponentType<{ className?: string }> }>;
+  const wallet = useWalletFundingStatus();
+  const canManage = Boolean(
+    wallet.connected
+    && wallet.address
+    && token.ownerAddress
+    && (token.ownerAddress.startsWith("0x")
+      ? wallet.address.toLowerCase() === token.ownerAddress.toLowerCase()
+      : wallet.address === token.ownerAddress),
+  );
   return (
     <section className="shrink-0 bg-[#0f1111]">
       <div className="flex min-h-[76px] min-w-0 items-stretch">
-        <div className="flex min-w-[250px] items-center gap-3 px-4 max-[1400px]:min-w-[210px] max-[1400px]:gap-2 max-[1400px]:px-3">
-          <Link href="/" aria-label="Back to tokens" className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-white/38 transition hover:bg-white/[0.045] hover:text-white/78"><ArrowLeft className="h-4 w-4" /></Link>
+        <div className="flex min-w-[270px] items-center gap-3 px-4 max-[1400px]:min-w-[220px] max-[1400px]:gap-2 max-[1400px]:px-3">
+          <SmartBackButton fallbackHref="/" ariaLabel="Back to tokens" className="grid h-8 w-8 shrink-0 cursor-pointer place-items-center rounded-lg text-white/38 transition hover:bg-white/[0.045] hover:text-white/78"><ArrowLeft className="h-4 w-4" /></SmartBackButton>
           <TokenMark token={token} />
           <div className="min-w-0">
             <div className="flex items-baseline gap-1.5">
@@ -658,14 +680,25 @@ function InstrumentHeader({ token, liveMetrics }: { token: LbpTokenDetail; liveM
             <div className="mt-1 truncate text-[11.5px] font-medium text-[#77827d]">{token.title}</div>
           </div>
           <button type="button" aria-label="Add to watchlist" className="ml-auto grid h-7 w-7 shrink-0 place-items-center text-white/25 transition hover:text-[#dfb858]"><Star className="h-3.5 w-3.5" /></button>
+          {canManage ? (
+            <button
+              type="button"
+              onClick={onManage}
+              aria-label={`Manage ${token.title}`}
+              className="group inline-flex h-7 shrink-0 items-center gap-1.5 px-1 text-[9px] font-medium uppercase tracking-[0.085em] text-[#d7c57f] transition-colors hover:text-[#f0db8a]"
+            >
+              <SlidersHorizontal className="h-3 w-3 transition-colors group-hover:text-[#f0db8a]" />
+              <span>Manage</span>
+            </button>
+          ) : null}
         </div>
 
-        <div className="flex min-w-[150px] flex-col justify-center border-l border-[#222826] px-5 max-[1400px]:min-w-[130px] max-[1400px]:px-3">
+        <div className="relative flex min-w-[150px] flex-col justify-center px-5 before:absolute before:bottom-[14px] before:left-0 before:top-[14px] before:w-px before:bg-[#242a27] max-[1400px]:min-w-[130px] max-[1400px]:px-3">
           <motion.strong key={liveMetrics.price} initial={{ opacity: 0.62, y: 1 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.22 }} className="font-mono text-[20px] font-semibold tracking-[-0.04em] text-[#edf2ef]">{formatPrice(liveMetrics.price)}</motion.strong>
           <motion.span key={liveMetrics.change24h} initial={{ opacity: 0.62 }} animate={{ opacity: 1 }} transition={{ duration: 0.22 }} className={cx("mt-[3px] font-mono text-[11.5px] font-semibold", liveMetrics.change24h >= 0 ? "text-[#18c98e]" : "text-[#ff3771]")}>{liveMetrics.change24h >= 0 ? "+" : ""}{liveMetrics.change24h.toFixed(2)}% <i className="font-mono text-[9.5px] not-italic uppercase tracking-[0.05em] text-[#626d68]">24H</i></motion.span>
         </div>
 
-        <dl className="flex min-w-0 flex-1 overflow-hidden border-l border-[#222826]">
+        <dl className="flex min-w-0 flex-1 overflow-hidden">
           <Metric label="24h volume" value={formatUsd(liveMetrics.volume24h)} />
           <Metric label="Pool" value={`${formatQuoteAmount(liveMetrics.poolQuote)} ${token.quoteSymbol}`} className="max-[1400px]:hidden" />
           <Metric label="Market cap" value={formatUsd(liveMetrics.marketCap)} />
@@ -674,18 +707,10 @@ function InstrumentHeader({ token, liveMetrics }: { token: LbpTokenDetail; liveM
       </div>
 
       <div className="flex min-h-[36px] items-center gap-7 bg-[#151918] px-3 text-[9.5px] text-[#aeb8b4] max-[1400px]:gap-5">
+        {projectSocials.length ? <div className="flex shrink-0 items-center gap-0.5 pr-5 max-[1400px]:pr-3">{projectSocials.map(({ key, label, href, icon: Icon }) => <a key={key} href={href} target="_blank" rel="noreferrer" aria-label={label} title={label} className="grid h-6 w-6 place-items-center text-[#66716c] outline-none transition-colors hover:text-[#d6e0dc] focus-visible:text-[#52dfb2]"><Icon className="h-3.5 w-3.5" /></a>)}</div> : null}
         <div className="flex items-center gap-2"><span className="uppercase tracking-[0.1em] text-[#515b57]">DEX</span><span className="hidden" aria-hidden="true">◆</span>{dex.icon ? <Image unoptimized src={dex.icon} alt="" width={16} height={16} className="h-4 w-4 shrink-0 object-contain" /> : null}<strong className="-ml-1 font-medium text-[#aeb8b4]">{dex.name}</strong><span className="font-mono text-[#66716c]">{dex.version}</span><span className="font-mono text-[#78847e]">{token.poolFee.toFixed(2)}%</span></div>
         <div className="flex items-center gap-2"><span className="uppercase tracking-[0.1em] text-[#515b57]">Contract</span><a href={`${EXPLORERS[token.network]}${token.contract}`} target="_blank" rel="noreferrer" className="font-mono text-[#aeb8b4] transition hover:text-white/88">{shortAddress(token.contract)}</a><CopyAddress value={token.contract} /></div>
         <div className="hidden items-center gap-2 min-[1120px]:flex"><span className="uppercase tracking-[0.1em] text-[#515b57]"><span className="min-[1780px]:hidden">by</span><span className="hidden min-[1780px]:inline">Created by</span></span><Link href={`/u/${token.creator}`} className="font-medium text-[#aeb8b4] hover:text-white/90">{token.creator}</Link><span className="hidden text-[#515b57] min-[1320px]:inline">on</span><a href={`/?board=${token.board}`} className="hidden font-medium text-[#aeb8b4] hover:text-white/90 min-[1320px]:inline">b/{token.board}</a></div>
-        {token.viewerCanManage ? (
-          <Link
-            href={`/token/${token.id}/manage`}
-            className="group inline-flex h-7 items-center gap-1.5 rounded-md border border-[#18c98e]/16 bg-[#18c98e]/[0.045] px-2.5 text-[9px] font-semibold uppercase tracking-[0.08em] text-[#8eddbd] transition hover:border-[#18c98e]/34 hover:bg-[#18c98e]/[0.085] hover:text-[#b8f2d8]"
-          >
-            <SlidersHorizontal className="h-3 w-3 text-[#18c98e]/72 transition group-hover:text-[#18c98e]" />
-            <span>Manage</span>
-          </Link>
-        ) : null}
         <div className="ml-auto flex min-w-[220px] items-center gap-3 max-[1400px]:min-w-[150px] max-[1400px]:gap-2">
           <div className="h-[3px] min-w-[90px] flex-1 overflow-hidden rounded-full bg-white/[0.08]"><span className="block h-full rounded-full bg-[#18c98e] shadow-[0_0_10px_rgba(24,201,142,0.3)]" style={{ width: `${progress}%` }} /></div>
           <strong className="w-10 font-mono text-[10px] text-[#18c98e]">{progress.toFixed(0)}%</strong>
@@ -699,12 +724,10 @@ function PriceChart({ token, livePrice, focusHidden = false }: { token: LbpToken
   const [timeframe, setTimeframe] = React.useState<(typeof TIMEFRAMES)[number]>("15m");
   const [mode, setMode] = React.useState<ChartMode>("candles");
   const [basis, setBasis] = React.useState<ChartBasis>("marketCap");
-  const [visibleCount, setVisibleCount] = React.useState(78);
-  const [fullscreen, setFullscreen] = React.useState(false);
   const [creatorTradesVisible, setCreatorTradesVisible] = React.useState(true);
   const [hoveredCreatorTrade, setHoveredCreatorTrade] = React.useState<string | null>(null);
   const allCandles = React.useMemo(() => createCandles(token), [token]);
-  const candles = allCandles.slice(-visibleCount).map((candle, index, source) => index === source.length - 1
+  const candles = allCandles.slice(-104).map((candle, index, source) => index === source.length - 1
     ? { ...candle, close: livePrice, high: Math.max(candle.high, livePrice), low: Math.min(candle.low, livePrice) }
     : candle);
   const supply = token.marketCap > 0 ? token.marketCap / token.price : 100_000_000;
@@ -732,11 +755,16 @@ function PriceChart({ token, livePrice, focusHidden = false }: { token: LbpToken
     { index: Math.max(4, Math.floor(candles.length * 0.3)), side: "buy", nativeAmount: 2.18, time: "11:25" },
     { index: Math.max(8, Math.floor(candles.length * 0.68)), side: "sell", nativeAmount: 1.42, time: "13:24" },
   ];
+  const lightweightCreatorMarkers: LightweightCreatorMarker[] = creatorTrades.map((trade) => ({
+    ...trade,
+    quoteSymbol: token.quoteSymbol,
+    usdValue: trade.nativeAmount * initialQuoteUsd(token.quoteSymbol),
+  }));
 
   return (
     <section
-      className={cx("relative flex basis-0 flex-col overflow-hidden bg-[#0d100f] transition-[flex-grow,min-height,opacity] duration-[360ms] ease-[cubic-bezier(0.22,1,0.36,1)]", focusHidden && "pointer-events-none opacity-0", fullscreen && "fixed inset-0 z-[300] min-h-0 opacity-100")}
-      style={fullscreen ? undefined : { flexGrow: focusHidden ? 0 : 1, minHeight: focusHidden ? 0 : 150 }}
+      className={cx("relative flex basis-0 flex-col overflow-hidden bg-[#0d100f] transition-[flex-grow,min-height,opacity] duration-[360ms] ease-[cubic-bezier(0.22,1,0.36,1)]", focusHidden && "pointer-events-none opacity-0")}
+      style={{ flexGrow: focusHidden ? 0 : 1, minHeight: focusHidden ? 0 : 150 }}
       aria-label={`${token.ticker} price chart`}
       aria-hidden={focusHidden || undefined}
     >
@@ -758,17 +786,14 @@ function PriceChart({ token, livePrice, focusHidden = false }: { token: LbpToken
             <button type="button" onClick={() => setBasis("marketCap")} className={cx("h-6 rounded-full px-2.5 text-[9.5px] transition", basis === "marketCap" ? "bg-white/[0.09] text-white/82" : "text-white/38")}>Market cap</button>
             <button type="button" onClick={() => setBasis("price")} className={cx("h-6 rounded-full px-2.5 text-[9.5px] transition", basis === "price" ? "bg-white/[0.09] text-white/82" : "text-white/38")}>Price</button>
           </div>
-          <div className="flex items-center rounded-md border border-white/[0.07] bg-[#0b0d0c]">
-            <button type="button" onClick={() => setVisibleCount((value) => Math.min(78, value + 9))} aria-label="Zoom out" className="grid h-7 w-7 place-items-center text-white/34 transition hover:text-white/72"><Minus className="h-3 w-3" /></button>
-            <button type="button" onClick={() => setVisibleCount((value) => Math.max(42, value - 9))} aria-label="Zoom in" className="grid h-7 w-7 place-items-center text-white/34 transition hover:text-white/72"><Plus className="h-3 w-3" /></button>
-            <button type="button" onClick={() => setFullscreen((value) => !value)} aria-label={fullscreen ? "Exit full screen" : "Expand chart"} className="grid h-7 w-7 place-items-center text-white/34 transition hover:text-white/72">{fullscreen ? <Minimize2 className="h-3 w-3" /> : <Maximize2 className="h-3 w-3" />}</button>
-          </div>
         </div>
       </div>
 
       <div className="bb-chart-surface relative min-h-[320px] flex-1">
+        <LightweightTerminalChart tokenKey={token.id} ticker={token.ticker} candles={candles} factor={factor} basis={basis} mode={mode} timeframe={timeframe} creatorMarkers={lightweightCreatorMarkers} creatorMarkersVisible={creatorTradesVisible} />
+        <div className="hidden" aria-hidden="true">
         <div className="pointer-events-none absolute left-4 top-2 z-10 flex items-center gap-2 font-mono text-[9.5px] text-white/46"><strong className="font-sans text-white/82">{token.ticker}</strong><span>·</span><span>{timeframe}</span><span>{basis === "marketCap" ? "Market cap" : "Price"}</span><span>O {formatAxis(candles[0].open * factor)}</span><span>H {formatAxis(Math.max(...candles.map((c) => c.high * factor)))}</span><span>L {formatAxis(Math.min(...candles.map((c) => c.low * factor)))}</span><span>C {formatAxis(latestCandle.close * factor)}</span></div>
-        <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" className="absolute inset-0 h-full w-full" role="img" aria-label={`${basis === "marketCap" ? "Market cap" : "Price"} ${timeframe} chart for ${token.ticker}`}>
+        <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" className="absolute inset-0 h-full w-full" role="presentation">
           <defs>
             <linearGradient id={`terminal-fill-${token.id}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor={token.accent} stopOpacity="0.2" /><stop offset="1" stopColor={token.accent} stopOpacity="0" /></linearGradient>
             <filter id={`terminal-glow-${token.id}`} x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="3" /></filter>
@@ -834,13 +859,19 @@ function PriceChart({ token, livePrice, focusHidden = false }: { token: LbpToken
           <line x1={left} x2={right} y1={y(latestCandle.close * factor)} y2={y(latestCandle.close * factor)} stroke="#18c98e" strokeDasharray="3 4" opacity="0.52" />
           <rect x={right} y={y(latestCandle.close * factor) - 9} width="74" height="18" fill="#18c98e" /><text x={right + 7} y={y(latestCandle.close * factor) + 3.5} fill="#06140e" fontSize="9.5" fontWeight="700" fontFamily="monospace">{formatAxis(latestCandle.close * factor)}</text>
         </svg>
+        </div>
       </div>
     </section>
   );
 }
 
-function FloatingChart({ token, onRestore, rightOffset = 14 }: { token: LbpTokenDetail; onRestore: () => void; rightOffset?: number }) {
-  const candles = React.useMemo(() => createCandles(token, 42), [token]);
+function FloatingChart({ token, livePrice, onRestore, rightOffset = 14 }: { token: LbpTokenDetail; livePrice: number; onRestore: () => void; rightOffset?: number }) {
+  const baseCandles = React.useMemo(() => createCandles(token, 42), [token]);
+  const candles = React.useMemo(() => baseCandles.map((candle, index) => index === baseCandles.length - 1
+    ? { ...candle, close: livePrice, high: Math.max(candle.high, livePrice), low: Math.min(candle.low, livePrice) }
+    : candle), [baseCandles, livePrice]);
+  const supply = token.marketCap > 0 ? token.marketCap / Math.max(token.price, 0.0000001) : 100_000_000;
+  const liveMarketCap = supply * livePrice;
   const [position, setPosition] = React.useState<{ x: number; y: number } | null>(null);
   const [size, setSize] = React.useState({ width: 318, height: 188 });
   const [dragging, setDragging] = React.useState(false);
@@ -924,11 +955,12 @@ function FloatingChart({ token, onRestore, rightOffset = 14 }: { token: LbpToken
     >
       <div onPointerDown={startDrag} onPointerMove={moveDrag} onPointerUp={finishDrag} onPointerCancel={finishDrag} className={cx("flex h-8 touch-none items-center border-b border-white/[0.07] px-2.5", dragging ? "cursor-grabbing" : "cursor-grab")}>
         <strong className="text-[10px] font-semibold text-white/82">{token.ticker} / {token.quoteSymbol}</strong>
-        <span className="ml-2 font-mono text-[8.5px] text-[#52dfb2]">{formatUsd(token.marketCap)}</span>
+        <span className="ml-2 font-mono text-[8.5px] text-[#52dfb2]">{formatUsd(liveMarketCap)}</span>
         <button type="button" onPointerDown={(event) => event.stopPropagation()} onClick={onRestore} aria-label="Restore full chart" className="ml-auto grid h-6 w-6 place-items-center rounded text-white/38 transition hover:bg-white/[0.05] hover:text-[#52dfb2]"><Maximize2 className="h-3 w-3" /></button>
       </div>
       <div className="bb-chart-surface relative h-[calc(100%-32px)]">
-        <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} preserveAspectRatio="none" className="h-full w-full" role="img" aria-label={`${token.ticker} compact price chart`}>
+        <LightweightTerminalChart tokenKey={`${token.id}-floating`} ticker={token.ticker} candles={candles} factor={supply} basis="marketCap" mode="candles" timeframe="15m" creatorMarkersVisible={false} compact />
+        <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} preserveAspectRatio="none" className="hidden h-full w-full" role="presentation" aria-hidden="true">
           {Array.from({ length: 4 }, (_, index) => { const gridY = chartTop + (index / 3) * (chartBottom - chartTop); return <line key={index} x1={chartLeft} x2={chartRight} y1={gridY} y2={gridY} stroke="rgba(255,255,255,0.055)" />; })}
           {candles.map((candle, index) => { const up = candle.close >= candle.open; const color = up ? "#18c98e" : "#ff3771"; const candleX = x(index); const bodyTop = y(Math.max(candle.open, candle.close)); const bodyBottom = y(Math.min(candle.open, candle.close)); return <g key={index}><line x1={candleX} x2={candleX} y1={y(candle.high)} y2={y(candle.low)} stroke={color} strokeWidth="1" vectorEffect="non-scaling-stroke" /><rect x={candleX - candleWidth / 2} y={bodyTop} width={candleWidth} height={Math.max(1.2, bodyBottom - bodyTop)} fill={color} /></g>; })}
         </svg>
@@ -988,6 +1020,31 @@ function CommentThread({ comment, token }: { comment: CommentNode; token: LbpTok
   );
 }
 
+function ProjectThreadRoot({ token, commentCount, onReply }: { token: LbpTokenDetail; commentCount: number; onReply: () => void }) {
+  return (
+    <article aria-label={`${token.title} project post`} className="px-5 pb-1 pt-4">
+      <div className="flex items-start gap-[11px]">
+        <TokenMark token={token} size="h-9 w-9" showNetwork={false} />
+        <div className="min-w-0 flex-1">
+          <header className="flex flex-wrap items-center gap-1.5 text-[10.5px]">
+            <strong className="font-semibold text-[#e2e8e5]">{token.title}</strong>
+            <span className="font-mono text-[9px] font-medium text-[#75817c]">{token.ticker}</span>
+            <span className="text-[#56615c]">•</span>
+            <span className="text-[#7a8580]">by</span>
+            <Link href={`/u/${token.creator}`} className="font-mono font-medium text-[#aebbb5] transition hover:text-[#dfe7e3]">{token.creator}</Link>
+            <span className="rounded-sm bg-[#d8b75f]/10 px-1.5 py-0.5 text-[7.5px] font-bold uppercase tracking-[0.08em] text-[#e5c96f] ring-1 ring-inset ring-[#d8b75f]/18">Creator</span>
+          </header>
+          <p className="mt-2 max-w-[900px] text-[13px] leading-[1.6] text-[#d7ddda]">{token.description}</p>
+          <div className="mt-2 flex items-center gap-3 text-[#7a8580]">
+            <button type="button" onClick={onReply} className="inline-flex items-center gap-1.5 text-[10px] transition hover:text-[#d3dcd8]"><MessageCircleMore className="h-3 w-3" />Reply</button>
+            {commentCount ? <span className="font-mono text-[9px] text-[#66716c]">{commentCount} comments</span> : null}
+          </div>
+        </div>
+      </div>
+    </article>
+  );
+}
+
 function ActivityPanel({ token, liveMetrics, height, focusMode, onHeightChange, onToggleCollapsed, onCommentsFocusChange }: { token: LbpTokenDetail; liveMetrics: LiveMarketMetrics; height: number; focusMode: boolean; onHeightChange: (height: number) => void; onToggleCollapsed: () => void; onCommentsFocusChange: (focused: boolean) => void }) {
   const [tab, setTab] = React.useState<ActivityTab>("live");
   const [filter, setFilter] = React.useState<TradeFilter>("all");
@@ -998,16 +1055,26 @@ function ActivityPanel({ token, liveMetrics, height, focusMode, onHeightChange, 
   const [visibleTradeCount, setVisibleTradeCount] = React.useState(18);
   const [visibleHolderCount, setVisibleHolderCount] = React.useState(18);
   const [arrival, setArrival] = React.useState<TradeRow | null>(null);
+  const [manualFeedPaused, setManualFeedPaused] = React.useState(false);
+  const [feedHovered, setFeedHovered] = React.useState(false);
+  const [feedFocusWithin, setFeedFocusWithin] = React.useState(false);
+  const [feedSelectionActive, setFeedSelectionActive] = React.useState(false);
+  const [queuedTrades, setQueuedTrades] = React.useState<TradeRow[]>([]);
   const [resizing, setResizing] = React.useState(false);
+  const commentInputRef = React.useRef<HTMLTextAreaElement | null>(null);
   const tradeSequence = React.useRef(20);
   const livePriceRef = React.useRef(liveMetrics.price);
+  const tradeFeedRef = React.useRef<HTMLDivElement | null>(null);
+  const feedPausedRef = React.useRef(false);
   const resizeState = React.useRef({ startY: 0, startHeight: height, moved: false });
   const holders = React.useMemo(() => createHolders(token), [token]);
   const filteredRows = rows.filter((row) => filter === "all" || row.side === filter);
   const visibleRows = filteredRows.slice(0, visibleTradeCount);
   const visibleHolders = holders.slice(0, visibleHolderCount);
-  const buys = rows.filter((row) => row.side === "buy");
-  const buyRatio = rows.length ? Math.round((buys.length / rows.length) * 100) : 0;
+  const feedPaused = manualFeedPaused || feedHovered || feedFocusWithin || feedSelectionActive;
+  const feedTradeCount = rows.length + queuedTrades.length;
+  const feedBuyCount = rows.filter((row) => row.side === "buy").length + queuedTrades.filter((row) => row.side === "buy").length;
+  const buyRatio = feedTradeCount ? Math.round((feedBuyCount / feedTradeCount) * 100) : 0;
   const maxTradeUsd = Math.max(1, ...filteredRows.map((row) => row.usd));
   const commentCount = countComments(comments);
   const collapsed = !focusMode && height <= 42;
@@ -1015,6 +1082,35 @@ function ActivityPanel({ token, liveMetrics, height, focusMode, onHeightChange, 
   React.useEffect(() => {
     livePriceRef.current = liveMetrics.price;
   }, [liveMetrics.price]);
+
+  React.useEffect(() => {
+    feedPausedRef.current = feedPaused;
+  }, [feedPaused]);
+
+  React.useEffect(() => {
+    const handleSelectionChange = () => {
+      const selection = window.getSelection();
+      const selectedNode = selection?.anchorNode;
+      setFeedSelectionActive(Boolean(selection && !selection.isCollapsed && selectedNode && tradeFeedRef.current?.contains(selectedNode)));
+    };
+    document.addEventListener("selectionchange", handleSelectionChange);
+    return () => document.removeEventListener("selectionchange", handleSelectionChange);
+  }, []);
+
+  React.useEffect(() => {
+    if (tab === "live" && !collapsed) return;
+    setFeedHovered(false);
+    setFeedFocusWithin(false);
+    setFeedSelectionActive(false);
+  }, [collapsed, tab]);
+
+  React.useEffect(() => {
+    if (feedPaused || queuedTrades.length === 0) return;
+    const releasedTrades = queuedTrades;
+    setQueuedTrades([]);
+    setRows((current) => [...releasedTrades, ...current].slice(0, 180));
+    setArrival(releasedTrades[0] ?? null);
+  }, [feedPaused, queuedTrades]);
 
   React.useEffect(() => {
     if (token.upcoming) return;
@@ -1025,8 +1121,12 @@ function ActivityPanel({ token, liveMetrics, height, focusMode, onHeightChange, 
       if (!base) return;
       const price = livePriceRef.current * (1 + (seeded(token.seed + 131, index) - 0.5) * 0.0035);
       const next = { ...base, id: `live-${Date.now()}`, age: "now", price, amount: base.usd / Math.max(price, 0.000001) };
-      setRows((current) => [next, ...current.map((row, rowIndex) => ({ ...row, age: rowIndex < 5 ? `${[6, 12, 18, 27, 39][rowIndex]}s` : row.age }))].slice(0, 180));
-      setArrival(next);
+      if (feedPausedRef.current) {
+        setQueuedTrades((current) => [next, ...current].slice(0, 99));
+      } else {
+        setRows((current) => [next, ...current.map((row, rowIndex) => ({ ...row, age: rowIndex < 5 ? `${[6, 12, 18, 27, 39][rowIndex]}s` : row.age }))].slice(0, 180));
+        setArrival(next);
+      }
     }, 4600);
     return () => window.clearInterval(interval);
   }, [token]);
@@ -1094,20 +1194,24 @@ function ActivityPanel({ token, liveMetrics, height, focusMode, onHeightChange, 
       </button>
       <div className="flex h-[42px] shrink-0 items-center border-b border-[#202522] px-[10px] pl-[17px]">
         <div className="flex h-full items-center gap-[5px]">
-          <button type="button" onClick={() => selectTab("live")} className={tabClass("live")}>All trades{rows.length ? <span className="font-mono text-[9px] font-medium text-white/32">{rows.length}</span> : null}</button>
+          <button type="button" onClick={() => selectTab("live")} className={tabClass("live")}>All trades{feedTradeCount ? <span className="font-mono text-[9px] font-medium text-white/32">{feedTradeCount}</span> : null}</button>
           <button type="button" onClick={() => selectTab("mine")} className={tabClass("mine")}>My trades</button>
           <button type="button" onClick={() => selectTab("comments")} className={tabClass("comments")}>Comments{commentCount ? <span className="font-mono text-[9px] font-medium text-white/32">{commentCount}</span> : null}</button>
           <button type="button" onClick={() => selectTab("holders")} className={tabClass("holders")}>Holders{token.holders ? <span className="font-mono text-[9px] font-medium text-white/32">{token.holders.toLocaleString("en-US")}</span> : null}</button>
         </div>
-        {tab === "live" ? <div className="ml-auto flex items-center gap-0.5">{(["all", "buy", "sell"] as TradeFilter[]).map((item) => <button key={item} type="button" onClick={() => { setFilter(item); setVisibleTradeCount(18); }} className={cx("h-7 rounded px-2.5 text-[11px] font-semibold capitalize transition", filter === item ? "bg-[#171b1a] text-[#cbd3d0]" : "text-[#7f8a85] hover:bg-[#171b1a] hover:text-[#cbd3d0]")}>{item === "buy" ? "Buys" : item === "sell" ? "Sells" : "All"}</button>)}</div> : null}
+        {tab === "live" ? <div className="ml-auto flex items-center gap-0.5">
+          {(["all", "buy", "sell"] as TradeFilter[]).map((item) => <button key={item} type="button" onClick={() => { setFilter(item); setVisibleTradeCount(18); }} className={cx("h-7 rounded px-2.5 text-[11px] font-semibold capitalize transition", filter === item ? "bg-[#171b1a] text-[#cbd3d0]" : "text-[#7f8a85] hover:bg-[#171b1a] hover:text-[#cbd3d0]")}>{item === "buy" ? "Buys" : item === "sell" ? "Sells" : "All"}</button>)}
+          <span className="mx-1 h-4 w-px bg-white/[0.07]" />
+          <button type="button" onClick={() => setManualFeedPaused((current) => !current)} aria-label={manualFeedPaused ? "Resume live transaction feed" : "Pause live transaction feed"} aria-pressed={manualFeedPaused} className={cx("grid h-7 w-7 place-items-center rounded text-white/34 outline-none transition hover:bg-[#171b1a] hover:text-white/72 focus-visible:bg-[#171b1a] focus-visible:text-white/72", manualFeedPaused && "bg-[#d7c57f]/[0.07] text-[#d7c57f]")}>{manualFeedPaused ? <Play className="h-3 w-3 fill-current" /> : <Pause className="h-3 w-3" />}</button>
+        </div> : null}
       </div>
 
       {!collapsed && (tab === "live" || tab === "mine") ? <div className="grid h-[50px] shrink-0 grid-cols-[minmax(190px,212px)_minmax(232px,248px)_minmax(0,1fr)] border-y border-white/[0.055] bg-[#111313] shadow-[inset_2px_0_rgba(24,201,142,0.82)] max-[1400px]:grid-cols-[140px_160px_minmax(0,1fr)]">
-        <div className="flex flex-col justify-center border-r border-white/[0.07] px-[18px] max-[1400px]:px-3"><strong className="font-mono text-[11.5px] font-semibold tracking-[-0.025em] text-[#d7dfdc]">{token.ticker}/{token.quoteSymbol}</strong><span className="mt-0.5 text-[8.5px] font-bold uppercase tracking-[0.095em] text-[#18c98e]">{token.upcoming ? "Scheduled market" : "Realtime market"}</span></div>
+        <div className="flex flex-col justify-center border-r border-white/[0.07] px-[18px] max-[1400px]:px-3"><strong className="font-mono text-[11.5px] font-semibold tracking-[-0.025em] text-[#d7dfdc]">{token.ticker}/{token.quoteSymbol}</strong><span className="mt-0.5 h-3 overflow-hidden"><AnimatePresence initial={false} mode="wait">{feedPaused && tab === "live" ? <motion.span key="feed-paused" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -3 }} transition={{ duration: 0.15 }} className="flex h-3 items-center gap-1 whitespace-nowrap text-[8.5px] font-bold uppercase leading-3 tracking-[0.095em] text-[#d7c57f]"><span aria-hidden="true" className="inline-flex h-2.5 w-1.5 shrink-0 items-center justify-center gap-[2px]"><i className="h-2 w-px rounded-full bg-current" /><i className="h-2 w-px rounded-full bg-current" /></span><span>Feed paused</span>{queuedTrades.length ? <strong className="ml-0.5 font-mono text-[8.5px] font-semibold tracking-normal text-[#f0db8a]">+{queuedTrades.length}</strong> : null}</motion.span> : <motion.span key="market-state" initial={{ opacity: 0, y: 3 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -3 }} transition={{ duration: 0.15 }} className="block text-[8.5px] font-bold uppercase leading-3 tracking-[0.095em] text-[#18c98e]">{token.upcoming ? "Scheduled market" : "Realtime market"}</motion.span>}</AnimatePresence></span></div>
         <div className="flex items-center gap-[10px] border-r border-white/[0.07] px-3"><span className="text-[9px] font-semibold uppercase tracking-[0.09em] text-[#75817c]">Window</span><div className="grid min-w-0 flex-1 grid-cols-4 gap-0.5 rounded-md border border-white/[0.08] bg-[#0c0f0e] p-0.5">{["5m", "1h", "4h", "24h"].map((item) => <button key={item} type="button" onClick={() => setWindowSize(item)} className={cx("h-[26px] rounded text-[10px] font-medium transition", windowSize === item ? "bg-[#18c98e]/[0.10] text-[#78e99d] shadow-[inset_0_0_0_1px_rgba(24,201,142,0.24)]" : "text-[#7d8984] hover:bg-[#171d1b] hover:text-[#c4ceca]")}>{item}</button>)}</div></div>
         <dl className="grid min-w-0 grid-cols-4">
           <ActivityMetric label="Price change" value={`${liveMetrics.change24h >= 0 ? "+" : ""}${liveMetrics.change24h.toFixed(2)}%`} accent />
-          <ActivityMetric label="Trades" value={rows.length.toString()} />
+          <ActivityMetric label="Trades" value={feedTradeCount.toString()} />
           <ActivityMetric label="Volume" value={formatUsd(liveMetrics.volume24h)} />
           <ActivityMetric label="Buy ratio" value={`${buyRatio}%`} accent />
         </dl>
@@ -1115,13 +1219,14 @@ function ActivityPanel({ token, liveMetrics, height, focusMode, onHeightChange, 
 
       {!collapsed ? tab === "comments" ? (
         <div onScroll={(event) => nearEnd(event, loadMoreComments)} className="min-h-0 flex-1 overflow-y-auto [scrollbar-color:#303936_transparent] [scrollbar-width:thin]">
+          <ProjectThreadRoot token={token} commentCount={commentCount} onReply={() => { commentInputRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }); window.setTimeout(() => commentInputRef.current?.focus(), 220); }} />
           <form onSubmit={submitComment} className="px-5 pb-[10px] pt-[15px]">
             <div className="flex h-8 items-center gap-1.5">
               {[{ label: "Bold", icon: Bold }, { label: "Italic", icon: Italic }, { label: "Code", icon: Code2 }, { label: "Quote", icon: Quote }, { label: "List", icon: List }, { label: "Hide preview", icon: EyeOff }, { label: "Emoji", icon: Smile }, { label: "Add link", icon: Link2 }].map(({ label, icon: Icon }) => <button key={label} type="button" aria-label={label} className="grid h-7 w-7 place-items-center rounded-[6px] border border-[#2a3330] bg-[#121514] text-[#818c87] transition hover:border-[#3b4742] hover:bg-[#181c1b] hover:text-[#d3dcd8]"><Icon className="h-[13px] w-[13px]" /></button>)}
               <button type="button" onClick={() => setCommentDraft("")} className="ml-auto px-2 text-[10px] font-semibold text-[#8c9792] transition hover:text-[#d5dcd9]">Cancel</button>
               <button type="submit" disabled={!commentDraft.trim()} className="h-7 rounded-md bg-[#18c98e] px-3 text-[10px] font-bold text-[#06150f] transition hover:bg-[#65e892] disabled:bg-[#1b201e] disabled:text-[#58625e]">Comment</button>
             </div>
-            <textarea value={commentDraft} onChange={(event) => setCommentDraft(event.target.value)} placeholder="Join the conversation" rows={3} className="mt-[9px] min-h-[72px] w-full resize-y rounded-lg border border-[#2a3330] bg-[#111514] px-3 py-2.5 text-[12px] leading-relaxed text-[#d9e0dd] outline-none placeholder:text-[#626c68] focus:border-[#18c98e]/45 focus:shadow-[0_0_0_2px_rgba(24,201,142,0.04)]" />
+            <textarea ref={commentInputRef} value={commentDraft} onChange={(event) => setCommentDraft(event.target.value)} placeholder="Join the conversation" rows={3} className="mt-[9px] min-h-[72px] w-full resize-y rounded-lg border border-[#2a3330] bg-[#111514] px-3 py-2.5 text-[12px] leading-relaxed text-[#d9e0dd] outline-none placeholder:text-[#626c68] focus:border-[#18c98e]/45 focus:shadow-[0_0_0_2px_rgba(24,201,142,0.04)]" />
           </form>
           <div className="px-5 pb-7">{comments.map((comment) => <CommentThread key={comment.id} comment={comment} token={token} />)}<div className="flex h-10 items-center justify-center text-[9.5px] text-white/25"><span className="mr-2 h-1.5 w-1.5 animate-pulse rounded-full bg-[#18c98e]/55" />Scroll for more comments</div></div>
         </div>
@@ -1133,7 +1238,7 @@ function ActivityPanel({ token, liveMetrics, height, focusMode, onHeightChange, 
           </table>
           <div className="flex h-10 items-center justify-between px-4 text-[9.5px] text-[#707b76]"><span>Showing {visibleHolders.length.toLocaleString("en-US")} of {token.holders.toLocaleString("en-US")} holders</span>{visibleHolders.length < holders.length ? <span>Scroll to load more</span> : null}</div>
         </div>
-      ) : <div onScroll={tab === "live" ? (event) => nearEnd(event, loadMoreTrades) : undefined} className="min-h-0 flex-1 overflow-auto [scrollbar-color:#303936_transparent] [scrollbar-width:thin]">
+      ) : <div ref={tab === "live" ? tradeFeedRef : undefined} onMouseEnter={tab === "live" ? () => setFeedHovered(true) : undefined} onMouseLeave={tab === "live" ? () => setFeedHovered(false) : undefined} onFocusCapture={tab === "live" ? () => setFeedFocusWithin(true) : undefined} onBlurCapture={tab === "live" ? (event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setFeedFocusWithin(false); } : undefined} onScroll={tab === "live" ? (event) => nearEnd(event, loadMoreTrades) : undefined} className="min-h-0 flex-1 overflow-auto [scrollbar-color:#303936_transparent] [scrollbar-width:thin]">
         {tab === "mine" ? (
           <div className="grid h-full place-items-center text-center"><div><Wallet className="mx-auto h-5 w-5 text-white/20" /><div className="mt-2 text-[11px] font-medium text-white/58">Connect your wallet to see your trades</div><div className="mt-1 text-[9.5px] text-white/28">Your LBP activity will appear here.</div></div></div>
         ) : visibleRows.length ? (
@@ -1255,9 +1360,9 @@ function FeeBuilderDrawer({
                 compact
                 headerInfo={(
                   <>
-                    <span className="block font-light text-white/50"><span className="font-normal text-[#e2d39f]/76">Based Bid’s Fee Engine</span> transforms trading activity into programmable value.</span>
-                    <span className="mt-1 block font-light text-white/45">It automates <span className="font-light text-[#e2d39f]/68">rewards, RWA payouts, treasury flows, buybacks and custom programmable routes.</span></span>
-                    <span className="mt-1 block font-light text-[#78e99d]/68">All without selling any project tokens and creating sell pressure.</span>
+                    <span className="block font-light text-white/50"><span className="font-normal text-[#e2d39f]">Based Bid’s Fee Engine</span> transforms trading activity into programmable value.</span>
+                    <span className="mt-1 block font-light text-white/45">It automates <span className="font-normal text-[#e2d39f]">rewards, RWA payouts, treasury flows, buybacks and custom programmable routes.</span></span>
+                    <span className="mt-1 block font-normal text-[#78e99d]">All without selling any project tokens and creating sell pressure.</span>
                     <span className="mt-1.5 block border-t border-white/[0.065] pt-1.5 text-white/42">Activates automatically after bonding completes.</span>
                   </>
                 )}
@@ -1434,10 +1539,30 @@ export default function TokenTerminalPage({ token }: { token: LbpTokenDetail }) 
   const [activityHeight, setActivityHeight] = React.useState(292);
   const [commentsFocus, setCommentsFocus] = React.useState(false);
   const [feeBuilderOpen, setFeeBuilderOpen] = React.useState(false);
+  const [manageOpen, setManageOpen] = React.useState(false);
   const [liveMetrics, setLiveMetrics] = React.useState<LiveMarketMetrics>(() => initialLiveMarketMetrics(token));
   const lastExpandedHeight = React.useRef(292);
   const marketSequence = React.useRef(0);
-  React.useEffect(() => setFeeBuilderOpen(false), [token.id]);
+  React.useEffect(() => {
+    setFeeBuilderOpen(false);
+    setManageOpen(false);
+  }, [token.id]);
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("manage") !== "1") return;
+    setManageOpen(true);
+    params.delete("manage");
+    const query = params.toString();
+    window.history.replaceState(window.history.state, "", `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`);
+  }, [token.id]);
+  React.useEffect(() => {
+    if (!manageOpen) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setManageOpen(false);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [manageOpen]);
   React.useEffect(() => {
     marketSequence.current = 0;
     setLiveMetrics(initialLiveMarketMetrics(token));
@@ -1491,7 +1616,7 @@ export default function TokenTerminalPage({ token }: { token: LbpTokenDetail }) 
     >
       <style jsx global>{TERMINAL_CONTROL_CSS}</style>
       <div className="flex min-h-0 min-w-0 flex-col overflow-hidden max-[1040px]:overflow-visible">
-        <InstrumentHeader token={token} liveMetrics={liveMetrics} />
+        <InstrumentHeader token={token} liveMetrics={liveMetrics} onManage={() => setManageOpen(true)} />
         <PriceChart token={token} livePrice={liveMetrics.price} focusHidden={commentsFocus} />
         <ActivityPanel token={token} liveMetrics={liveMetrics} height={activityHeight} focusMode={commentsFocus} onHeightChange={updateActivityHeight} onToggleCollapsed={toggleActivity} onCommentsFocusChange={setCommentsFocus} />
       </div>
@@ -1504,7 +1629,26 @@ export default function TokenTerminalPage({ token }: { token: LbpTokenDetail }) 
           onCollapse={() => setFeeBuilderOpen(false)}
         />
       ) : null}
-      <AnimatePresence>{commentsFocus ? <FloatingChart token={token} onRestore={restoreChartFromComments} rightOffset={token.feeBuilderEnabled ? (feeBuilderOpen ? 456 : 58) : 14} /> : null}</AnimatePresence>
+      <AnimatePresence>{commentsFocus ? <FloatingChart token={token} livePrice={liveMetrics.price} onRestore={restoreChartFromComments} rightOffset={token.feeBuilderEnabled ? (feeBuilderOpen ? 456 : 58) : 14} /> : null}</AnimatePresence>
+      <AnimatePresence>
+        {manageOpen ? (
+          <motion.div className="fixed inset-0 z-[700] flex justify-end" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
+            <button type="button" aria-hidden="true" tabIndex={-1} onClick={() => setManageOpen(false)} className="absolute inset-0 cursor-default bg-black/64 backdrop-blur-[2px]" />
+            <motion.aside
+              role="dialog"
+              aria-modal="true"
+              aria-label={`Manage ${token.title}`}
+              initial={{ x: 72, opacity: 0.7 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: 56, opacity: 0 }}
+              transition={{ duration: 0.34, ease: [0.22, 1, 0.36, 1] }}
+              className="relative h-full w-[min(1080px,calc(100vw-18px))] overflow-y-auto overscroll-contain border-l border-white/[0.09] bg-[#090a0a] shadow-[-30px_0_90px_rgba(0,0,0,0.62)]"
+            >
+              <TokenManagePage token={token} presentation="drawer" onClose={() => setManageOpen(false)} />
+            </motion.aside>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
     </main>
   );
 }

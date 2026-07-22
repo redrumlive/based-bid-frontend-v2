@@ -88,6 +88,19 @@ function SidebarNavItem({ href, label, icon, active, feature, compact, onClick }
   );
 }
 
+export function SidebarCollapseControl({ compact, onToggleCompact }: { compact: boolean; onToggleCompact?: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onToggleCompact}
+      aria-label={compact ? "Open sidebar" : "Collapse sidebar"}
+      className="absolute right-0 top-0 z-50 grid h-8 w-6 -translate-y-1/2 translate-x-1/2 place-items-center bg-transparent text-white/34 outline-none transition-colors duration-180 hover:text-[#52dfb2] focus-visible:text-[#52dfb2]"
+    >
+      {compact ? <ChevronRight className="h-3.5 w-3.5" strokeWidth={1.65} /> : <ChevronLeft className="h-3.5 w-3.5" strokeWidth={1.65} />}
+    </button>
+  );
+}
+
 export default function AppSidebar({ onOpenCollectFees, onCloseCollectFees, collectFeesOpen = false, compact = false, collapsible = false, onToggleCompact }: { onOpenCollectFees: () => void; onCloseCollectFees?: () => void; collectFeesOpen?: boolean; compact?: boolean; collapsible?: boolean; onToggleCompact?: () => void }) {
   const pathname = usePathname();
 
@@ -99,16 +112,7 @@ export default function AppSidebar({ onOpenCollectFees, onCloseCollectFees, coll
       }}
       className={`sticky top-14 z-[245] hidden h-[calc(100vh-6.25rem)] shrink-0 flex-col border-r border-white/[0.08] bg-[linear-gradient(180deg,#0b0c0c_0%,#090a0a_100%)] shadow-[8px_0_32px_rgba(0,0,0,0.12)] transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] md:flex ${compact ? "w-[66px]" : "w-[272px]"}`}
     >
-      {collapsible ? (
-        <button
-          type="button"
-          onClick={onToggleCompact}
-          aria-label={compact ? "Open sidebar" : "Collapse sidebar"}
-          className="absolute right-0 top-0 z-50 grid h-8 w-6 -translate-y-1/2 translate-x-1/2 place-items-center bg-transparent text-white/34 outline-none transition-colors duration-180 hover:text-[#52dfb2] focus-visible:text-[#52dfb2]"
-        >
-          {compact ? <ChevronRight className="h-3.5 w-3.5" strokeWidth={1.65} /> : <ChevronLeft className="h-3.5 w-3.5" strokeWidth={1.65} />}
-        </button>
-      ) : null}
+      {collapsible ? <SidebarCollapseControl compact={compact} onToggleCompact={onToggleCompact} /> : null}
       <div className={`app-sidebar-scroll min-h-0 flex-1 overflow-y-auto pb-6 pt-3 ${compact ? "px-2" : "px-3 pr-[6px]"}`}>
         {compact ? (
           <>

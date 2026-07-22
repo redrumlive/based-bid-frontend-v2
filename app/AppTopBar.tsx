@@ -22,8 +22,11 @@ import {
 import { useEffect, useState } from "react";
 import WalletNetworkModal, { type WalletNetwork } from "./WalletNetworkModal";
 import { isStandaloneDeckRoute } from "./appConfig";
+import { publishWalletStatus } from "./useWalletFundingStatus";
 
 type Network = "eth" | "bsc" | "base" | "sol" | "robinhood" | "megaeth";
+
+const DEMO_WALLET_CONNECTION_KEY = "bb-demo-wallet-connected";
 
 type NotificationItem = {
   id: string;
@@ -136,6 +139,32 @@ function WalletMenu() {
   const address = "0xA17C9e42B6D8f3057C24aE91B5d7630F8C2e4A69";
   const balance = 0.176;
 
+  const updateConnection = (nextConnected: boolean) => {
+    setConnected(nextConnected);
+    window.localStorage.setItem(DEMO_WALLET_CONNECTION_KEY, String(nextConnected));
+  };
+
+  useEffect(() => {
+    const syncConnection = () => {
+      setConnected(window.localStorage.getItem(DEMO_WALLET_CONNECTION_KEY) === "true");
+    };
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === DEMO_WALLET_CONNECTION_KEY) syncConnection();
+    };
+
+    syncConnection();
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
+  }, []);
+
+  useEffect(() => {
+    publishWalletStatus({
+      connected,
+      address: connected ? address : null,
+      balanceEth: connected ? balance : null,
+    });
+  }, [address, balance, connected, pathname]);
+
   useEffect(() => {
     if (!open) return;
     const close = (event: MouseEvent) => {
@@ -154,7 +183,7 @@ function WalletMenu() {
   const connectToNetwork = (selectedNetwork: WalletNetwork) => {
     setNetwork(selectedNetwork === "solana" ? "sol" : "base");
     setConnectModalOpen(false);
-    setConnected(true);
+    updateConnection(true);
   };
 
   return (
@@ -170,7 +199,7 @@ function WalletMenu() {
             setConnectModalOpen(true);
             return;
           }
-          setConnected(true);
+          updateConnection(true);
         }}
         aria-label={connected ? "Wallet connected" : "Connect wallet"}
         aria-haspopup={!connected && pathname === "/" ? "dialog" : undefined}
@@ -242,7 +271,7 @@ function WalletMenu() {
             <div className="border-t border-white/[0.075]" />
             <Link href="/wallet" className="flex w-full cursor-pointer items-center gap-2 px-4 py-2.5 text-[10px] font-medium text-white/48 transition-colors hover:bg-white/[0.04] hover:text-white/80"><Settings className="h-3.5 w-3.5" />Wallet options</Link>
             <div className="border-t border-white/[0.075]" />
-            <button type="button" onClick={() => { setConnected(false); setOpen(false); setConnectModalOpen(false); }} className="flex w-full cursor-pointer items-center gap-2 px-4 py-2.5 text-[10px] font-medium text-white/48 transition-colors hover:bg-[#ff3771]/[0.075] hover:text-[#ff3771]"><LogOut className="h-3.5 w-3.5" />Disconnect</button>
+            <button type="button" onClick={() => { updateConnection(false); setOpen(false); setConnectModalOpen(false); }} className="flex w-full cursor-pointer items-center gap-2 px-4 py-2.5 text-[10px] font-medium text-white/48 transition-colors hover:bg-[#ff3771]/[0.075] hover:text-[#ff3771]"><LogOut className="h-3.5 w-3.5" />Disconnect</button>
           </motion.div>
         ) : null}
       </AnimatePresence>
@@ -279,7 +308,7 @@ export default function AppTopBar() {
           <span className={cx("flex min-w-0 flex-col overflow-hidden whitespace-nowrap leading-tight transition-[max-width,opacity,transform] duration-200 ease-out", sidebarExpanded ? "max-w-[150px] translate-x-0 opacity-100 delay-100" : "max-w-0 -translate-x-1 opacity-0")}>
             <span className="text-[15px] font-medium tracking-tight text-white">based <span className="text-[#18c98e]">bid</span></span>
             <span className="mt-0.5 text-[7.5px] font-semibold uppercase tracking-[0.225em] text-white/38">
-              Programmable <span className="text-[#d8b75f]/80">economies</span>
+              Programmable <span className="text-[#d7c57f]">economies</span>
             </span>
           </span>
         </Link>

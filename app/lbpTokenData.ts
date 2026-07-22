@@ -26,7 +26,8 @@ export type LbpTokenDetail = {
   comments: number;
   maxBuyTokens?: number;
   feeBuilderEnabled?: boolean;
-  viewerCanManage?: boolean;
+  ownerAddress?: string;
+  socials?: Partial<Record<"website" | "x" | "telegram" | "discord", string>>;
   seed: number;
   upcoming?: boolean;
 };
@@ -68,6 +69,10 @@ const TOKENS: Record<string, Omit<LbpTokenDetail, "contract">> = {
     comments: 6,
     maxBuyTokens: 50_000_000,
     feeBuilderEnabled: true,
+    socials: {
+      website: "https://based.bid",
+      x: "https://x.com/basedbid",
+    },
     seed: 17,
   },
   "chain-reaction": {
@@ -147,7 +152,12 @@ const TOKENS: Record<string, Omit<LbpTokenDetail, "contract">> = {
     holders: 447,
     comments: 22,
     feeBuilderEnabled: true,
-    viewerCanManage: true,
+    ownerAddress: "0xA17C9e42B6D8f3057C24aE91B5d7630F8C2e4A69",
+    socials: {
+      website: "https://based.bid",
+      x: "https://x.com/basedbid",
+      telegram: "https://t.me/basedbid",
+    },
     seed: 53,
   },
   "neon-relay": {
@@ -174,7 +184,6 @@ const TOKENS: Record<string, Omit<LbpTokenDetail, "contract">> = {
     holders: 318,
     comments: 12,
     feeBuilderEnabled: true,
-    viewerCanManage: true,
     seed: 67,
   },
 };

@@ -105,6 +105,7 @@ const ADD: FeeType[] = ['creator', 'rwa', 'ops', 'buybacks', 'liq', 'custom'];
 const RP = [0.01, 0.1, 1, 5] as const;
 const RWA_DISTRIBUTION_MODES = ['rotating', 'all'] as const;
 const REWARD_GAS_PAYERS = ['project', 'user'] as const;
+const MIN_ACTIVE_FEE_PCT = 0.1;
 const TRIGGER_PRESETS = [0.01, 0.05, 0.1, 0.25] as const;
 const CONTROL_REVEAL_TRANSITION = { duration: 0.24, ease: [0.22, 1, 0.36, 1] as const };
 const PRESETS: Array<{ key: PresetKey; label: string; mobileLabel: string; hint: string }> = [
@@ -317,7 +318,8 @@ function equalize(list: FeeWallet[], id: string, nextPct: number, max: number) {
   const next = list.map((f) => ({ ...f }));
   const i = next.findIndex((f) => f.id === id);
   if (i < 0) return next;
-  next[i].pct = clamp(round1(nextPct), 0, cap);
+  const minimum = Math.min(MIN_ACTIVE_FEE_PCT, cap / Math.max(1, next.length));
+  next[i].pct = clamp(round1(nextPct), minimum, cap);
   let over = next.reduce((s, f) => s + (f.pct ?? 0), 0) - cap;
   if (over <= 1e-9) return next;
   next
@@ -326,11 +328,11 @@ function equalize(list: FeeWallet[], id: string, nextPct: number, max: number) {
     .sort((a, b) => b.p - a.p)
     .forEach((r) => {
       if (over <= 1e-9) return;
-      const d = Math.min(Math.max(0, next[r.i].pct), over);
-      next[r.i].pct = round1(next[r.i].pct - d);
+      const d = Math.min(Math.max(0, next[r.i].pct - minimum), over);
+      next[r.i].pct = Math.max(minimum, round1(next[r.i].pct - d));
       over -= d;
     });
-  if (over > 1e-9) next[i].pct = clamp(round1(next[i].pct - over), 0, cap);
+  if (over > 1e-9) next[i].pct = clamp(round1(next[i].pct - over), minimum, cap);
   return next;
 }
 
@@ -1339,7 +1341,7 @@ function Row({ fee, chain, walletAddress, max, disabled, dragging, ghost, patch,
     : 'Choose asset';
   const feeSlider = (
     <div className='mt-2 flex items-center gap-2 sm:mt-3'>
-      <input data-no-drag disabled={disabled} className='bbRange h-5 flex-1 sm:h-8' type='range' min={0} max={max} step={0.1} value={fee.pct} onChange={(e) => setPct(fee.id, parseFloat(e.target.value))} style={{ '--feeColor': color, '--fillPct': fillPct(fee.pct, 0, max) } as CssVarStyle} />
+      <input data-no-drag disabled={disabled} className='bbRange h-5 flex-1 sm:h-8' type='range' min={MIN_ACTIVE_FEE_PCT} max={max} step={0.1} value={Math.max(MIN_ACTIVE_FEE_PCT, fee.pct)} aria-label={`${routeTitle} fee percentage`} aria-valuemin={MIN_ACTIVE_FEE_PCT} onChange={(e) => setPct(fee.id, parseFloat(e.target.value))} style={{ '--feeColor': color, '--fillPct': fillPct(Math.max(MIN_ACTIVE_FEE_PCT, fee.pct), 0, max) } as CssVarStyle} />
     </div>
   );
 
@@ -1727,7 +1729,7 @@ export function FeeStructureBuilder({ chain, fees, onChange, walletAddress, onAd
   const setPct = useCallback((id: string, v: number) => {
     if (!enabled) return;
     setSelectedPreset(null);
-    const next = equalize(list.map((f) => ({ ...f })), id, round1(v), maxTotal);
+    const next = equalize(list.map((f) => ({ ...f })), id, Math.max(MIN_ACTIVE_FEE_PCT, round1(v)), maxTotal);
     if (draft) setDraft(next);
     onChange(next);
   }, [draft, enabled, list, maxTotal, onChange]);
@@ -2105,11 +2107,11 @@ export function FeeStructureBuilder({ chain, fees, onChange, walletAddress, onAd
   );
 }
 
-export default function FeeBuilderPanel({ chain: chainValue, walletAddress, onTotalChange, onAdvancedProtectionChange, onIssuesChange, focusIssueRequest, initialFees }: { chain?: string; walletAddress?: string | null; onTotalChange?: (total: number) => void; onAdvancedProtectionChange?: (count: number) => void; onIssuesChange?: (count: number) => void; focusIssueRequest?: number; initialFees?: FeeWallet[] }) {
+export default function FeeBuilderPanel({ chain: chainValue, walletAddress, onTotalChange, onAdvancedProtectionChange, onIssuesChange, onChange, focusIssueRequest, initialFees }: { chain?: string; walletAddress?: string | null; onTotalChange?: (total: number) => void; onAdvancedProtectionChange?: (count: number) => void; onIssuesChange?: (count: number) => void; onChange?: (fees: FeeWallet[]) => void; focusIssueRequest?: number; initialFees?: FeeWallet[] }) {
   const chain = normalizeChain(chainValue);
   const previousChain = useRef(chain);
   const [fees, setFees] = useState<FeeWallet[]>(() => initialFees
-    ? initialFees.map((fee) => ({ ...fee, rwaAssets: fee.rwaAssets ? [...fee.rwaAssets] : undefined, rwaAssetWeights: fee.rwaAssetWeights ? { ...fee.rwaAssetWeights } : undefined }))
+    ? initialFees.map((fee) => ({ ...fee, pct: Math.max(MIN_ACTIVE_FEE_PCT, round1(fee.pct ?? MIN_ACTIVE_FEE_PCT)), rwaAssets: fee.rwaAssets ? [...fee.rwaAssets] : undefined, rwaAssetWeights: fee.rwaAssetWeights ? { ...fee.rwaAssetWeights } : undefined }))
     : presetFees(chain, 'creator'));
   const total = useMemo(() => fees.reduce((sum, fee) => sum + (fee.pct ?? 0), 0), [fees]);
   const routeOrder = useMemo(
@@ -2152,5 +2154,10 @@ export default function FeeBuilderPanel({ chain: chainValue, walletAddress, onTo
     onTotalChange?.(total);
   }, [onTotalChange, total]);
 
-  return <FeeStructureBuilder chain={chain} fees={fees} onChange={setFees} walletAddress={walletAddress} onAdvancedProtectionChange={onAdvancedProtectionChange} onIssuesChange={onIssuesChange} focusIssueRequest={focusIssueRequest} initialSelectedPreset={initialFees ? null : 'creator'} />;
+  const updateFees = (nextFees: FeeWallet[]) => {
+    setFees(nextFees);
+    onChange?.(nextFees);
+  };
+
+  return <FeeStructureBuilder chain={chain} fees={fees} onChange={updateFees} walletAddress={walletAddress} onAdvancedProtectionChange={onAdvancedProtectionChange} onIssuesChange={onIssuesChange} focusIssueRequest={focusIssueRequest} initialSelectedPreset={initialFees ? null : 'creator'} />;
 }

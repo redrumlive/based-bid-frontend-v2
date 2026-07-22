@@ -15,8 +15,6 @@ import {
   Calculator,
   Check,
   ChevronDown,
-  ChevronLeft,
-  ChevronRight,
   Clock3,
   Code2,
   Coins,
@@ -39,11 +37,12 @@ import {
   ShieldCheck,
   Sparkles,
   TrendingUp,
-  X,
 } from "lucide-react";
 import { openReleaseUpdates } from "./releaseUpdates";
 import { useTerminalSidebar } from "./TerminalSidebarContext";
 import { openGlobalSearch } from "./GlobalSearchModal";
+import { useAppToast } from "./AppToast";
+import { SidebarCollapseControl } from "./AppSidebar";
 
 type SortMode = "smart" | "pinned" | "favorites";
 type ContentSortMode = "smart" | "hot" | "newest" | "full";
@@ -97,13 +96,6 @@ type TokenCardData = {
   hasBuys?: boolean;
   chartVariant?: 0 | 1 | 2;
   socials?: Partial<Record<"x" | "telegram" | "website" | "discord", string>>;
-};
-
-type AppToast = {
-  id: number;
-  title: string;
-  message: string;
-  tone: "success";
 };
 
 type ToggleProps = { label: string; value: string; onChange: (v: string) => void; options: string[] };
@@ -1443,46 +1435,6 @@ function NavItem({ icon, label, href, tone = "emerald", onClick, activeOverride,
   );
 }
 
-function ToastViewport({ toast, onDismiss }: { toast: AppToast | null; onDismiss: () => void }) {
-  React.useEffect(() => {
-    if (!toast) return;
-    const timer = window.setTimeout(onDismiss, 3600);
-    return () => window.clearTimeout(timer);
-  }, [onDismiss, toast]);
-
-  return (
-    <div className="pointer-events-none fixed bottom-[62px] left-1/2 z-[240] flex w-[min(336px,calc(100vw-32px))] -translate-x-1/2 justify-center">
-      <AnimatePresence mode="wait">
-        {toast ? (
-          <motion.div
-            key={toast.id}
-            role="status"
-            initial={{ opacity: 0, y: 12, scale: 0.985 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 8, scale: 0.985 }}
-            transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
-            className="pointer-events-auto relative w-full overflow-hidden rounded-[14px] border border-white/[0.105] bg-[#0c0f0d]/96 px-3.5 py-3 shadow-[0_20px_54px_rgba(0,0,0,0.56),inset_0_1px_0_rgba(255,255,255,0.035)] backdrop-blur-xl"
-          >
-            <div className="flex items-start gap-3">
-              <span className="mt-px grid h-7 w-7 shrink-0 place-items-center rounded-[9px] bg-[#18c98e]/[0.085] text-[#18c98e] ring-1 ring-[#18c98e]/18">
-                <Check className="h-3.5 w-3.5" strokeWidth={2.1} />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-[11.5px] font-semibold tracking-[-0.012em] text-white/88">{toast.title}</span>
-                <span className="mt-0.5 block text-[10px] leading-[1.45] text-white/44">{toast.message}</span>
-              </span>
-              <button type="button" onClick={onDismiss} aria-label="Dismiss notification" className="grid h-6 w-6 shrink-0 cursor-pointer place-items-center rounded-md text-white/28 transition hover:bg-white/[0.045] hover:text-white/68">
-                <X className="h-3 w-3" />
-              </button>
-            </div>
-            <motion.span aria-hidden="true" className="absolute bottom-0 left-0 h-px w-full origin-left bg-[#18c98e]/55" initial={{ scaleX: 1 }} animate={{ scaleX: 0 }} transition={{ duration: 3.6, ease: "linear" }} />
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
-    </div>
-  );
-}
-
 function DropdownMotion({ children, direction, className, id }: { children: React.ReactNode; direction: "down" | "up"; className: string; id?: string }) {
   const y = direction === "down" ? -10 : 10;
   return (
@@ -1568,11 +1520,9 @@ function SidebarPanel({ query, onQuery, searchRef, sortLabel, onCycleSort, board
         if (!collectFeesOpen || (event.target as Element).closest('a[href="#collect-fees"]')) return;
         onCloseCollectFees();
       }}
-      className={`relative flex h-full shrink-0 flex-col border-r border-white/[0.08] bg-[linear-gradient(180deg,#0b0c0c_0%,#090a0a_100%)] shadow-[8px_0_32px_rgba(0,0,0,0.12)] transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${compact ? "w-[66px]" : "w-[272px]"}`}
+      className={`relative z-[245] flex h-full shrink-0 flex-col border-r border-white/[0.08] bg-[linear-gradient(180deg,#0b0c0c_0%,#090a0a_100%)] shadow-[8px_0_32px_rgba(0,0,0,0.12)] transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${compact ? "w-[66px]" : "w-[272px]"}`}
     >
-      <button type="button" onClick={onToggleCompact} aria-label={compact ? "Open sidebar" : "Collapse sidebar"} className="absolute right-0 top-2 z-50 grid h-7 w-6 translate-x-1/2 place-items-center bg-transparent text-white/34 outline-none transition-colors duration-180 hover:text-[#52dfb2] focus-visible:text-[#52dfb2]">
-        {compact ? <ChevronRight className="h-3.5 w-3.5" strokeWidth={1.65} /> : <ChevronLeft className="h-3.5 w-3.5" strokeWidth={1.65} />}
-      </button>
+      <SidebarCollapseControl compact={compact} onToggleCompact={onToggleCompact} />
       <div className={`bb-scroll min-h-0 flex-1 overflow-y-auto pb-6 pt-3 ${compact ? "px-2" : "px-3 pr-[6px]"}`}>
         {compact ? (
           <button type="button" onClick={openGlobalSearch} aria-label="Search" className="group relative grid h-10 w-full place-items-center rounded-xl border border-white/[0.085] bg-white/[0.025] text-white/42 outline-none transition hover:border-[#18c98e]/24 hover:bg-[#18c98e]/[0.055] hover:text-[#18c98e] focus-visible:border-[#18c98e]/38"><Search className="h-4 w-4" /><span className="pointer-events-none absolute left-[calc(100%+9px)] top-1/2 z-50 -translate-y-1/2 whitespace-nowrap rounded-lg border border-white/[0.09] bg-[#111513]/96 px-2.5 py-1.5 text-[10px] font-medium text-white/72 opacity-0 shadow-[0_12px_28px_rgba(0,0,0,0.42)] backdrop-blur-xl transition duration-150 group-hover:translate-x-0.5 group-hover:opacity-100">Search</span></button>
@@ -1781,6 +1731,7 @@ function MainContentHeader({ contentSort, onSetContentSort, selectedNetworks, on
 
 export default function BBLayout() {
   const { expanded: sidebarExpanded, toggle: toggleSidebar } = useTerminalSidebar();
+  const { pushToast } = useAppToast();
   const [activeBoard, setActiveBoard] = React.useState("based");
   const [query, setQuery] = React.useState("");
   const [sortMode, setSortMode] = React.useState<SortMode>("smart");
@@ -1792,17 +1743,14 @@ export default function BBLayout() {
   const [collectFeesOpen, setCollectFeesOpen] = React.useState(false);
   const [cookiesEnabled, setCookiesEnabled] = React.useState(true);
   const [smartNow, setSmartNow] = React.useState(now);
-  const [toast, setToast] = React.useState<AppToast | null>(null);
 
-  const dismissToast = React.useCallback(() => setToast(null), []);
   const showCollectedToast = React.useCallback((target: SharedFeeCollectTarget) => {
-    setToast({
-      id: Date.now(),
+    pushToast({
       title: "Fees collected",
       message: `${formatUsd(target.usdValue)} claimed from ${target.project}.`,
       tone: "success",
     });
-  }, []);
+  }, [pushToast]);
 
   const boards = React.useMemo(() => getSortedBoards(boardsState, query, sortMode), [boardsState, query, sortMode]);
   const visibleTokenCards = React.useMemo(() => getVisibleTokenCards(selectedNetworks, contentSort, smartNow), [selectedNetworks, contentSort, smartNow]);
@@ -1885,7 +1833,7 @@ export default function BBLayout() {
   }, [closeAll]);
 
   return (
-    <div className="bb-app relative flex h-[calc(100vh-56px)] w-full flex-col overflow-hidden bg-[#090a0a] text-white">
+    <div className="bb-app relative flex h-[calc(100vh-56px)] w-full flex-col bg-[#090a0a] text-white">
       <style>{GLOBAL_CSS}</style>
 
       <div className="flex h-full w-full flex-col">
@@ -1920,7 +1868,6 @@ export default function BBLayout() {
       </div>
 
       <SharedCollectFeesModal open={collectFeesOpen} walletAddress={addr} onClose={() => setCollectFeesOpen(false)} onCollected={showCollectedToast} />
-      <ToastViewport toast={toast} onDismiss={dismissToast} />
     </div>
   );
 }

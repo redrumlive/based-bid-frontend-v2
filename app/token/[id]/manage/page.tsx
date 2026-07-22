@@ -5,6 +5,6 @@ import { getLbpTokenDetail } from "../../../lbpTokenData";
 export default async function ManageTokenPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const token = getLbpTokenDetail(id);
-  if (!token || !token.viewerCanManage) notFound();
+  if (!token) notFound();
   return <TokenManagePage token={token} />;
 }
