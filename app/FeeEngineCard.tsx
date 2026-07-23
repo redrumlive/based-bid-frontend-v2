@@ -621,11 +621,11 @@ function BasketDetails({ route, color, compact = false, viewerWalletShare }: { r
                     <AssetIcon asset={asset} size={22} />
                     <div className='min-w-0 flex-1'>
                       <p className='truncate text-[10px] font-medium text-white/82'>{asset.symbol}</p>
-                      <p className='truncate text-[9px] leading-3.5 text-white/46'>{asset.name}</p>
+                      <p className='truncate text-[9.5px] leading-3.5 text-white/48'>{asset.name}</p>
                     </div>
                     <div className='shrink-0 text-right'>
                       <p className='text-[9.5px] font-medium tabular-nums text-white/66'>{formatPercent(ratio)}</p>
-                      {current ? <p className='text-[8px] font-medium uppercase tracking-[0.09em]' style={{ color }}>Current</p> : next ? <p className='text-[8px] font-medium uppercase tracking-[0.09em] text-white/46'>Next</p> : null}
+                      {current ? <p className='text-[8.5px] font-medium uppercase tracking-[0.08em]' style={{ color }}>Current</p> : next ? <p className='text-[8.5px] font-medium uppercase tracking-[0.08em] text-white/48'>Next</p> : null}
                     </div>
                   </div>
                 </div>
@@ -634,10 +634,10 @@ function BasketDetails({ route, color, compact = false, viewerWalletShare }: { r
           </div>
           <div className='mt-2 border-t border-white/[0.06] px-0.5 pt-2 text-left'>
             <div className='flex items-baseline gap-2'>
-              <span className='text-[9.5px] font-medium uppercase tracking-[0.12em] text-white/38'>Payout mode</span>
-              <span className='text-[9.5px] font-medium uppercase tracking-[0.12em]' style={{ color }}>{modeLabel}</span>
+              <span className='text-[10px] font-medium uppercase tracking-[0.1em] text-white/42'>Payout mode</span>
+              <span className='text-[10px] font-medium uppercase tracking-[0.1em]' style={{ color }}>{modeLabel}</span>
             </div>
-            <p className={`mt-1 min-w-0 text-[10.5px] font-light leading-4 tracking-[0.008em] text-white/48 ${compact ? '' : 'sm:whitespace-nowrap'}`}>{modeCopy}</p>
+            <p className={`mt-1 min-w-0 text-[11px] font-light leading-[1.45] tracking-[0.006em] text-white/52 ${compact ? '' : 'sm:whitespace-nowrap'}`}>{modeCopy}</p>
           </div>
         </div>
       </div>
@@ -666,7 +666,7 @@ function FeeRouteRow({ route, maxTotal, compact = false, viewerWalletShare }: { 
             </div>
             {route.detail ? (
               <div className='mt-1 flex min-w-0 max-w-[410px] items-center gap-1.5'>
-                <p className='min-w-0 truncate text-[11px] font-light leading-4 tracking-[0.008em] text-white/48'>{route.detail}</p>
+                <p className='min-w-0 truncate text-[11.5px] font-light leading-4 tracking-[0.006em] text-white/52'>{route.detail}</p>
                 {route.minimumWalletShare !== undefined && assets.length <= 1 ? <EligibilityThreshold value={route.minimumWalletShare} color={color} viewerWalletShare={viewerWalletShare} /> : null}
               </div>
             ) : null}
@@ -748,12 +748,12 @@ export default function FeeEngineCard({
                 <h3 className={`truncate font-medium tracking-[-0.008em] text-white/90 ${compact ? 'text-[13.5px]' : 'text-[15.5px]'}`}>Fee Builder</h3>
                 {headerInfo ? <HelperTip text={headerInfo} label='About the Fee Builder' align={compact ? 'center' : 'left'} compact icon='info' placement='bottom' wide panel={compact} /> : null}
               </div>
-              <p className={`mt-0.5 whitespace-nowrap font-light tracking-[0.012em] text-white/46 ${compact ? 'text-[9.5px] leading-[1.35]' : 'text-[12px] leading-[1.5]'}`}>Configured fee routes and trading mechanics</p>
+              <p className={`mt-0.5 whitespace-nowrap font-light tracking-[0.008em] text-white/50 ${compact ? 'text-[10.5px] leading-[1.4]' : 'text-[12px] leading-[1.5]'}`}>Configured fee routes and trading mechanics</p>
             </div>
           </div>
           <div className='inline-flex shrink-0 items-center gap-2'>
             <div className={`inline-flex shrink-0 items-baseline border-l border-white/[0.08] pl-3 ${compact ? 'gap-1.5' : 'gap-2'}`}>
-              <span className={`font-normal text-white/42 ${compact ? 'text-[9px]' : 'text-[10px]'}`}>Total fee</span>
+              <span className={`font-normal text-white/46 ${compact ? 'text-[9.5px]' : 'text-[10px]'}`}>Total fee</span>
               <p className={`font-medium tracking-[-0.015em] tabular-nums text-white/82 ${compact ? 'text-[14px]' : 'text-[16px]'}`}>{formatPercent(total)}</p>
             </div>
             {headerAction}
@@ -801,7 +801,7 @@ export default function FeeEngineCard({
           </div>
           <div className='shrink-0 text-right'>
             <p className='text-[12.5px] font-medium tabular-nums text-white/76'>{distributionReady ? 'Ready' : formatPercent(distributionProgress)}</p>
-            <p className='mt-0.5 text-[9px] font-medium uppercase tracking-[0.12em] text-white/42'>Automatic</p>
+            <p className='mt-0.5 text-[9.5px] font-medium uppercase tracking-[0.1em] text-white/46'>Automatic</p>
           </div>
         </div>
 
@@ -817,15 +817,15 @@ export default function FeeEngineCard({
 
         <dl className={`mt-3 grid items-start divide-x divide-white/[0.07] rounded-[13px] border border-white/[0.075] bg-white/[0.012] py-2.5 ${compact ? 'grid-cols-[1.15fr_1fr_.72fr]' : 'grid-cols-3'}`}>
           <div className='min-w-0 px-2.5'>
-            <dt className='flex h-4 items-center text-[9.5px] font-medium uppercase tracking-[0.09em] text-white/42'>Last payout</dt>
+            <dt className='flex h-4 items-center text-[10px] font-medium uppercase tracking-[0.08em] text-white/46'>Last payout</dt>
             <dd className='mt-1 truncate text-[11.5px] font-medium text-white/72'>{lastPayoutAt ?? 'No payouts yet'}</dd>
           </div>
           <div className='min-w-0 px-2.5'>
-            <dt className='flex h-4 items-center text-[9.5px] font-medium uppercase tracking-[0.09em] text-white/42'>Total paid</dt>
+            <dt className='flex h-4 items-center text-[10px] font-medium uppercase tracking-[0.08em] text-white/46'>Total paid</dt>
             <dd className='mt-1 truncate text-[11.5px] font-medium tabular-nums text-white/72'>{formatAmount(totalPaidOut)} {settlementAsset}</dd>
           </div>
           <div className='min-w-0 px-2.5'>
-            <dt className='flex h-4 items-center text-[9.5px] font-medium uppercase tracking-[0.09em] text-white/42'>Payouts</dt>
+            <dt className='flex h-4 items-center text-[10px] font-medium uppercase tracking-[0.08em] text-white/46'>Payouts</dt>
             <dd className='mt-1 truncate text-[11.5px] font-medium tabular-nums text-white/72'>{payoutCount}</dd>
           </div>
         </dl>
