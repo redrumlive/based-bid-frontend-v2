@@ -19,7 +19,6 @@ import {
   Code2,
   Copy,
   Crown,
-  EyeOff,
   Gauge,
   Globe2,
   Italic,
@@ -28,6 +27,7 @@ import {
   List,
   Maximize2,
   MessageCircleMore,
+  Minus,
   Pencil,
   Pin,
   Pause,
@@ -111,6 +111,8 @@ type CommentNode = {
   votes: number;
   edited?: boolean;
   own?: boolean;
+  pinned?: boolean;
+  isNew?: boolean;
   replies?: CommentNode[];
 };
 
@@ -590,6 +592,28 @@ function countComments(comments: CommentNode[]): number {
   return comments.reduce((total, comment) => total + 1 + countComments(comment.replies ?? []), 0);
 }
 
+function updateCommentTree(comments: CommentNode[], commentId: string, update: (comment: CommentNode) => CommentNode): CommentNode[] {
+  return comments.map((comment) => {
+    if (comment.id === commentId) return update(comment);
+    if (comment.replies?.length) return { ...comment, replies: updateCommentTree(comment.replies, commentId, update) };
+    return comment;
+  });
+}
+
+function removeFromCommentTree(comments: CommentNode[], commentId: string): CommentNode[] {
+  return comments.filter((comment) => comment.id !== commentId).map((comment) => comment.replies?.length ? { ...comment, replies: removeFromCommentTree(comment.replies, commentId) } : comment);
+}
+
+function sortPinnedCommentTree(comments: CommentNode[]): CommentNode[] {
+  return comments
+    .map((comment) => comment.replies?.length ? { ...comment, replies: sortPinnedCommentTree(comment.replies) } : comment)
+    .sort((left, right) => Number(right.pinned === true) - Number(left.pinned === true));
+}
+
+function createOwnComment(body: string): CommentNode {
+  return { id: "comment-" + Date.now() + "-" + Math.random().toString(36).slice(2, 7), user: "You", age: "now", body, votes: 1, own: true, isNew: true };
+}
+
 function initialQuoteUsd(symbol: string) {
   if (symbol === "ETH") return 3724.18;
   if (symbol === "BNB") return 621.42;
@@ -710,7 +734,7 @@ function InstrumentHeader({ token, liveMetrics, onManage }: { token: LbpTokenDet
         {projectSocials.length ? <div className="flex shrink-0 items-center gap-0.5 pr-5 max-[1400px]:pr-3">{projectSocials.map(({ key, label, href, icon: Icon }) => <a key={key} href={href} target="_blank" rel="noreferrer" aria-label={label} title={label} className="grid h-6 w-6 place-items-center text-[#66716c] outline-none transition-colors hover:text-[#d6e0dc] focus-visible:text-[#52dfb2]"><Icon className="h-3.5 w-3.5" /></a>)}</div> : null}
         <div className="flex items-center gap-2"><span className="uppercase tracking-[0.1em] text-[#515b57]">DEX</span><span className="hidden" aria-hidden="true">◆</span>{dex.icon ? <Image unoptimized src={dex.icon} alt="" width={16} height={16} className="h-4 w-4 shrink-0 object-contain" /> : null}<strong className="-ml-1 font-medium text-[#aeb8b4]">{dex.name}</strong><span className="font-mono text-[#66716c]">{dex.version}</span><span className="font-mono text-[#78847e]">{token.poolFee.toFixed(2)}%</span></div>
         <div className="flex items-center gap-2"><span className="uppercase tracking-[0.1em] text-[#515b57]">Contract</span><a href={`${EXPLORERS[token.network]}${token.contract}`} target="_blank" rel="noreferrer" className="font-mono text-[#aeb8b4] transition hover:text-white/88">{shortAddress(token.contract)}</a><CopyAddress value={token.contract} /></div>
-        <div className="hidden items-center gap-2 min-[1120px]:flex"><span className="uppercase tracking-[0.1em] text-[#515b57]"><span className="min-[1780px]:hidden">by</span><span className="hidden min-[1780px]:inline">Created by</span></span><Link href={`/u/${token.creator}`} className="font-medium text-[#aeb8b4] hover:text-white/90">{token.creator}</Link><span className="hidden text-[#515b57] min-[1320px]:inline">on</span><a href={`/?board=${token.board}`} className="hidden font-medium text-[#aeb8b4] hover:text-white/90 min-[1320px]:inline">b/{token.board}</a></div>
+        <div className="hidden items-center gap-2 min-[1120px]:flex"><span className="uppercase tracking-[0.1em] text-[#515b57]"><span className="min-[1780px]:hidden">by</span><span className="hidden min-[1780px]:inline">Created by</span></span><Link href={`/u/${token.creator}`} className="font-medium text-[#aeb8b4] hover:text-white/90">{token.creator}</Link><span className="hidden text-[#515b57] min-[1320px]:inline">on</span><Link href={token.board === "based" ? "/" : `/b/${token.board}`} className="hidden font-medium text-[#aeb8b4] hover:text-white/90 min-[1320px]:inline">b/{token.board}</Link></div>
         <div className="ml-auto flex min-w-[220px] items-center gap-3 max-[1400px]:min-w-[150px] max-[1400px]:gap-2">
           <div className="h-[3px] min-w-[90px] flex-1 overflow-hidden rounded-full bg-white/[0.08]"><span className="block h-full rounded-full bg-[#18c98e] shadow-[0_0_10px_rgba(24,201,142,0.3)]" style={{ width: `${progress}%` }} /></div>
           <strong className="w-10 font-mono text-[10px] text-[#18c98e]">{progress.toFixed(0)}%</strong>
@@ -974,10 +998,306 @@ function ActivityMetric({ label, value, accent = false }: { label: string; value
   return <div className="grid min-w-0 content-center gap-[3px] border-r border-white/[0.07] px-[18px] last:border-r-0 max-[1400px]:px-2"><dt className="truncate text-[9px] font-semibold uppercase tracking-[0.085em] text-[#75817c]">{label}</dt><dd className={cx("truncate font-mono text-[12px] font-semibold tracking-[-0.025em]", accent ? "text-[#18c98e]" : "text-[#d8e4e0]")}>{value}</dd></div>;
 }
 
-function CommentThread({ comment, token }: { comment: CommentNode; token: LbpTokenDetail }) {
+const COMMENT_EMOJIS = ["👍", "🔥", "🚀", "💚", "😂", "🎯"];
+
+function createBaseyEditorNode() {
+  const wrapper = document.createElement("span");
+  wrapper.dataset.commentBasey = "true";
+  wrapper.contentEditable = "false";
+  wrapper.setAttribute("role", "img");
+  wrapper.setAttribute("aria-label", "Basey");
+  wrapper.className = "mx-px inline-flex h-[14px] w-[14px] select-none items-center justify-center align-[-3px]";
+  const image = document.createElement("img");
+  image.src = "/brand-icon.png";
+  image.alt = "";
+  image.draggable = false;
+  image.className = "h-[14px] w-[14px] object-contain";
+  wrapper.appendChild(image);
+  return wrapper;
+}
+
+function serializeCommentEditorNode(node: Node): string {
+  if (node.nodeType === Node.TEXT_NODE) return (node.textContent ?? "").replace(/\u200b/g, "");
+  if (!(node instanceof HTMLElement)) return "";
+  if (node.dataset.commentBasey === "true") return ":basey:";
+  if (node.tagName === "BR") return "\n";
+  const content = Array.from(node.childNodes).map(serializeCommentEditorNode).join("");
+  if ((node.tagName === "DIV" || node.tagName === "P") && node.nextSibling && !content.endsWith("\n")) return content + "\n";
+  return content;
+}
+
+function serializeCommentEditor(editor: HTMLDivElement) {
+  return Array.from(editor.childNodes).map(serializeCommentEditorNode).join("").replace(/\n{3,}/g, "\n\n");
+}
+
+function renderCommentEditorValue(editor: HTMLDivElement, value: string) {
+  editor.replaceChildren();
+  value.split(/(:basey:)/g).filter(Boolean).forEach((part) => {
+    editor.appendChild(part === ":basey:" ? createBaseyEditorNode() : document.createTextNode(part));
+  });
+}
+
+function commentVisualLength(value: string) {
+  return value.split(/(:basey:)/g).filter(Boolean).reduce((total, part) => total + (part === ":basey:" ? 1 : Array.from(part).length), 0);
+}
+
+function truncateCommentValue(value: string, maxLength: number) {
+  let used = 0;
+  let result = "";
+  for (const part of value.split(/(:basey:)/g).filter(Boolean)) {
+    if (part === ":basey:") {
+      if (used >= maxLength) break;
+      result += part;
+      used += 1;
+      continue;
+    }
+    for (const character of Array.from(part)) {
+      if (used >= maxLength) return result;
+      result += character;
+      used += 1;
+    }
+  }
+  return result;
+}
+
+type CommentComposerProps = {
+  value: string;
+  onChange: (value: string) => void;
+  onSubmit: (value: string) => void;
+  onCancel: () => void;
+  placeholder: string;
+  submitLabel: string;
+  expanded: boolean;
+  onExpand?: () => void;
+  inputRef?: (node: HTMLDivElement | null) => void;
+  compact?: boolean;
+  maxLength?: number;
+  allowLinks?: boolean;
+};
+
+function CommentComposer({ value, onChange, onSubmit, onCancel, placeholder, submitLabel, expanded, onExpand, inputRef, compact = false, maxLength = 789, allowLinks = false }: CommentComposerProps) {
+  const editorRef = React.useRef<HTMLDivElement | null>(null);
+  const selectionRef = React.useRef<Range | null>(null);
+  const emojiMenuRef = React.useRef<HTMLDivElement | null>(null);
+  const [emojiOpen, setEmojiOpen] = React.useState(false);
+  const characterCount = commentVisualLength(value);
+  const hasBlockedLink = !allowLinks && /(?:https?:\/\/|www\.|(?:^|\s)[a-z0-9-]+\.(?:com|io|xyz|app|gg|org|net)\b)/i.test(value);
+
+  const setEditorRef = (node: HTMLDivElement | null) => {
+    editorRef.current = node;
+    inputRef?.(node);
+  };
+
+  React.useLayoutEffect(() => {
+    const editor = editorRef.current;
+    if (!editor || serializeCommentEditor(editor) === value) return;
+    renderCommentEditorValue(editor, value);
+  }, [value]);
+
+  React.useEffect(() => {
+    if (!expanded) return;
+    window.requestAnimationFrame(() => editorRef.current?.focus());
+  }, [expanded]);
+
+  React.useEffect(() => {
+    if (!emojiOpen) return;
+    const closeOnOutsidePointer = (event: PointerEvent) => {
+      if (!emojiMenuRef.current?.contains(event.target as Node)) setEmojiOpen(false);
+    };
+    document.addEventListener("pointerdown", closeOnOutsidePointer);
+    return () => document.removeEventListener("pointerdown", closeOnOutsidePointer);
+  }, [emojiOpen]);
+
+  const rememberSelection = () => {
+    const editor = editorRef.current;
+    const selection = window.getSelection();
+    if (!editor || !selection?.rangeCount) return;
+    const range = selection.getRangeAt(0);
+    if (editor.contains(range.commonAncestorContainer)) selectionRef.current = range.cloneRange();
+  };
+
+  const activeRange = () => {
+    const editor = editorRef.current;
+    if (!editor) return null;
+    const selection = window.getSelection();
+    let range = selection?.rangeCount ? selection.getRangeAt(0) : null;
+    if (!range || !editor.contains(range.commonAncestorContainer)) range = selectionRef.current;
+    if (!range || !editor.contains(range.commonAncestorContainer)) {
+      range = document.createRange();
+      range.selectNodeContents(editor);
+      range.collapse(false);
+    }
+    editor.focus();
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+    return range;
+  };
+
+  const syncEditorValue = () => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    const serialized = serializeCommentEditor(editor);
+    const next = truncateCommentValue(serialized, maxLength);
+    if (next !== serialized) {
+      renderCommentEditorValue(editor, next);
+      const selection = window.getSelection();
+      const range = document.createRange();
+      range.selectNodeContents(editor);
+      range.collapse(false);
+      selection?.removeAllRanges();
+      selection?.addRange(range);
+      selectionRef.current = range.cloneRange();
+    } else if (!next && editor.childNodes.length) {
+      editor.replaceChildren();
+    }
+    onChange(next);
+  };
+
+  const insertText = (text: string, caretOffset = text.length) => {
+    const range = activeRange();
+    if (!range) return;
+    range.deleteContents();
+    const node = document.createTextNode(text);
+    range.insertNode(node);
+    range.setStart(node, Math.min(caretOffset, text.length));
+    range.collapse(true);
+    const selection = window.getSelection();
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+    selectionRef.current = range.cloneRange();
+    syncEditorValue();
+  };
+
+  const applyFormat = (format: "bold" | "italic" | "code" | "quote" | "list" | "link") => {
+    const range = activeRange();
+    if (!range) return;
+    const selected = range.toString();
+    if (format === "quote" || format === "list") {
+      const prefix = format === "quote" ? "> " : "- ";
+      insertText(selected ? selected.split("\n").map((line) => prefix + line).join("\n") : prefix, selected ? prefix.length + selected.length : prefix.length);
+      return;
+    }
+    if (format === "link") {
+      const label = selected || "link text";
+      const formatted = "[" + label + "](https://)";
+      insertText(formatted, selected ? formatted.length : label.length + 3);
+      return;
+    }
+    const marker = format === "bold" ? "**" : format === "italic" ? "*" : "\u0060";
+    insertText(marker + selected + marker, marker.length + selected.length);
+  };
+
+  const addEmoji = (emoji: string) => {
+    insertText(emoji);
+  };
+
+  const addBasey = () => {
+    const range = activeRange();
+    if (!range) return;
+    range.deleteContents();
+    const basey = createBaseyEditorNode();
+    range.insertNode(basey);
+    range.setStartAfter(basey);
+    range.collapse(true);
+    const selection = window.getSelection();
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+    selectionRef.current = range.cloneRange();
+    syncEditorValue();
+  };
+
+  const handleEditorKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if ((event.metaKey || event.ctrlKey) && event.key === "Enter" && value.trim()) {
+      event.preventDefault();
+      if (!hasBlockedLink) onSubmit(value.trim());
+      return;
+    }
+    if (event.key !== "Backspace" && event.key !== "Delete") return;
+    const editor = editorRef.current;
+    const selection = window.getSelection();
+    if (!editor || !selection?.rangeCount || !selection.isCollapsed) return;
+    const range = selection.getRangeAt(0);
+    let candidate: Node | null = null;
+    if (range.startContainer === editor) {
+      const index = event.key === "Backspace" ? range.startOffset - 1 : range.startOffset;
+      candidate = editor.childNodes[index] ?? null;
+    } else if (range.startContainer.nodeType === Node.TEXT_NODE) {
+      const atEdge = event.key === "Backspace" ? range.startOffset === 0 : range.startOffset === (range.startContainer.textContent?.length ?? 0);
+      if (atEdge) candidate = event.key === "Backspace" ? range.startContainer.previousSibling : range.startContainer.nextSibling;
+    }
+    const basey = candidate instanceof HTMLElement && candidate.dataset.commentBasey === "true" ? candidate : null;
+    if (!basey) return;
+    event.preventDefault();
+    const nextRange = document.createRange();
+    nextRange.setStartBefore(basey);
+    nextRange.collapse(true);
+    basey.remove();
+    selection.removeAllRanges();
+    selection.addRange(nextRange);
+    selectionRef.current = nextRange.cloneRange();
+    syncEditorValue();
+  };
+
+  if (!expanded) {
+    return (
+      <motion.button type="button" layout onClick={onExpand} className="flex h-[42px] w-full items-center rounded-full border border-[#343b38] bg-transparent px-4 text-left text-[12.5px] text-[#75807b] outline-none transition-[border-color,background-color,color] duration-200 hover:border-[#46504b] hover:bg-white/[0.012] hover:text-[#9aa49f] focus-visible:border-[#18c98e]/50">
+        {placeholder}
+      </motion.button>
+    );
+  }
+
+  const tools = [
+    { label: "Bold", icon: Bold, action: () => applyFormat("bold") },
+    { label: "Italic", icon: Italic, action: () => applyFormat("italic") },
+    { label: "Code", icon: Code2, action: () => applyFormat("code") },
+    { label: "Quote", icon: Quote, action: () => applyFormat("quote") },
+    { label: "List", icon: List, action: () => applyFormat("list") },
+    ...(allowLinks ? [{ label: "Add link", icon: Link2, action: () => applyFormat("link" as const) }] : []),
+  ];
+
+  return (
+    <motion.form layout initial={{ opacity: 0, y: -3 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }} onSubmit={(event) => { event.preventDefault(); if (value.trim() && !hasBlockedLink) onSubmit(value.trim()); }} className={cx("relative rounded-[18px] border border-[#343b38] bg-[#101312] px-3.5 pb-2.5 pt-2.5 shadow-[0_8px_28px_rgba(0,0,0,0.12)] transition-colors focus-within:border-[#18c98e]/42", compact ? "max-w-[680px]" : "w-full")}>
+      <div ref={setEditorRef} role="textbox" aria-multiline="true" contentEditable suppressContentEditableWarning data-placeholder={placeholder} onInput={() => { rememberSelection(); syncEditorValue(); }} onKeyDown={handleEditorKeyDown} onKeyUp={rememberSelection} onMouseUp={rememberSelection} onBlur={rememberSelection} className={cx("block w-full whitespace-pre-wrap break-words bg-transparent px-0.5 text-[12px] leading-[1.55] text-[#d9e0dd] outline-none empty:before:pointer-events-none empty:before:text-[#68736e] empty:before:content-[attr(data-placeholder)]", compact ? "min-h-[48px]" : "min-h-[64px]")} />
+      <div className="mt-1.5 flex min-h-7 items-center gap-1">
+        {tools.map(({ label, icon: Icon, action }) => <button key={label} type="button" onMouseDown={(event) => event.preventDefault()} onClick={action} aria-label={label} className="grid h-7 w-7 place-items-center rounded-md text-[#77827d] outline-none transition hover:bg-white/[0.045] hover:text-[#d2dbd7] focus-visible:bg-white/[0.045] focus-visible:text-[#d2dbd7]"><Icon className="h-[13px] w-[13px]" /></button>)}
+        <div ref={emojiMenuRef} className="relative">
+          <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => setEmojiOpen((current) => !current)} aria-label="Add emoji" aria-expanded={emojiOpen} className={cx("grid h-7 w-7 place-items-center rounded-md outline-none transition hover:bg-white/[0.045] hover:text-[#d2dbd7]", emojiOpen ? "bg-white/[0.045] text-[#d2dbd7]" : "text-[#77827d]")}><Smile className="h-[13px] w-[13px]" /></button>
+          <AnimatePresence>{emojiOpen ? <motion.div initial={{ opacity: 0, y: 4, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 3, scale: 0.98 }} transition={{ duration: 0.14 }} className="absolute bottom-9 left-0 z-30 flex items-center gap-0.5 rounded-lg border border-[#303936] bg-[#121514] p-1.5 shadow-[0_12px_32px_rgba(0,0,0,0.45)]"><button type="button" onMouseDown={(event) => event.preventDefault()} onClick={addBasey} aria-label="Add Basey" className="grid h-7 w-7 place-items-center rounded-md transition hover:bg-white/[0.06]"><Image src="/brand-icon.png" width={14} height={14} alt="" className="h-[14px] w-[14px] object-contain" /></button>{COMMENT_EMOJIS.map((emoji) => <button key={emoji} type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => addEmoji(emoji)} className="grid h-7 w-7 place-items-center rounded-md text-[15px] transition hover:bg-white/[0.06]">{emoji}</button>)}</motion.div> : null}</AnimatePresence>
+        </div>
+        <span className={cx("ml-auto font-mono text-[9px]", hasBlockedLink ? "text-[#d7c57f]" : characterCount >= maxLength * 0.75 ? "text-[#7e8984]" : "text-transparent")}>{hasBlockedLink ? "Links are creator-only" : characterCount >= maxLength * 0.75 ? characterCount + "/" + maxLength : "0"}</span>
+        <button type="button" onClick={() => { setEmojiOpen(false); onCancel(); }} className="h-7 px-2 text-[10px] font-semibold text-[#8c9792] transition hover:text-[#d5dcd9]">Cancel</button>
+        <button type="submit" disabled={!value.trim() || hasBlockedLink} className="h-7 rounded-lg bg-[#18c98e] px-3.5 text-[10px] font-bold text-[#06150f] shadow-[0_5px_16px_rgba(24,201,142,0.12)] transition hover:bg-[#52dfb2] disabled:bg-[#1b201e] disabled:text-[#58625e] disabled:shadow-none">{submitLabel}</button>
+      </div>
+    </motion.form>
+  );
+}
+
+function renderInlineComment(text: string): React.ReactNode[] {
+  const pattern = /(:basey:|\*\*[^*]+\*\*|\*[^*]+\*|\u0060[^\u0060]+\u0060|\[[^\]]+\]\(https?:\/\/[^\s)]+\))/g;
+  return text.split(pattern).filter(Boolean).map((part, index) => {
+    if (part === ":basey:") return <Image key={index} src="/brand-icon.png" width={14} height={14} alt="Basey" className="mx-px inline-block h-[14px] w-[14px] translate-y-[3px] object-contain" />;
+    if (part.startsWith("**") && part.endsWith("**")) return <strong key={index} className="font-semibold text-[#eef3f0]">{part.slice(2, -2)}</strong>;
+    if (part.startsWith("*") && part.endsWith("*")) return <em key={index}>{part.slice(1, -1)}</em>;
+    if (part.startsWith("\u0060") && part.endsWith("\u0060")) return <code key={index} className="rounded bg-white/[0.055] px-1 py-0.5 font-mono text-[11px] text-[#9be5cc]">{part.slice(1, -1)}</code>;
+    const link = part.match(/^\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)$/);
+    if (link) return <a key={index} href={link[2]} target="_blank" rel="noreferrer" className="text-[#52dfb2] underline decoration-[#52dfb2]/30 underline-offset-2 transition hover:decoration-[#52dfb2]">{link[1]}</a>;
+    return <React.Fragment key={index}>{part}</React.Fragment>;
+  });
+}
+
+function CommentBody({ body }: { body: string }) {
+  return <div className="mt-[6px] max-w-[870px] space-y-1 text-[12.5px] leading-[1.55] text-[#d3d9d6]">{body.split("\n").map((line, index) => line.startsWith("> ") ? <div key={index} className="border-l-2 border-[#52dfb2]/35 pl-2.5 text-[#aebbb5]">{renderInlineComment(line.slice(2))}</div> : line.startsWith("- ") ? <div key={index} className="flex gap-2"><span className="text-[#52dfb2]">•</span><span>{renderInlineComment(line.slice(2))}</span></div> : <div key={index}>{line ? renderInlineComment(line) : <br />}</div>)}</div>;
+}
+
+function CommentThread({ comment, token, canModerate, depth = 0, onAddReply, onEdit, onDelete, onPin }: { comment: CommentNode; token: LbpTokenDetail; canModerate: boolean; depth?: number; onAddReply: (parentId: string, body: string) => void; onEdit: (commentId: string, body: string) => void; onDelete: (commentId: string) => void; onPin: (commentId: string) => void }) {
   const [voteChoice, setVoteChoice] = React.useState<"up" | "down" | null>(null);
   const [replying, setReplying] = React.useState(false);
   const [replyDraft, setReplyDraft] = React.useState("");
+  const [editing, setEditing] = React.useState(false);
+  const [editDraft, setEditDraft] = React.useState(comment.body);
+  const replyCount = countComments(comment.replies ?? []);
+  const [collapsed, setCollapsed] = React.useState(() => replyCount >= 7 || (depth >= 2 && replyCount >= 3));
+  const [highlightNew, setHighlightNew] = React.useState(comment.isNew === true);
   const voteStorageKey = `bb-comment-vote:${token.id}:${comment.id}`;
   const voteScore = comment.votes + (voteChoice === "up" ? 1 : voteChoice === "down" ? -1 : 0);
 
@@ -989,6 +1309,12 @@ function CommentThread({ comment, token }: { comment: CommentNode; token: LbpTok
     return () => window.clearTimeout(timer);
   }, [voteStorageKey]);
 
+  React.useEffect(() => {
+    if (!highlightNew) return;
+    const timer = window.setTimeout(() => setHighlightNew(false), 3200);
+    return () => window.clearTimeout(timer);
+  }, [highlightNew]);
+
   const chooseVote = (next: "up" | "down") => {
     const resolved = voteChoice === next ? null : next;
     setVoteChoice(resolved);
@@ -997,26 +1323,33 @@ function CommentThread({ comment, token }: { comment: CommentNode; token: LbpTok
   };
 
   return (
-    <article className="relative py-[13px]">
+    <motion.article layout initial={comment.isNew ? { opacity: 0, y: -7 } : false} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }} className={cx("relative py-[13px]", highlightNew && "bg-[linear-gradient(90deg,rgba(24,201,142,0.045),transparent_68%)]")}>
       <div className="flex items-start gap-[10px]">
-        <div className="mt-0.5 grid h-[28px] w-[28px] shrink-0 place-items-center overflow-hidden rounded-full border border-[#2c3532] bg-[#111514] shadow-[0_3px_10px_rgba(0,0,0,0.22)]">
-          {comment.own ? <Image src="/brand-icon.png" width={24} height={24} alt="" className="h-6 w-6 object-contain" /> : <span className="font-mono text-[8px] font-bold" style={{ color: token.accent }}>{comment.user.slice(2, 4).toUpperCase()}</span>}
+        <div className="flex self-stretch shrink-0 flex-col items-center">
+          <div className="mt-0.5 grid h-[28px] w-[28px] shrink-0 place-items-center overflow-hidden rounded-full border border-[#2c3532] bg-[#111514] shadow-[0_3px_10px_rgba(0,0,0,0.22)]">
+            {comment.own ? <Image src="/brand-icon.png" width={24} height={24} alt="" className="h-6 w-6 object-contain" /> : <span className="font-mono text-[8px] font-bold" style={{ color: token.accent }}>{comment.user.slice(2, 4).toUpperCase()}</span>}
+          </div>
+          {comment.replies?.length && !collapsed ? <button type="button" onClick={() => setCollapsed(true)} aria-label={"Collapse " + replyCount + " replies"} className="group relative mt-1 flex min-h-3 w-5 flex-1 justify-center outline-none"><span aria-hidden="true" className="h-full w-px bg-white/[0.15] transition group-hover:bg-[#52dfb2]/55" /><span aria-hidden="true" className="absolute top-1/2 grid h-4 w-4 -translate-y-1/2 place-items-center rounded-full border border-[#303936] bg-[#101312] text-white/38 opacity-40 transition group-hover:border-[#52dfb2]/35 group-hover:text-[#52dfb2] group-hover:opacity-100 group-focus-visible:opacity-100"><Minus className="h-2.5 w-2.5" /></span></button> : null}
         </div>
         <div className="min-w-0 flex-1">
           <header className="flex items-center gap-1.5 text-[10.5px]"><strong className="font-mono font-semibold text-[#cbd5d1]">{comment.user}</strong><span className="text-[#56615c]">•</span><span className="text-[#7a8580]">{comment.age}</span>{comment.edited ? <><span className="text-[#56615c]">•</span><span className="text-[#7a8580]">edited</span></> : null}</header>
-          <p className="mt-[6px] max-w-[870px] text-[12.5px] leading-[1.55] text-[#d3d9d6]">{comment.body}</p>
+          {comment.pinned ? <span className="mt-1.5 inline-flex items-center gap-1 text-[8px] font-bold uppercase tracking-[0.08em] text-[#d7c57f]"><Pin className="h-2.5 w-2.5" />Pinned</span> : null}
+          {editing ? <div className="mt-2"><CommentComposer value={editDraft} onChange={setEditDraft} expanded placeholder="Edit your comment" submitLabel="Save" compact maxLength={depth > 0 ? 280 : 789} allowLinks={canModerate} onCancel={() => { setEditDraft(comment.body); setEditing(false); }} onSubmit={(body) => { onEdit(comment.id, body); setEditing(false); }} /></div> : <CommentBody body={comment.body} />}
           <div className="mt-[7px] flex items-center gap-[9px] text-[#7a8580]">
             <button type="button" onClick={() => chooseVote("up")} aria-label="Upvote" aria-pressed={voteChoice === "up"} className={cx("grid h-5 w-5 place-items-center transition", voteChoice === "up" ? "text-[#52dfb2]" : "hover:text-[#52dfb2]")}><ArrowUp className="h-[13px] w-[13px]" /></button>
             <span className="-mx-1 font-mono text-[10px] text-[#949f9a]">{voteScore}</span>
             <button type="button" onClick={() => chooseVote("down")} aria-label="Downvote" aria-pressed={voteChoice === "down"} className={cx("grid h-5 w-5 place-items-center transition", voteChoice === "down" ? "text-[#ff3771]" : "hover:text-[#ff5c89]")}><ArrowDown className="h-[13px] w-[13px]" /></button>
             <button type="button" onClick={() => setReplying((value) => !value)} className="inline-flex items-center gap-1 text-[10px] transition hover:text-[#cdd5d1]"><Reply className="h-[12px] w-[12px]" />Reply</button>
-            {comment.own ? <><button type="button" className="inline-flex items-center gap-1 text-[10px] transition hover:text-[#cdd5d1]"><Pencil className="h-[11px] w-[11px]" />Edit</button><button type="button" className="inline-flex items-center gap-1 text-[10px] transition hover:text-[#cdd5d1]"><Pin className="h-[11px] w-[11px]" />Pin</button><button type="button" className="inline-flex items-center gap-1 text-[10px] text-[#a36979] transition hover:text-[#ff5c89]"><Trash2 className="h-[11px] w-[11px]" />Delete</button></> : null}
+            {comment.own ? <button type="button" onClick={() => { setEditDraft(comment.body); setEditing(true); setReplying(false); }} className="inline-flex items-center gap-1 text-[10px] transition hover:text-[#cdd5d1]"><Pencil className="h-[11px] w-[11px]" />Edit</button> : null}
+            {canModerate ? <button type="button" onClick={() => onPin(comment.id)} className={cx("inline-flex items-center gap-1 text-[10px] transition hover:text-[#e4d18b]", comment.pinned && "text-[#d7c57f]")}><Pin className="h-[11px] w-[11px]" />{comment.pinned ? "Unpin" : "Pin"}</button> : null}
+            {comment.own ? <button type="button" onClick={() => onDelete(comment.id)} className="inline-flex items-center gap-1 text-[10px] text-[#a36979] transition hover:text-[#ff5c89]"><Trash2 className="h-[11px] w-[11px]" />Delete</button> : null}
           </div>
-          <AnimatePresence initial={false}>{replying ? <motion.form initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="mt-2 flex max-w-[600px] overflow-hidden" onSubmit={(event) => { event.preventDefault(); setReplyDraft(""); setReplying(false); }}><input value={replyDraft} onChange={(event) => setReplyDraft(event.target.value)} autoFocus placeholder={`Reply to ${comment.user}`} className="h-8 min-w-0 flex-1 rounded-l-md border border-r-0 border-[#2b3531] bg-[#101312] px-3 text-[10.5px] text-[#dce3e0] outline-none placeholder:text-[#5e6964] focus:border-[#18c98e]/45" /><button type="submit" disabled={!replyDraft.trim()} className="h-8 rounded-r-md border border-[#18c98e]/30 bg-[#18c98e]/10 px-3 text-[10px] font-semibold text-[#78e99d] disabled:opacity-35">Reply</button></motion.form> : null}</AnimatePresence>
+          <AnimatePresence initial={false}>{replying ? <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="mt-2 overflow-hidden"><CommentComposer value={replyDraft} onChange={setReplyDraft} expanded placeholder={"Reply to " + comment.user} submitLabel="Reply" compact maxLength={280} allowLinks={canModerate} onCancel={() => { setReplyDraft(""); setReplying(false); }} onSubmit={(body) => { setCollapsed(false); onAddReply(comment.id, body); setReplyDraft(""); setReplying(false); }} /></motion.div> : null}</AnimatePresence>
+          {collapsed && replyCount ? <button type="button" onClick={() => setCollapsed(false)} className="mt-2 inline-flex items-center gap-1.5 text-[9.5px] font-medium text-[#8d9993] transition hover:text-[#52dfb2]"><ChevronRight className="h-3 w-3" />Show {replyCount} {replyCount === 1 ? "reply" : "replies"}</button> : null}
         </div>
       </div>
-      {comment.replies?.length ? <div className="relative ml-[14px] mt-0.5 border-l border-white/[0.15] pl-[30px]">{comment.replies.map((child) => <div key={child.id} className="relative before:absolute before:-left-[30px] before:top-[18px] before:h-px before:w-[21px] before:bg-white/[0.15]"><CommentThread comment={child} token={token} /></div>)}</div> : null}
-    </article>
+      <AnimatePresence initial={false}>{comment.replies?.length && !collapsed ? <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }} className="relative ml-[14px] overflow-hidden pl-[30px]">{comment.replies.map((child, index) => <div key={child.id} className="relative"><span aria-hidden="true" className="absolute -left-[30px] top-0 h-[27px] w-[21px] rounded-bl-[8px] border-b border-l border-white/[0.15]" />{index < (comment.replies?.length ?? 0) - 1 ? <span aria-hidden="true" className="absolute -bottom-px -left-[30px] top-[27px] w-px bg-white/[0.15]" /> : null}<CommentThread comment={child} token={token} canModerate={canModerate} depth={depth + 1} onAddReply={onAddReply} onEdit={onEdit} onDelete={onDelete} onPin={onPin} /></div>)}</motion.div> : null}</AnimatePresence>
+    </motion.article>
   );
 }
 
@@ -1046,10 +1379,20 @@ function ProjectThreadRoot({ token, commentCount, onReply }: { token: LbpTokenDe
 }
 
 function ActivityPanel({ token, liveMetrics, height, focusMode, onHeightChange, onToggleCollapsed, onCommentsFocusChange }: { token: LbpTokenDetail; liveMetrics: LiveMarketMetrics; height: number; focusMode: boolean; onHeightChange: (height: number) => void; onToggleCollapsed: () => void; onCommentsFocusChange: (focused: boolean) => void }) {
+  const wallet = useWalletFundingStatus();
+  const canModerateComments = Boolean(
+    wallet.connected
+    && wallet.address
+    && token.ownerAddress
+    && (token.ownerAddress.startsWith("0x")
+      ? wallet.address.toLowerCase() === token.ownerAddress.toLowerCase()
+      : wallet.address === token.ownerAddress),
+  );
   const [tab, setTab] = React.useState<ActivityTab>("live");
   const [filter, setFilter] = React.useState<TradeFilter>("all");
   const [windowSize, setWindowSize] = React.useState("5m");
   const [commentDraft, setCommentDraft] = React.useState("");
+  const [commentComposerExpanded, setCommentComposerExpanded] = React.useState(false);
   const [comments, setComments] = React.useState<CommentNode[]>(() => createComments(token));
   const [rows, setRows] = React.useState<TradeRow[]>(() => createTradeHistory(token));
   const [visibleTradeCount, setVisibleTradeCount] = React.useState(18);
@@ -1061,7 +1404,7 @@ function ActivityPanel({ token, liveMetrics, height, focusMode, onHeightChange, 
   const [feedSelectionActive, setFeedSelectionActive] = React.useState(false);
   const [queuedTrades, setQueuedTrades] = React.useState<TradeRow[]>([]);
   const [resizing, setResizing] = React.useState(false);
-  const commentInputRef = React.useRef<HTMLTextAreaElement | null>(null);
+  const commentInputRef = React.useRef<HTMLDivElement | null>(null);
   const tradeSequence = React.useRef(20);
   const livePriceRef = React.useRef(liveMetrics.price);
   const tradeFeedRef = React.useRef<HTMLDivElement | null>(null);
@@ -1131,16 +1474,32 @@ function ActivityPanel({ token, liveMetrics, height, focusMode, onHeightChange, 
     return () => window.clearInterval(interval);
   }, [token]);
 
-  const submitComment = (event: React.FormEvent) => {
-    event.preventDefault();
-    const body = commentDraft.trim();
+  const submitComment = (draft: string) => {
+    const body = draft.trim();
     if (!body) return;
     setComments((current) => {
-      const next = [{ id: `comment-${Date.now()}`, user: "You", age: "now", body, votes: 1, own: true }, ...current];
+      const next = [createOwnComment(body), ...current];
       if (tab === "comments" && countComments(next) >= 9) onCommentsFocusChange(true);
       return next;
     });
     setCommentDraft("");
+    setCommentComposerExpanded(false);
+  };
+
+  const addReply = (parentId: string, body: string) => {
+    setComments((current) => updateCommentTree(current, parentId, (comment) => ({ ...comment, replies: [...(comment.replies ?? []), createOwnComment(body)] })));
+  };
+
+  const editComment = (commentId: string, body: string) => {
+    setComments((current) => updateCommentTree(current, commentId, (comment) => ({ ...comment, body, edited: true })));
+  };
+
+  const deleteComment = (commentId: string) => {
+    setComments((current) => removeFromCommentTree(current, commentId));
+  };
+
+  const togglePinnedComment = (commentId: string) => {
+    setComments((current) => sortPinnedCommentTree(updateCommentTree(current, commentId, (comment) => ({ ...comment, pinned: !comment.pinned }))));
   };
 
   const tabClass = (item: ActivityTab) => cx("relative inline-flex h-full items-center gap-1.5 px-[11px] text-[11px] font-semibold outline-none transition focus-visible:outline-none", tab === item ? "text-[#edf2ef] after:absolute after:inset-x-[10px] after:bottom-[-1px] after:h-[2px] after:bg-[#18c98e] after:shadow-[0_-4px_12px_rgba(24,201,142,0.16)]" : "text-[#7f8a85] hover:text-[#edf2ef]");
@@ -1219,16 +1578,15 @@ function ActivityPanel({ token, liveMetrics, height, focusMode, onHeightChange, 
 
       {!collapsed ? tab === "comments" ? (
         <div onScroll={(event) => nearEnd(event, loadMoreComments)} className="min-h-0 flex-1 overflow-y-auto [scrollbar-color:#303936_transparent] [scrollbar-width:thin]">
-          <ProjectThreadRoot token={token} commentCount={commentCount} onReply={() => { commentInputRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }); window.setTimeout(() => commentInputRef.current?.focus(), 220); }} />
-          <form onSubmit={submitComment} className="px-5 pb-[10px] pt-[15px]">
-            <div className="flex h-8 items-center gap-1.5">
-              {[{ label: "Bold", icon: Bold }, { label: "Italic", icon: Italic }, { label: "Code", icon: Code2 }, { label: "Quote", icon: Quote }, { label: "List", icon: List }, { label: "Hide preview", icon: EyeOff }, { label: "Emoji", icon: Smile }, { label: "Add link", icon: Link2 }].map(({ label, icon: Icon }) => <button key={label} type="button" aria-label={label} className="grid h-7 w-7 place-items-center rounded-[6px] border border-[#2a3330] bg-[#121514] text-[#818c87] transition hover:border-[#3b4742] hover:bg-[#181c1b] hover:text-[#d3dcd8]"><Icon className="h-[13px] w-[13px]" /></button>)}
-              <button type="button" onClick={() => setCommentDraft("")} className="ml-auto px-2 text-[10px] font-semibold text-[#8c9792] transition hover:text-[#d5dcd9]">Cancel</button>
-              <button type="submit" disabled={!commentDraft.trim()} className="h-7 rounded-md bg-[#18c98e] px-3 text-[10px] font-bold text-[#06150f] transition hover:bg-[#65e892] disabled:bg-[#1b201e] disabled:text-[#58625e]">Comment</button>
-            </div>
-            <textarea ref={commentInputRef} value={commentDraft} onChange={(event) => setCommentDraft(event.target.value)} placeholder="Join the conversation" rows={3} className="mt-[9px] min-h-[72px] w-full resize-y rounded-lg border border-[#2a3330] bg-[#111514] px-3 py-2.5 text-[12px] leading-relaxed text-[#d9e0dd] outline-none placeholder:text-[#626c68] focus:border-[#18c98e]/45 focus:shadow-[0_0_0_2px_rgba(24,201,142,0.04)]" />
-          </form>
-          <div className="px-5 pb-7">{comments.map((comment) => <CommentThread key={comment.id} comment={comment} token={token} />)}<div className="flex h-10 items-center justify-center text-[9.5px] text-white/25"><span className="mr-2 h-1.5 w-1.5 animate-pulse rounded-full bg-[#18c98e]/55" />Scroll for more comments</div></div>
+          <ProjectThreadRoot token={token} commentCount={commentCount} onReply={() => { setCommentComposerExpanded(true); window.setTimeout(() => { commentInputRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }); commentInputRef.current?.focus(); }, 80); }} />
+          <div className="px-5 pb-[10px] pt-[15px]">
+            <AnimatePresence initial={false} mode="popLayout">
+              <motion.div key={commentComposerExpanded ? "comment-expanded" : "comment-collapsed"} layout initial={{ height: 0, opacity: 0, y: -4 }} animate={{ height: "auto", opacity: 1, y: 0 }} exit={{ height: 0, opacity: 0, y: -3 }} transition={{ duration: commentComposerExpanded ? 0.24 : 0.18, ease: [0.22, 1, 0.36, 1] }} className="overflow-hidden">
+                <CommentComposer value={commentDraft} onChange={setCommentDraft} expanded={commentComposerExpanded} onExpand={() => setCommentComposerExpanded(true)} inputRef={(node) => { commentInputRef.current = node; }} placeholder="Join the conversation" submitLabel="Comment" maxLength={789} allowLinks={canModerateComments} onCancel={() => { setCommentDraft(""); setCommentComposerExpanded(false); }} onSubmit={submitComment} />
+              </motion.div>
+            </AnimatePresence>
+          </div>
+          <div className="px-5 pb-7">{comments.map((comment) => <CommentThread key={comment.id} comment={comment} token={token} canModerate={canModerateComments} onAddReply={addReply} onEdit={editComment} onDelete={deleteComment} onPin={togglePinnedComment} />)}<div className="flex h-10 items-center justify-center text-[9.5px] text-white/25"><span className="mr-2 h-1.5 w-1.5 animate-pulse rounded-full bg-[#18c98e]/55" />Scroll for more comments</div></div>
         </div>
       ) : tab === "holders" ? (
         <div onScroll={(event) => nearEnd(event, () => setVisibleHolderCount((current) => Math.min(holders.length, current + 20)))} className="min-h-0 flex-1 overflow-auto [scrollbar-color:#303936_transparent] [scrollbar-width:thin]">

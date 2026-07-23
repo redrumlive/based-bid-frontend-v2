@@ -1266,7 +1266,7 @@ function TokenFeedCard({ card, spotlight, currentTime }: { card: TokenCardData; 
           <div className="mt-1 flex min-w-0 items-center gap-1.5 text-[10px] text-white/38">
             <ContractAddress card={card} />
             <span className="shrink-0 text-white/20">by</span><Link href={`/u/${encodeURIComponent(card.by)}`} className="shrink-0 whitespace-nowrap text-white/60 hover:text-white/84">{card.by}</Link>
-            <span className="shrink-0 text-white/20">on</span><a href={`/b/${card.board}`} className="min-w-0 truncate text-white/60 hover:text-white/84">b/{card.board}</a>
+            <span className="shrink-0 text-white/20">on</span><a href={card.board === "based" ? "/" : `/b/${card.board}`} className="min-w-0 truncate text-white/60 hover:text-white/84">b/{card.board}</a>
           </div>
         </div>
       </div>
@@ -1513,7 +1513,7 @@ function LiveChatMenu() {
   );
 }
 
-function SidebarPanel({ query, onQuery, searchRef, sortLabel, onCycleSort, boards, activeBoard, onSelectBoard, onTogglePin, onOpenCollectFees, onCloseCollectFees, collectFeesOpen, compact, onToggleCompact }: { query: string; onQuery: (v: string) => void; searchRef: React.RefObject<HTMLInputElement | null>; sortLabel: string; onCycleSort: () => void; boards: Board[]; activeBoard: string; onSelectBoard: (id: string) => void; onTogglePin: (id: string) => void; onOpenCollectFees: () => void; onCloseCollectFees: () => void; collectFeesOpen: boolean; compact: boolean; onToggleCompact: () => void }) {
+function SidebarPanel({ query, onQuery, searchRef, sortLabel, onCycleSort, boards, activeBoard, onTogglePin, onOpenCollectFees, onCloseCollectFees, collectFeesOpen, compact, onToggleCompact }: { query: string; onQuery: (v: string) => void; searchRef: React.RefObject<HTMLInputElement | null>; sortLabel: string; onCycleSort: () => void; boards: Board[]; activeBoard: string; onTogglePin: (id: string) => void; onOpenCollectFees: () => void; onCloseCollectFees: () => void; collectFeesOpen: boolean; compact: boolean; onToggleCompact: () => void }) {
   return (
     <aside
       onPointerDownCapture={(event) => {
@@ -1548,11 +1548,11 @@ function SidebarPanel({ query, onQuery, searchRef, sortLabel, onCycleSort, board
               const isBased = b.id === "based";
               return (
               <motion.div layout key={b.id} transition={LAYOUT_SPRING} className={cx("group relative flex w-full items-center rounded-xl text-sm transition-[background-color,box-shadow] duration-300 focus-within:ring-1 focus-within:ring-white/15", compact && "justify-center", active && "before:absolute before:bottom-2 before:left-0 before:top-2 before:w-[2px] before:rounded-full before:bg-[#18c98e]/85 before:shadow-[0_0_12px_rgba(24,201,142,0.34)] before:content-['']", active ? "bg-gradient-to-r from-white/[0.075] to-white/[0.035] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.025)]" : "text-white/72 hover:bg-white/[0.045] hover:text-white/92")}>
-                  <button type="button" onClick={() => onSelectBoard(b.id)} aria-label={compact ? b.name : undefined} className={`relative flex min-w-0 items-center py-1.5 text-left outline-none ${compact ? "justify-center px-1" : "flex-1 gap-2 px-2.5"}`}>
+                  <Link href={b.id === "based" ? "/" : `/b/${b.id}`} aria-label={compact ? b.name : undefined} className={`relative flex min-w-0 items-center py-1.5 text-left outline-none ${compact ? "justify-center px-1" : "flex-1 gap-2 px-2.5"}`}>
                     <span className={cx("flex h-7 w-7 shrink-0 items-center justify-center rounded-full ring-1 transition-colors duration-300", active ? "bg-white/10 ring-white/15" : "bg-white/[0.035] ring-white/10 group-hover:bg-white/[0.07]")}>{b.icon ?? <BoardAvatar name={b.name} />}</span>
                     <span className={compact ? "sr-only" : "truncate font-normal"}>{b.name}</span>
                     {compact ? <span className="pointer-events-none absolute left-[calc(100%+9px)] top-1/2 z-50 -translate-y-1/2 whitespace-nowrap rounded-lg border border-white/[0.09] bg-[#111513]/96 px-2.5 py-1.5 text-[10px] font-medium text-white/72 opacity-0 shadow-[0_12px_28px_rgba(0,0,0,0.42)] backdrop-blur-xl transition duration-150 group-hover:translate-x-0.5 group-hover:opacity-100">{b.name}</span> : null}
-                  </button>
+                  </Link>
                   {!compact && !isBased ? (
                     <button type="button" onClick={() => onTogglePin(b.id)} className={cx("mr-1 grid h-7 w-7 shrink-0 cursor-pointer place-items-center rounded-lg outline-none transition-all duration-300 hover:bg-white/[0.06]", pinned ? "text-[#18c98e]/85" : "text-white/28 opacity-0 group-hover:opacity-100 hover:text-white/75 focus:opacity-100")} aria-label={pinned ? "Unpin board" : "Pin board"} data-ui-hint={pinned ? "Unpin" : "Pin"}>
                       <Pin className={cx("h-3.5 w-3.5 transition-transform", pinned && "rotate-45")} />
@@ -1846,7 +1846,6 @@ export default function BBLayout() {
             onCycleSort={() => setSortMode((m) => (m === "smart" ? "pinned" : m === "pinned" ? "favorites" : "smart"))}
             boards={boards}
             activeBoard={activeBoard}
-            onSelectBoard={setActiveBoard}
             onTogglePin={togglePin}
             onOpenCollectFees={openCollectFees}
             onCloseCollectFees={() => setCollectFeesOpen(false)}

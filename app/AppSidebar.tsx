@@ -103,6 +103,7 @@ export function SidebarCollapseControl({ compact, onToggleCompact }: { compact: 
 
 export default function AppSidebar({ onOpenCollectFees, onCloseCollectFees, collectFeesOpen = false, compact = false, collapsible = false, onToggleCompact }: { onOpenCollectFees: () => void; onCloseCollectFees?: () => void; collectFeesOpen?: boolean; compact?: boolean; collapsible?: boolean; onToggleCompact?: () => void }) {
   const pathname = usePathname();
+  const activeBoard = pathname.match(/^\/b\/([^/]+)/)?.[1]?.toLowerCase();
 
   return (
     <aside
@@ -146,9 +147,9 @@ export default function AppSidebar({ onOpenCollectFees, onCloseCollectFees, coll
           {boards.map((board, index) => (
             <Link
               key={board.id}
-              href={`/?board=${board.id}`}
+              href={board.id === "based" ? "/" : `/b/${board.id}`}
               aria-label={compact ? board.name : undefined}
-              className={`group relative flex h-10 items-center rounded-xl text-sm transition-[background-color,color] duration-200 ${compact ? "justify-center px-1" : "gap-2 px-2.5"} ${index === 0 ? "bg-gradient-to-r from-white/[0.075] to-white/[0.035] text-white before:absolute before:bottom-2 before:left-0 before:top-2 before:w-[2px] before:rounded-full before:bg-[#18c98e]/85" : "text-white/70 hover:bg-white/[0.045] hover:text-white/92"}`}
+              className={`group relative flex h-10 items-center rounded-xl text-sm transition-[background-color,color] duration-200 ${compact ? "justify-center px-1" : "gap-2 px-2.5"} ${(activeBoard === board.id || (pathname === "/" && index === 0)) ? "bg-gradient-to-r from-white/[0.075] to-white/[0.035] text-white before:absolute before:bottom-2 before:left-0 before:top-2 before:w-[2px] before:rounded-full before:bg-[#18c98e]/85" : "text-white/70 hover:bg-white/[0.045] hover:text-white/92"}`}
             >
               <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-white/[0.045] text-white/62 ring-1 ring-white/10">
                 <Hash className="h-3.5 w-3.5" />

@@ -124,7 +124,7 @@ function BoardCard({ board, ownProfile }: { board: Board; ownProfile: boolean })
 
   return (
     <article className="group relative cursor-pointer overflow-hidden rounded-[18px] border border-white/[0.085] bg-[#0d0f0f] transition-[border-color,background-color,transform,box-shadow] duration-300 hover:-translate-y-0.5 hover:border-white/[0.15] hover:bg-[#101212] hover:shadow-[0_18px_44px_rgba(0,0,0,0.22)]">
-      <Link href={`/?board=${board.id}`} aria-label={`Open ${board.title}`} className="absolute inset-0 z-10" />
+      <Link href={`/b/${board.id}`} aria-label={`Open ${board.title}`} className="absolute inset-0 z-10" />
       <div className="relative h-[82px] overflow-hidden border-b border-white/[0.065] bg-[#101212]">
         <div className="absolute inset-0 opacity-50 [background-image:linear-gradient(rgba(255,255,255,0.025)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.025)_1px,transparent_1px)] [background-size:22px_22px]" />
         <div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-black/32 to-transparent" />
