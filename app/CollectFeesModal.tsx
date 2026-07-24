@@ -338,7 +338,7 @@ export default function CollectFeesModal({
     <AnimatePresence>
       {open ? (
         <motion.div
-          className="fixed inset-0 z-[180] flex items-center justify-center bg-black/72 p-3 backdrop-blur-[6px] sm:p-6"
+          className="fixed inset-0 z-[520] flex items-center justify-center bg-black/72 p-3 backdrop-blur-[6px] sm:p-6"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -361,8 +361,8 @@ export default function CollectFeesModal({
               </span>
               <div className="min-w-0 flex-1">
                 <div className="text-[8px] font-semibold uppercase tracking-[0.17em] text-white/30">Creator earnings</div>
-                <h2 id="collect-fees-title" className="mt-1 text-[21px] font-semibold tracking-[-0.035em] text-white/92">Collect fees</h2>
-                <p className="mt-1 text-[11px] leading-relaxed text-white/40">Select one or more pools on the same chain and claim their accrued DEX fees.</p>
+                <h2 id="collect-fees-title" className="mt-1 text-[21px] font-semibold tracking-[-0.035em] text-white/92">Your fees are ready.</h2>
+                <p className="mt-1 text-[11px] leading-relaxed text-white/40">Select pools on the same chain and collect.</p>
               </div>
               <button type="button" onClick={closeModal} aria-label="Close fee collection" className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-white/34 ring-1 ring-white/[0.08] transition hover:bg-white/[0.045] hover:text-white/72 hover:ring-white/[0.14]">
                 <X className="h-3.5 w-3.5" />
@@ -549,7 +549,7 @@ export default function CollectFeesModal({
                     </motion.section>
                   );
                   })}
-                  {!chainBoards.length ? <div className="rounded-[16px] border border-white/[0.075] px-5 py-8 text-center text-[11px] text-white/38">No pending fees on {networkName(activeNetwork)}.</div> : null}
+                  {!chainBoards.length ? <div className="rounded-[16px] border border-white/[0.075] px-5 py-8 text-center text-[11px] text-white/38">All caught up on {networkName(activeNetwork)}. New fees will appear here automatically.</div> : null}
                   </motion.div>
                 </AnimatePresence>
               </motion.div>
@@ -580,7 +580,7 @@ export default function CollectFeesModal({
                 onClick={collectSelectedFees}
                 disabled={!selectedTargets.length || collectionState !== "idle"}
                 className={cx(
-                  "group relative inline-flex h-11 w-[152px] shrink-0 items-center justify-center overflow-hidden rounded-full border text-[11px] font-semibold transition-[background-color,border-color,color,box-shadow,transform] duration-500 ease-[cubic-bezier(.22,1,.36,1)]",
+                  "group relative inline-flex h-11 w-full shrink-0 items-center justify-center overflow-hidden rounded-full border text-[11px] font-semibold transition-[background-color,border-color,color,box-shadow,transform] duration-500 ease-[cubic-bezier(.22,1,.36,1)] sm:w-[152px]",
                   collectionState === "success"
                     ? "border-[#18c98e]/28 bg-[#18c98e]/[0.075] text-[#9df0c5] shadow-[0_12px_30px_rgba(24,201,142,0.10)]"
                     : collectionState === "collecting"

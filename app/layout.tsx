@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Space_Grotesk } from 'next/font/google';
 import AppFooter from './AppFooter';
+import MobileActionBar from './MobileActionBar';
 import { AppPreferencesProvider } from './AppPreferences';
 import AppShell from './AppShell';
 import AppTopBar from './AppTopBar';
@@ -17,12 +18,30 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: 'Based Bid',
-  description: 'Discover, create, and launch tokens on Based Bid.',
+  title: 'based bid',
+  description: 'Discover, create, and launch tokens on based bid.',
   icons: {
-    icon: '/brand-icon.svg',
-    shortcut: '/brand-icon.svg',
-    apple: '/brand-icon.svg',
+    icon: [
+      {
+        url: 'https://www.based.bid/favicon.ico?favicon.3ttdf_seagcqi.ico',
+        sizes: '48x48',
+        type: 'image/x-icon',
+      },
+      {
+        url: 'https://www.based.bid/icon.png?icon.27dn9yu6429ed.png',
+        sizes: '32x32',
+        type: 'image/png',
+      },
+    ],
+    shortcut: {
+      url: 'https://www.based.bid/favicon.ico?favicon.3ttdf_seagcqi.ico',
+      type: 'image/x-icon',
+    },
+    apple: {
+      url: 'https://www.based.bid/apple-icon.png?apple-icon.0h7ewvd6e0-xt.png',
+      sizes: '200x200',
+      type: 'image/png',
+    },
   },
 };
 
@@ -37,6 +56,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             <TerminalSidebarProvider>
               <AppTopBar />
               <AppShell>{children}</AppShell>
+              <MobileActionBar />
               <AppFooter />
             </TerminalSidebarProvider>
           </AppToastProvider>

@@ -7,6 +7,7 @@ import {
   Code2,
   Coins,
   Hash,
+  Link2,
   Plus,
   Search,
 } from "lucide-react";
@@ -33,22 +34,30 @@ const boards = [
   { id: "zen", name: "Zen Trades" },
 ];
 
-function SidebarNavItem({ href, label, icon, active, feature, compact, onClick }: { href: string; label: string; icon: ReactNode; active: boolean; feature: "create" | "fees" | "openbid"; compact: boolean; onClick?: MouseEventHandler<HTMLAnchorElement> }) {
+function SidebarNavItem({ href, label, icon, active, feature, compact, onClick }: { href: string; label: string; icon: ReactNode; active: boolean; feature: "create" | "hook" | "fees" | "openbid"; compact: boolean; onClick?: MouseEventHandler<HTMLAnchorElement> }) {
   const ref = useRef<HTMLAnchorElement | null>(null);
   const spotlight = feature === "fees"
     ? "radial-gradient(140px circle at var(--sx) var(--sy), rgba(234,179,8,0.22), transparent 55%)"
+    : feature === "hook"
+      ? "radial-gradient(145px circle at var(--sx) var(--sy), rgba(255,0,122,0.22), transparent 56%)"
     : feature === "openbid"
-      ? "radial-gradient(150px circle at var(--sx) var(--sy), rgba(139,92,246,0.25), transparent 58%)"
+      ? "radial-gradient(150px circle at var(--sx) var(--sy), rgba(249,115,22,0.24), transparent 58%)"
       : "radial-gradient(140px circle at var(--sx) var(--sy), rgba(24,201,142,0.18), transparent 55%)";
   const hoverTone = feature === "openbid"
-    ? "hover:bg-violet-500/[0.055] hover:text-white"
+    ? "hover:bg-orange-500/[0.055] hover:text-white"
+    : feature === "hook"
+      ? "hover:bg-[#ff007a]/[0.05] hover:text-white"
     : feature === "fees"
       ? "hover:bg-amber-400/[0.045] hover:text-white"
       : "hover:bg-[#18c98e]/[0.045] hover:text-white";
   const iconTone = feature === "openbid"
     ? active
-      ? "bg-white/[0.035] text-violet-300 ring-white/10"
-      : "bg-white/[0.035] text-white/38 ring-white/10 group-hover:bg-violet-500/[0.14] group-hover:text-violet-200 group-hover:ring-violet-400/24"
+      ? "bg-white/[0.035] text-orange-300 ring-white/10"
+      : "bg-white/[0.035] text-white/38 ring-white/10 group-hover:bg-orange-500/[0.14] group-hover:text-orange-200 group-hover:ring-orange-400/24"
+    : feature === "hook"
+      ? active
+        ? "bg-white/[0.035] text-[#ff65aa] ring-white/10"
+        : "bg-white/[0.035] text-white/38 ring-white/10 group-hover:bg-[#ff007a]/[0.12] group-hover:text-[#ff9ac8] group-hover:ring-[#ff4aa0]/24"
     : feature === "fees"
       ? active
         ? "bg-white/[0.035] text-amber-300 ring-white/10"
@@ -111,7 +120,7 @@ export default function AppSidebar({ onOpenCollectFees, onCloseCollectFees, coll
         if (!collectFeesOpen || (event.target as Element).closest('a[href="#collect-fees"]')) return;
         onCloseCollectFees?.();
       }}
-      className={`sticky top-14 z-[245] hidden h-[calc(100vh-6.25rem)] shrink-0 flex-col border-r border-white/[0.08] bg-[linear-gradient(180deg,#0b0c0c_0%,#090a0a_100%)] shadow-[8px_0_32px_rgba(0,0,0,0.12)] transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] md:flex ${compact ? "w-[66px]" : "w-[272px]"}`}
+      className={`sticky top-14 z-[245] hidden h-[calc(100vh-6.25rem)] shrink-0 flex-col border-r border-white/[0.08] bg-[linear-gradient(180deg,#0b0c0c_0%,#090a0a_100%)] shadow-[8px_0_32px_rgba(0,0,0,0.12)] transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] xl:flex ${compact ? "w-[66px]" : "w-[272px]"}`}
     >
       {collapsible ? <SidebarCollapseControl compact={compact} onToggleCompact={onToggleCompact} /> : null}
       <div className={`app-sidebar-scroll min-h-0 flex-1 overflow-y-auto pb-6 pt-3 ${compact ? "px-2" : "px-3 pr-[6px]"}`}>
@@ -131,6 +140,7 @@ export default function AppSidebar({ onOpenCollectFees, onCloseCollectFees, coll
 
         <nav className={`mt-3 ${compact ? "space-y-1" : "space-y-2"}`} aria-label="Primary navigation">
           <SidebarNavItem compact={compact} href="/create" label="Create" feature="create" active={pathname === "/create" || pathname.startsWith("/create/")} icon={<Plus className="h-4 w-4" />} />
+          <SidebarNavItem compact={compact} href="/add-liquidity" label="Based Hook" feature="hook" active={pathname === "/add-liquidity"} icon={<Link2 className="h-4 w-4" />} />
           <SidebarNavItem compact={compact} href="#collect-fees" label="Collect Fees" feature="fees" active={collectFeesOpen} onClick={(event) => { event.preventDefault(); onOpenCollectFees(); }} icon={<Coins className="h-4 w-4" />} />
           <SidebarNavItem compact={compact} href="/openbid" label="OpenBid" feature="openbid" active={pathname === "/openbid" || pathname.startsWith("/openbid/")} icon={<Code2 className="h-4 w-4" />} />
         </nav>

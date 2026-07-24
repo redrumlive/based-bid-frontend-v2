@@ -6,6 +6,7 @@ import {
   AtSign,
   Check,
   Copy,
+  Gift,
   Globe2,
   Grid2X2,
   Heart,
@@ -25,8 +26,9 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import CreateBackLink from "./create/CreateBackLink";
 import { useAppToast } from "./AppToast";
+import ProfileRewardsDashboard from "./ProfileRewardsDashboard";
 
-type ProfileTab = "tokens" | "boards" | "favorites" | "followers" | "following";
+type ProfileTab = "tokens" | "rewards" | "boards" | "favorites" | "followers" | "following";
 
 type Board = {
   id: string;
@@ -49,6 +51,7 @@ type ProfileToken = {
 
 const tabs: Array<{ key: ProfileTab; label: string; icon: typeof Shapes }> = [
   { key: "tokens", label: "Tokens", icon: Shapes },
+  { key: "rewards", label: "Rewards", icon: Gift },
   { key: "boards", label: "Boards", icon: Grid2X2 },
   { key: "favorites", label: "Favorites", icon: Heart },
   { key: "followers", label: "Followers", icon: Users },
@@ -123,7 +126,7 @@ function BoardCard({ board, ownProfile }: { board: Board; ownProfile: boolean })
   const PrivacyIcon = board.privacy === "Public" ? Globe2 : LockKeyhole;
 
   return (
-    <article className="group relative cursor-pointer overflow-hidden rounded-[18px] border border-white/[0.085] bg-[#0d0f0f] transition-[border-color,background-color,transform,box-shadow] duration-300 hover:-translate-y-0.5 hover:border-white/[0.15] hover:bg-[#101212] hover:shadow-[0_18px_44px_rgba(0,0,0,0.22)]">
+    <article className="group relative cursor-pointer overflow-hidden rounded-[18px] border border-white/[0.12] bg-[#101312] transition-[border-color,background-color,transform,box-shadow] duration-300 hover:-translate-y-0.5 hover:border-white/[0.19] hover:bg-[#131716] hover:shadow-[0_18px_44px_rgba(0,0,0,0.28)]">
       <Link href={`/b/${board.id}`} aria-label={`Open ${board.title}`} className="absolute inset-0 z-10" />
       <div className="relative h-[82px] overflow-hidden border-b border-white/[0.065] bg-[#101212]">
         <div className="absolute inset-0 opacity-50 [background-image:linear-gradient(rgba(255,255,255,0.025)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.025)_1px,transparent_1px)] [background-size:22px_22px]" />
@@ -141,9 +144,9 @@ function BoardCard({ board, ownProfile }: { board: Board; ownProfile: boolean })
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <h3 className="truncate text-[15px] font-semibold tracking-[-0.025em] text-white/88">{board.title}</h3>
-            <p className="mt-1.5 line-clamp-2 text-[11px] leading-[1.55] text-white/42">{board.description}</p>
+            <p className="mt-1.5 line-clamp-2 text-[12px] leading-[1.55] text-white/58">{board.description}</p>
           </div>
-          <span className="inline-flex shrink-0 items-center gap-1 text-[9px] tabular-nums text-white/32">
+          <span className="inline-flex shrink-0 items-center gap-1 text-[10px] tabular-nums text-white/48">
             <Users className="h-3 w-3" strokeWidth={1.8} />
             {board.members}
           </span>
@@ -151,7 +154,7 @@ function BoardCard({ board, ownProfile }: { board: Board; ownProfile: boolean })
 
         {ownProfile ? (
           <div className="mt-4 flex justify-end border-t border-white/[0.06] pt-3">
-            <button type="button" className="relative z-20 inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg px-2.5 text-[10px] font-medium text-white/38 transition-colors hover:bg-white/[0.04] hover:text-white/76">
+            <button type="button" className="relative z-20 inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg px-2.5 text-[11px] font-medium text-white/55 transition-colors hover:bg-white/[0.05] hover:text-white/86">
               <Settings2 className="h-3.5 w-3.5" strokeWidth={1.8} />
               Manage
             </button>
@@ -164,25 +167,25 @@ function BoardCard({ board, ownProfile }: { board: Board; ownProfile: boolean })
 
 function OwnedTokenCard({ token }: { token: ProfileToken }) {
   return (
-    <article className="group relative cursor-pointer overflow-hidden rounded-[18px] border border-white/[0.085] bg-[#0d0f0f] shadow-[inset_0_1px_rgba(255,255,255,0.018)] transition-[border-color,background-color,transform,box-shadow] duration-300 hover:-translate-y-0.5 hover:border-white/[0.15] hover:bg-[#101212] hover:shadow-[0_18px_44px_rgba(0,0,0,0.22)]">
+    <article className="group relative cursor-pointer overflow-hidden rounded-[18px] border border-white/[0.12] bg-[#101312] shadow-[inset_0_1px_rgba(255,255,255,0.025)] transition-[border-color,background-color,transform,box-shadow] duration-300 hover:-translate-y-0.5 hover:border-white/[0.19] hover:bg-[#131716] hover:shadow-[0_18px_44px_rgba(0,0,0,0.28)]">
       <Link href={`/token/${token.id}`} aria-label={`Open ${token.title}`} className="absolute inset-0 z-10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[#b6ff35]/55" />
       <div className="flex items-center gap-3 px-4 py-4">
         <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-[#b6ff35]/18 bg-[#111513] text-[11px] font-bold text-[#b6ff35]">RD</span>
         <div className="min-w-0 flex-1">
           <div className="flex min-w-0 items-center gap-2">
             <h3 className="truncate text-[14px] font-semibold tracking-[-0.025em] text-white/88">{token.title}</h3>
-            <span className="shrink-0 text-[9px] font-medium text-white/27">{token.ticker} / {token.pair}</span>
+            <span className="shrink-0 text-[10px] font-medium text-white/48">{token.ticker} / {token.pair}</span>
           </div>
-          <p className="mt-1 text-[9.5px] text-white/34">Created and managed by this wallet</p>
+          <p className="mt-1 text-[11px] text-white/52">Created and managed by this wallet</p>
         </div>
-        <span className="rounded-full border border-[#f5d97a]/18 bg-[#f5d97a]/[0.045] px-2.5 py-1 text-[8px] font-semibold uppercase tracking-[0.11em] text-[#d8c47b]">{token.ownership}</span>
+        <span className="rounded-full border border-[#f5d97a]/24 bg-[#f5d97a]/[0.065] px-2.5 py-1 text-[9px] font-semibold uppercase tracking-[0.11em] text-[#ead68d]">{token.ownership}</span>
       </div>
       <div className="grid grid-cols-2 border-y border-white/[0.06] bg-black/10">
-        <div className="px-4 py-3"><span className="block text-[8px] uppercase tracking-[0.12em] text-white/23">Network</span><strong className="mt-1 block text-[10px] font-medium text-white/62">{token.network}</strong></div>
-        <div className="border-l border-white/[0.06] px-4 py-3"><span className="block text-[8px] uppercase tracking-[0.12em] text-white/23">Market cap</span><strong className="mt-1 block text-[10px] font-medium tabular-nums text-white/70">{token.marketCap}</strong></div>
+        <div className="px-4 py-3"><span className="block text-[9px] uppercase tracking-[0.12em] text-white/42">Network</span><strong className="mt-1 block text-[11px] font-medium text-white/76">{token.network}</strong></div>
+        <div className="border-l border-white/[0.08] px-4 py-3"><span className="block text-[9px] uppercase tracking-[0.12em] text-white/42">Market cap</span><strong className="mt-1 block text-[11px] font-medium tabular-nums text-white/82">{token.marketCap}</strong></div>
       </div>
       <div className="flex items-center justify-end gap-2 px-3 py-3">
-        <Link href={`/token/${token.id}?manage=1`} className="relative z-20 inline-flex h-8 items-center gap-1.5 rounded-lg border border-[#d7c57f]/18 bg-[#d7c57f]/[0.035] px-3 text-[9.5px] font-semibold text-[#d7c57f] transition hover:border-[#f0db8a]/32 hover:bg-[#f0db8a]/[0.07] hover:text-[#f0db8a]"><Settings2 className="h-3.5 w-3.5" />Manage</Link>
+        <Link href={`/token/${token.id}?manage=1`} className="relative z-20 inline-flex h-8 items-center gap-1.5 rounded-lg border border-[#d7c57f]/24 bg-[#d7c57f]/[0.055] px-3 text-[10.5px] font-semibold text-[#e5d086] transition hover:border-[#f0db8a]/38 hover:bg-[#f0db8a]/[0.09] hover:text-[#f5e3a1]"><Settings2 className="h-3.5 w-3.5" />Manage</Link>
       </div>
     </article>
   );
@@ -209,7 +212,7 @@ function ProfileEditModal({ open, onClose, initials, avatarPreview, onAvatar, bi
           <button type="button" aria-hidden="true" tabIndex={-1} onClick={onClose} className="absolute inset-0 bg-black/68 backdrop-blur-[3px]" />
           <motion.section role="dialog" aria-modal="true" aria-label="Edit profile" initial={{ opacity: 0, y: 14, scale: 0.985 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 9, scale: 0.99 }} transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }} className="relative w-full max-w-[700px] overflow-hidden rounded-[20px] border border-white/[0.10] bg-[#0b0e0d] shadow-[0_30px_100px_rgba(0,0,0,0.68)]">
             <header className="flex items-center gap-3 border-b border-white/[0.065] px-5 py-4 sm:px-6">
-              <div className="min-w-0 flex-1"><h2 className="text-[16px] font-semibold tracking-[-0.025em] text-white/90">Edit profile</h2><p className="mt-1 text-[9.5px] text-white/34">Update how your creator profile appears across Based Bid.</p></div>
+              <div className="min-w-0 flex-1"><h2 className="text-[16px] font-semibold tracking-[-0.025em] text-white/90">Edit profile</h2><p className="mt-1 text-[9.5px] text-white/34">Update how your creator profile appears across based bid.</p></div>
               <button type="button" onClick={onClose} aria-label="Close profile editor" className="grid h-8 w-8 place-items-center rounded-lg text-white/30 transition hover:bg-white/[0.04] hover:text-white/76"><X className="h-4 w-4" /></button>
             </header>
             <div className="grid gap-6 px-5 py-5 sm:grid-cols-[150px_minmax(0,1fr)] sm:px-6 sm:py-6">
@@ -252,7 +255,7 @@ function EmptyTab({ tab }: { tab: Exclude<ProfileTab, "boards"> }) {
         <Icon className="h-[17px] w-[17px]" strokeWidth={1.7} />
       </span>
       <h2 className="mt-3 text-[13px] font-semibold text-white/72">No {selected.label.toLowerCase()} yet</h2>
-      <p className="mt-1 max-w-[330px] text-[10.5px] leading-relaxed text-white/34">Activity will appear here as this profile participates across Based Bid.</p>
+      <p className="mt-1 max-w-[330px] text-[10.5px] leading-relaxed text-white/34">Activity will appear here as this profile participates across based bid.</p>
     </div>
   );
 }
@@ -264,7 +267,7 @@ export default function ProfilePage({ handle = "redrum", ownProfile = false }: {
   const [copied, setCopied] = useState(false);
   const [following, setFollowing] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
-  const [bio, setBio] = useState("Building programmable launches, reward routes, and token economies on Based Bid.");
+  const [bio, setBio] = useState("Building programmable launches, reward routes, and token economies on based bid.");
   const [xProfile, setXProfile] = useState("@redrum");
   const [telegram, setTelegram] = useState("@redrum");
   const [discord, setDiscord] = useState("redrum");
@@ -273,6 +276,7 @@ export default function ProfilePage({ handle = "redrum", ownProfile = false }: {
   const address = ownProfile ? "0xA17C9e42B6D8f3057C24aE91B5d7630F8C2e4A69" : makeAddress(normalizedHandle);
   const displayName = ownProfile ? "redrum" : titleCase(normalizedHandle);
   const initials = displayName.slice(0, 2).toUpperCase();
+  const visibleTabs = useMemo(() => ownProfile ? tabs : tabs.filter((tab) => tab.key !== "rewards"), [ownProfile]);
 
   const stats = useMemo(() => [
     { label: "Tokens", value: 1 },
@@ -295,6 +299,10 @@ export default function ProfilePage({ handle = "redrum", ownProfile = false }: {
     window.addEventListener("keydown", closeOnEscape);
     return () => window.removeEventListener("keydown", closeOnEscape);
   }, [editOpen]);
+
+  useEffect(() => {
+    if (ownProfile && window.location.hash === "#rewards") setActiveTab("rewards");
+  }, [ownProfile]);
 
   useEffect(() => () => {
     if (avatarPreview) URL.revokeObjectURL(avatarPreview);
@@ -325,25 +333,25 @@ export default function ProfilePage({ handle = "redrum", ownProfile = false }: {
   };
 
   return (
-    <main className="min-h-[calc(100vh-3.5rem)] bg-[#090a0a] px-3 py-4 text-white sm:px-5 sm:py-5 lg:px-7">
-      <div className="mx-auto w-full max-w-[1120px]">
+    <main className="min-h-[calc(100vh-3.5rem)] bg-[#090a0a] px-3 py-4 text-white sm:px-5 sm:py-6 lg:px-8">
+      <div className="mx-auto w-full max-w-[1480px]">
         <CreateBackLink href="/" />
 
-        <section className="mt-3 rounded-[20px] border border-white/[0.085] bg-[#0d0f0f] px-4 py-4 shadow-[0_20px_60px_rgba(0,0,0,0.18)] sm:px-5 sm:py-5">
+        <section className="mt-4 rounded-[22px] border border-white/[0.12] bg-[#101312] px-5 py-5 shadow-[0_22px_68px_rgba(0,0,0,0.28),inset_0_1px_rgba(255,255,255,0.025)] sm:px-7 sm:py-7">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="flex min-w-0 items-start gap-3.5 sm:gap-4">
-              <div className="relative grid h-16 w-16 shrink-0 place-items-center rounded-[17px] border border-white/[0.11] bg-[#151717] text-[17px] font-semibold tracking-[-0.04em] text-white/82 shadow-[0_10px_30px_rgba(0,0,0,0.26)] sm:h-[72px] sm:w-[72px] sm:rounded-[19px] sm:text-[19px]">
+              <div className="relative grid h-[76px] w-[76px] shrink-0 place-items-center rounded-[20px] border border-white/[0.15] bg-[#171b19] text-[20px] font-semibold tracking-[-0.04em] text-white/90 shadow-[0_12px_34px_rgba(0,0,0,0.34)] sm:h-[88px] sm:w-[88px] sm:rounded-[23px] sm:text-[23px]">
                 {avatarPreview ? <Image unoptimized src={avatarPreview} alt="Profile" fill className="rounded-[inherit] object-cover" /> : initials}
                 <span className="absolute -bottom-1 -right-1 h-3.5 w-3.5 rounded-full border-[3px] border-[#0d0f0f] bg-[#18c98e]" />
               </div>
 
               <div className="min-w-0 pt-0.5">
                 <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-                  <h1 className="truncate text-[24px] font-semibold leading-none tracking-[-0.045em] text-white/92 sm:text-[28px]">{displayName}</h1>
-                  {ownProfile ? <span className="rounded-full border border-white/[0.09] px-2 py-0.5 text-[8px] font-semibold uppercase tracking-[0.12em] text-white/34">You</span> : null}
+                  <h1 className="truncate text-[30px] font-semibold leading-none tracking-[-0.045em] text-white/96 sm:text-[36px]">{displayName}</h1>
+                  {ownProfile ? <span className="rounded-full border border-white/[0.13] bg-white/[0.025] px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-white/55">You</span> : null}
                 </div>
                 <div className="mt-2 flex items-center gap-1">
-                  <a href={`https://basescan.org/address/${address}`} target="_blank" rel="noreferrer" className="inline-flex h-6 items-center text-[10px] font-medium text-white/42 transition-colors hover:text-white/76">{shortAddress(address)}</a>
+                  <a href={`https://basescan.org/address/${address}`} target="_blank" rel="noreferrer" className="inline-flex h-7 items-center text-[13px] font-medium text-white/58 transition-colors hover:text-white/86">{shortAddress(address)}</a>
                   <span className="h-3 w-px bg-white/[0.08]" aria-hidden="true" />
                   <button type="button" onClick={() => void copyAddress()} aria-label="Copy profile address" className="grid h-6 w-6 cursor-pointer place-items-center text-white/24 transition-colors hover:text-white/70">
                     {copied ? <Check className="h-3 w-3 text-[#18c98e]" strokeWidth={2} /> : <Copy className="h-3 w-3" strokeWidth={1.8} />}
@@ -352,24 +360,24 @@ export default function ProfilePage({ handle = "redrum", ownProfile = false }: {
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+            <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:items-center lg:justify-end">
               {stats.map((stat) => (
-                <div key={stat.label} className="min-w-[66px] rounded-[11px] border border-white/[0.075] bg-white/[0.018] px-2.5 py-2 text-center">
-                  <div className="text-[12px] font-semibold tabular-nums text-white/78">{stat.value}</div>
-                  <div className="mt-0.5 text-[8px] font-medium text-white/30">{stat.label}</div>
+                <div key={stat.label} className="min-w-0 rounded-[13px] border border-white/[0.11] bg-white/[0.025] px-3.5 py-3 text-center sm:min-w-[90px]">
+                  <div className="text-[17px] font-semibold tabular-nums text-white/88">{stat.value}</div>
+                  <div className="mt-1 text-[11px] font-medium text-white/50">{stat.label}</div>
                 </div>
               ))}
             </div>
           </div>
 
           <div className="mt-4 flex flex-col gap-3 border-t border-white/[0.065] pt-4 sm:flex-row sm:items-end sm:justify-between">
-            <p className="max-w-[690px] truncate whitespace-nowrap text-[11px] leading-[1.65] text-white/42">
+            <p className="max-w-[960px] text-[14px] leading-[1.55] text-white/62 sm:truncate sm:whitespace-nowrap sm:leading-[1.65]">
               {ownProfile
                 ? bio
-                : `Following ${displayName}'s launches, boards, and market activity across Based Bid.`}
+                : `Following ${displayName}'s launches, boards, and market activity across based bid.`}
             </p>
             {ownProfile ? (
-              <button type="button" onClick={() => setEditOpen(true)} className="inline-flex h-8 w-fit cursor-pointer items-center gap-1.5 rounded-lg border border-white/[0.09] bg-white/[0.025] px-3 text-[10px] font-medium text-white/62 transition-colors hover:border-white/[0.15] hover:bg-white/[0.055] hover:text-white/86">
+              <button type="button" onClick={() => setEditOpen(true)} className="inline-flex h-9 w-fit cursor-pointer items-center gap-1.5 rounded-[9px] border border-white/[0.13] bg-white/[0.035] px-3.5 text-[11.5px] font-medium text-white/74 transition-colors hover:border-white/[0.2] hover:bg-white/[0.07] hover:text-white/94">
                 <Pencil className="h-3.5 w-3.5" strokeWidth={1.8} />
                 Edit profile
               </button>
@@ -382,30 +390,32 @@ export default function ProfilePage({ handle = "redrum", ownProfile = false }: {
           </div>
         </section>
 
-        <nav className="mt-5 overflow-x-auto border-b border-white/[0.075]" aria-label="Profile sections">
+        <nav className="mt-7 overflow-x-auto border-b border-white/[0.11]" aria-label="Profile sections">
           <div className="flex min-w-max items-center gap-5 sm:gap-7">
-            {tabs.map((tab) => {
+            {visibleTabs.map((tab) => {
               const Icon = tab.icon;
               const active = tab.key === activeTab;
               return (
-                <button key={tab.key} type="button" onClick={() => setActiveTab(tab.key)} aria-pressed={active} className={cx("relative inline-flex h-9 cursor-pointer items-center gap-1.5 text-[10.5px] font-medium transition-colors", active ? "text-white/82" : "text-white/34 hover:text-white/64")}>
-                  <Icon className={cx("h-3.5 w-3.5", active && "text-[#18c98e]")} strokeWidth={1.8} />
+                <button key={tab.key} type="button" onClick={() => { setActiveTab(tab.key); window.history.replaceState(null, "", tab.key === "tokens" ? window.location.pathname : `${window.location.pathname}#${tab.key}`); }} aria-pressed={active} className={cx("relative inline-flex h-12 cursor-pointer items-center gap-2.5 text-[13px] font-medium transition-colors", active ? tab.key === "rewards" ? "text-[#ead68d]" : "text-white/90" : "text-white/48 hover:text-white/76")}>
+                  <Icon className={cx("h-[17px] w-[17px]", active && (tab.key === "rewards" ? "text-[#ead68d]" : "text-[#18c98e]"))} strokeWidth={1.8} />
                   {tab.label}
-                  <span className={cx("absolute inset-x-0 bottom-0 h-px origin-center bg-[#18c98e] transition-transform duration-300", active ? "scale-x-100" : "scale-x-0")} />
+                  <span className={cx("absolute inset-x-0 bottom-0 h-[2px] origin-center transition-transform duration-300", tab.key === "rewards" ? "bg-[#d7c57f]" : "bg-[#18c98e]", active ? "scale-x-100" : "scale-x-0")} />
                 </button>
               );
             })}
           </div>
         </nav>
 
-        <section className="py-5">
+        <section className="py-6">
           {activeTab === "boards" ? (
             <div className="grid gap-3.5 lg:grid-cols-2">
               {profileBoards.map((board) => <BoardCard key={board.id} board={board} ownProfile={ownProfile} />)}
             </div>
+          ) : activeTab === "rewards" && ownProfile ? (
+            <ProfileRewardsDashboard />
           ) : activeTab === "tokens" && ownProfile ? (
             <div>
-              <div className="mb-3 flex items-end justify-between gap-3"><div><h2 className="text-[14px] font-semibold text-white/80">Owned tokens</h2><p className="mt-1 text-[9.5px] text-white/31">Tokens where this wallet controls creator and management permissions.</p></div><span className="text-[9px] tabular-nums text-white/27">{ownedTokens.length} token</span></div>
+              <div className="mb-4 flex items-end justify-between gap-3"><div><h2 className="text-[18px] font-semibold text-white/90">Owned tokens</h2><p className="mt-1 text-[11.5px] text-white/48">Tokens where this wallet controls creator and management permissions.</p></div><span className="text-[10px] tabular-nums text-white/45">{ownedTokens.length} token</span></div>
               <div className="grid gap-3.5 lg:grid-cols-2">{ownedTokens.map((token) => <OwnedTokenCard key={token.id} token={token} />)}</div>
             </div>
           ) : (

@@ -160,10 +160,10 @@ export default function GlobalSearchModal({ open, onClose }: { open: boolean; on
     <AnimatePresence>
       {open ? (
         <motion.div className="fixed inset-0 z-[430] flex items-start justify-center bg-black/72 px-3 pb-4 pt-[7vh] backdrop-blur-[7px] sm:px-6" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.16 }} onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
-          <motion.section role="dialog" aria-modal="true" aria-label="Search Based Bid" initial={{ opacity: 0, y: 13, scale: 0.985 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 8, scale: 0.99 }} transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }} className="flex h-[min(680px,86vh)] w-full max-w-[900px] flex-col overflow-hidden rounded-[22px] border border-white/[0.11] bg-[#0c0e0d] shadow-[0_34px_100px_rgba(0,0,0,0.68),inset_0_1px_rgba(255,255,255,0.025)]">
+          <motion.section role="dialog" aria-modal="true" aria-label="Search based bid" initial={{ opacity: 0, y: 13, scale: 0.985 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 8, scale: 0.99 }} transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }} className="flex h-[min(680px,86vh)] w-full max-w-[900px] flex-col overflow-hidden rounded-[22px] border border-white/[0.11] bg-[#0c0e0d] shadow-[0_34px_100px_rgba(0,0,0,0.68),inset_0_1px_rgba(255,255,255,0.025)]">
             <header className="border-b border-white/[0.075] px-4 pb-3.5 pt-4 sm:px-5">
               <div className="flex items-start justify-between gap-4">
-                <div><h2 className="text-[16px] font-semibold tracking-[-0.025em] text-white/90">Search Based Bid</h2><p className="mt-0.5 text-[9.5px] font-light text-white/32">Tokens, LBPs, boards and users in one place.</p></div>
+                <div><h2 className="text-[16px] font-semibold tracking-[-0.025em] text-white/90">Search based bid</h2><p className="mt-0.5 text-[9.5px] font-light text-white/32">Tokens, LBPs, boards and users in one place.</p></div>
                 <button type="button" onClick={onClose} aria-label="Close search" className="grid h-7 w-7 place-items-center rounded-full text-white/30 transition hover:bg-white/[0.05] hover:text-white/72"><X className="h-3.5 w-3.5" /></button>
               </div>
               <div className="mt-3.5 flex items-center gap-2 rounded-[14px] border border-white/[0.105] bg-white/[0.025] px-3.5 focus-within:border-[#18c98e]/30 focus-within:shadow-[0_0_0_3px_rgba(24,201,142,0.035)]">
@@ -207,7 +207,7 @@ export default function GlobalSearchModal({ open, onClose }: { open: boolean; on
                   <div className="flex h-full min-h-[320px] items-center justify-center py-4">
                     <div className="w-full max-w-[560px] text-center">
                       <span className="mx-auto grid h-11 w-11 place-items-center rounded-[14px] border border-white/[0.075] bg-white/[0.018] text-white/28"><Search className="h-[18px] w-[18px]" strokeWidth={1.7} /></span>
-                      <h3 className="mt-4 text-[14px] font-semibold tracking-[-0.025em] text-white/68">{idleDirectory ? `Search ${idleDirectory.label}` : "Find anything on Based Bid"}</h3>
+                      <h3 className="mt-4 text-[14px] font-semibold tracking-[-0.025em] text-white/68">{idleDirectory ? `Search ${idleDirectory.label}` : "Find anything on based bid"}</h3>
                       <p className="mx-auto mt-1.5 max-w-[420px] text-[10px] font-light leading-[1.55] text-white/30">{idleDirectory ? `${idleDirectory.caption}. Start typing a name, symbol, network or handle.` : "Start typing above, or choose a directory to narrow the search."}</p>
                       {!idleDirectory ? (
                         <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">

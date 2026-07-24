@@ -17,12 +17,16 @@ export default function SmartBackButton({
   const router = useRouter();
 
   const goBack = () => {
-    if (window.history.length > 1) {
+    const stateDepth = window.history.state?.basedBidAppDepth;
+    const storedDepth = Number(sessionStorage.getItem("basedbid:app-history-depth")) || 0;
+    const appDepth = typeof stateDepth === "number" ? stateDepth : storedDepth;
+
+    if (appDepth > 0) {
       router.back();
       return;
     }
 
-    router.push(fallbackHref);
+    router.replace(fallbackHref);
   };
 
   return (

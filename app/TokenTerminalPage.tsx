@@ -59,6 +59,7 @@ import { useWalletFundingStatus } from "./useWalletFundingStatus";
 import SmartBackButton from "./SmartBackButton";
 import TokenManagePage from "./TokenManagePage";
 import LightweightTerminalChart, { type LightweightCreatorMarker } from "./LightweightTerminalChart";
+import { useTerminalSidebar } from "./TerminalSidebarContext";
 
 type ChartMode = "candles" | "line";
 type ChartBasis = "marketCap" | "price";
@@ -244,15 +245,15 @@ const TERMINAL_CONTROL_CSS = `
 }
 .bb-size-fill {
   width: calc((100% - 14px) * var(--size-ratio));
-  background: linear-gradient(90deg, #2f9f58, #18c98e);
-  box-shadow: 0 0 10px rgba(24,201,142,0.13);
+  background: linear-gradient(90deg, var(--order-accent-start), var(--order-accent));
+  box-shadow: 0 0 10px var(--order-accent-glow);
 }
 .bb-size-halo {
   top: 10.5px;
   left: calc(7px + (100% - 14px) * var(--size-ratio));
   width: 20px;
   height: 20px;
-  border: 1px solid rgba(24,201,142,0.15);
+  border: 1px solid var(--order-accent-ring);
   border-radius: 50%;
   opacity: calc(0.25 + var(--size-ratio) * 0.55);
   transform: translate(-50%,-50%) scale(0.72);
@@ -267,10 +268,10 @@ const TERMINAL_CONTROL_CSS = `
   height: 14px;
   margin-top: -5.5px;
   appearance: none;
-  border: 1px solid rgba(122,235,157,0.9);
+  border: 1px solid var(--order-thumb-border);
   border-radius: 50%;
-  background: radial-gradient(circle,#c7ffd8 0 2px,#142319 2.5px 5px,#18c98e 5.5px 7px);
-  box-shadow: 0 3px 9px rgba(0,0,0,0.42),0 0 12px rgba(24,201,142,0.12);
+  background: radial-gradient(circle,var(--order-thumb-center) 0 2px,var(--order-thumb-inner) 2.5px 5px,var(--order-accent) 5.5px 7px);
+  box-shadow: 0 3px 9px rgba(0,0,0,0.42),0 0 12px var(--order-accent-glow);
   transition: transform 130ms ease,box-shadow 130ms ease;
 }
 .bb-size-range::-moz-range-track { height: 3px; border: 0; border-radius: 3px; background: transparent; }
@@ -278,13 +279,13 @@ const TERMINAL_CONTROL_CSS = `
   box-sizing: border-box;
   width: 14px;
   height: 14px;
-  border: 1px solid rgba(122,235,157,0.9);
+  border: 1px solid var(--order-thumb-border);
   border-radius: 50%;
-  background: radial-gradient(circle,#c7ffd8 0 2px,#142319 2.5px 5px,#18c98e 5.5px 7px);
-  box-shadow: 0 3px 9px rgba(0,0,0,0.42),0 0 12px rgba(24,201,142,0.12);
+  background: radial-gradient(circle,var(--order-thumb-center) 0 2px,var(--order-thumb-inner) 2.5px 5px,var(--order-accent) 5.5px 7px);
+  box-shadow: 0 3px 9px rgba(0,0,0,0.42),0 0 12px var(--order-accent-glow);
 }
 .bb-size-range:hover::-webkit-slider-thumb { transform: scale(1.1); }
-.bb-size-range:active::-webkit-slider-thumb { transform: scale(0.94); box-shadow: 0 0 0 5px rgba(24,201,142,0.13),0 2px 6px rgba(0,0,0,0.46); }
+.bb-size-range:active::-webkit-slider-thumb { transform: scale(0.94); box-shadow: 0 0 0 5px var(--order-accent-ring),0 2px 6px rgba(0,0,0,0.46); }
 .bb-size-range:focus-visible { outline: 0; }
 .bb-swap-flip-motion { transition: transform 240ms cubic-bezier(0.2,0.8,0.2,1); }
 .bb-swap-flip:hover .bb-swap-flip-motion { transform: rotate(180deg); }
@@ -440,10 +441,28 @@ function sizePercentLabel(value: number) {
 }
 
 function formatUsd(value: number) {
+  if (!Number.isFinite(value) || value <= 0) return "$0.00";
+  if (value >= 1_000_000_000_000_000) return `$${value.toExponential(2).replace("e+", "e")}`;
+  if (value >= 1_000_000_000_000) return `$${(value / 1_000_000_000_000).toFixed(value >= 10_000_000_000_000 ? 1 : 2)}T`;
   if (value >= 1_000_000_000) return `$${(value / 1_000_000_000).toFixed(2)}B`;
   if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(value >= 10_000_000 ? 1 : 2)}M`;
   if (value >= 1_000) return `$${(value / 1_000).toFixed(value >= 100_000 ? 0 : 1)}K`;
   return `$${value.toFixed(value < 10 ? 2 : 0)}`;
+}
+
+function formatTerminalAmount(value: number, maximumFractionDigits = 4) {
+  if (!Number.isFinite(value) || value === 0) return "0";
+  const absolute = Math.abs(value);
+  if (absolute >= 1_000_000_000_000_000) return value.toExponential(3).replace("e+", "e");
+  if (absolute >= 1_000_000_000_000) return `${(value / 1_000_000_000_000).toFixed(2)}T`;
+  if (absolute >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(2)}B`;
+  if (absolute >= 1_000_000) return `${(value / 1_000_000).toFixed(2)}M`;
+  return value.toLocaleString("en-US", { maximumFractionDigits });
+}
+
+function formatFullTerminalAmount(value: number, maximumFractionDigits = 4) {
+  if (!Number.isFinite(value) || value === 0) return "0";
+  return value.toLocaleString("en-US", { maximumFractionDigits });
 }
 
 function formatQuoteUsd(value: number) {
@@ -453,7 +472,7 @@ function formatQuoteUsd(value: number) {
 function formatQuoteAmount(value: number) {
   return value.toLocaleString("en-US", {
     minimumFractionDigits: value >= 100 ? 1 : 2,
-    maximumFractionDigits: value >= 1_000 ? 1 : value >= 100 ? 2 : 4,
+    maximumFractionDigits: 2,
   });
 }
 
@@ -663,17 +682,44 @@ function CopyAddress({ value }: { value: string }) {
   );
 }
 
-function Metric({ label, value, accent = false, className }: { label: string; value: string; accent?: boolean; className?: string }) {
+function Metric({ label, value, accent = false, className }: { label: React.ReactNode; value: string; accent?: boolean; className?: string }) {
   return (
-    <div className={cx("relative flex min-w-[104px] flex-1 flex-col justify-center px-[18px] before:absolute before:bottom-[14px] before:left-0 before:top-[14px] before:w-px before:bg-[#242a27] max-[1400px]:min-w-[90px] max-[1400px]:px-3", className)}>
-      <dt className={cx("text-[9.5px] font-bold uppercase tracking-[0.105em] text-[#73807a]", accent ? "whitespace-normal leading-[1.05] max-[1400px]:text-[7.5px] max-[1400px]:tracking-[0.035em]" : "truncate")}>{label}</dt>
+    <motion.div layout className={cx("relative flex min-w-[104px] flex-1 flex-col justify-center px-[18px] opacity-100 transition-[min-width,max-width,flex-grow,padding,opacity] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] before:absolute before:bottom-[14px] before:left-0 before:top-[14px] before:w-px before:bg-[#242a27] before:transition-opacity before:duration-300 max-[1400px]:min-w-[90px] max-[1400px]:px-3", className)}>
+      <dt className={cx("text-[9.5px] font-bold uppercase tracking-[0.105em] text-[#73807a]", accent ? "whitespace-normal leading-[1.05] max-[1400px]:text-[8.5px] max-[1400px]:tracking-[0.055em]" : "truncate")}>{label}</dt>
       <motion.dd key={value} initial={{ opacity: 0.62, y: 1 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.22 }} className={cx("mt-[5px] truncate font-mono text-[12.5px] font-semibold tracking-[-0.018em] tabular-nums", accent ? "text-[#52dfb2]" : "text-[#edf2f0]")}>{value}</motion.dd>
-    </div>
+    </motion.div>
+  );
+}
+
+function MarketCapProgressMetric({ marketCap, target, progress, compactLayout, containerRef }: { marketCap: number; target: number; progress: number; compactLayout: boolean; containerRef?: React.RefObject<HTMLDivElement | null> }) {
+  return (
+    <motion.div
+      ref={containerRef}
+      layout
+      className={cx(
+        "relative grid flex-[2] grid-cols-2 opacity-100 transition-[min-width,flex-grow,padding,opacity] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] before:absolute before:bottom-[14px] before:left-0 before:top-[14px] before:w-px before:bg-[#242a27]",
+        compactLayout ? "min-w-0" : "min-w-[208px] max-[1400px]:min-w-[180px]",
+        "max-[600px]:min-w-[92px] max-[600px]:flex-1 max-[600px]:grid-cols-1",
+      )}
+      transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+    >
+      <div className="flex min-w-0 flex-col justify-center px-[18px] max-[1400px]:px-3 max-[600px]:hidden">
+        <dt className={cx("truncate font-bold uppercase leading-normal text-[#73807a]", compactLayout ? "text-[8.5px] tracking-[0.055em]" : "text-[9.5px] tracking-[0.105em]")}>Market cap</dt>
+        <motion.dd key={marketCap} initial={{ opacity: 0.62, y: 1 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.22 }} className="mt-[5px] truncate font-mono text-[12.5px] font-semibold tracking-[-0.018em] text-[#edf2f0] tabular-nums">{formatUsd(marketCap)}</motion.dd>
+      </div>
+      <div className="relative flex min-w-0 flex-col justify-center px-[18px] before:absolute before:bottom-[14px] before:left-0 before:top-[14px] before:w-px before:bg-[#242a27] max-[1400px]:px-3 max-[600px]:before:hidden">
+        <dt className={cx("truncate font-bold uppercase leading-normal text-[#73807a]", compactLayout ? "text-[8.5px] tracking-[0.055em]" : "text-[9.5px] tracking-[0.105em]")}>Target cap</dt>
+        <motion.dd key={target} initial={{ opacity: 0.62, y: 1 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.22 }} className="mt-[5px] truncate font-mono text-[12.5px] font-semibold tracking-[-0.018em] text-[#52dfb2] tabular-nums">{formatUsd(target)}</motion.dd>
+      </div>
+    </motion.div>
   );
 }
 
 function InstrumentHeader({ token, liveMetrics, onManage, compactLayout = false }: { token: LbpTokenDetail; liveMetrics: LiveMarketMetrics; onManage: () => void; compactLayout?: boolean }) {
   const progress = Math.min(100, token.target ? (liveMetrics.marketCap / token.target) * 100 : 0);
+  const headerRef = React.useRef<HTMLElement | null>(null);
+  const progressMetricRef = React.useRef<HTMLDivElement | null>(null);
+  const [progressRail, setProgressRail] = React.useState({ left: 0, width: 0 });
   const dex = DEX_CONFIG[token.network];
   const projectSocials = [
     token.socials?.website ? { key: "website", label: "Project website", href: token.socials.website, icon: Globe2 } : null,
@@ -690,10 +736,44 @@ function InstrumentHeader({ token, liveMetrics, onManage, compactLayout = false 
       ? wallet.address.toLowerCase() === token.ownerAddress.toLowerCase()
       : wallet.address === token.ownerAddress),
   );
+  React.useEffect(() => {
+    const header = headerRef.current;
+    const metric = progressMetricRef.current;
+    if (!header || !metric) return;
+    let frame = 0;
+    const measure = () => {
+      window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(() => {
+        const headerBounds = header.getBoundingClientRect();
+        const metricBounds = metric.getBoundingClientRect();
+        setProgressRail({
+          left: Math.max(0, metricBounds.left - headerBounds.left),
+          width: Math.max(0, metricBounds.width),
+        });
+      });
+    };
+    const observer = new ResizeObserver(measure);
+    observer.observe(header);
+    observer.observe(metric);
+    window.addEventListener("resize", measure);
+    measure();
+    const settleTimers = [
+      window.setTimeout(measure, 380),
+      window.setTimeout(measure, 760),
+    ];
+    return () => {
+      window.cancelAnimationFrame(frame);
+      settleTimers.forEach((timer) => window.clearTimeout(timer));
+      observer.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, [compactLayout]);
+  const showProgressRail = progressRail.width >= 110;
+  const showProgressPercent = progressRail.width >= 70;
   return (
-    <section className="shrink-0 bg-[#0f1111]">
-      <div className="flex min-h-[76px] min-w-0 items-stretch">
-        <div className={cx("flex items-center", compactLayout ? "min-w-[205px] gap-2 px-3" : "min-w-[270px] gap-3 px-4 max-[1400px]:min-w-[220px] max-[1400px]:gap-2 max-[1400px]:px-3")}>
+    <motion.section ref={headerRef} layout className="shrink-0 bg-[#0f1111]" transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}>
+      <motion.div layout className="flex min-h-[76px] min-w-0 items-stretch max-[600px]:grid max-[600px]:grid-cols-[minmax(0,1fr)_minmax(126px,0.72fr)]" transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}>
+        <div className={cx("flex items-center transition-[min-width,padding,gap] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] max-[600px]:col-span-2 max-[600px]:min-w-0 max-[600px]:gap-2 max-[600px]:px-3 max-[600px]:py-2.5", compactLayout ? "min-w-[205px] gap-2 px-3 min-[1500px]:min-w-[245px] min-[1500px]:gap-3 min-[1500px]:px-4" : "min-w-[270px] gap-3 px-4 max-[1400px]:min-w-[220px] max-[1400px]:gap-2 max-[1400px]:px-3")}>
           <SmartBackButton fallbackHref="/" ariaLabel="Back to tokens" className="grid h-8 w-8 shrink-0 cursor-pointer place-items-center rounded-lg text-white/38 transition hover:bg-white/[0.045] hover:text-white/78"><ArrowLeft className="h-4 w-4" /></SmartBackButton>
           <TokenMark token={token} />
           <div className="min-w-0">
@@ -717,30 +797,44 @@ function InstrumentHeader({ token, liveMetrics, onManage, compactLayout = false 
           ) : null}
         </div>
 
-        <div className={cx("relative flex flex-col justify-center before:absolute before:bottom-[14px] before:left-0 before:top-[14px] before:w-px before:bg-[#242a27]", compactLayout ? "min-w-[120px] px-3" : "min-w-[150px] px-5 max-[1400px]:min-w-[130px] max-[1400px]:px-3")}>
+        <div className={cx("relative flex flex-col justify-center transition-[min-width,padding] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] before:absolute before:bottom-[14px] before:left-0 before:top-[14px] before:w-px before:bg-[#242a27] max-[600px]:min-w-0 max-[600px]:px-3 max-[600px]:py-2.5 max-[600px]:before:hidden", compactLayout ? "min-w-[120px] px-3 min-[1500px]:min-w-[150px] min-[1500px]:px-5" : "min-w-[150px] px-5 max-[1400px]:min-w-[130px] max-[1400px]:px-3")}>
           <motion.strong key={liveMetrics.price} initial={{ opacity: 0.62, y: 1 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.22 }} className="font-mono text-[20px] font-semibold tracking-[-0.04em] text-[#edf2ef]">{formatPrice(liveMetrics.price)}</motion.strong>
           <motion.span key={liveMetrics.change24h} initial={{ opacity: 0.62 }} animate={{ opacity: 1 }} transition={{ duration: 0.22 }} className={cx("mt-[3px] font-mono text-[11.5px] font-semibold", liveMetrics.change24h >= 0 ? "text-[#18c98e]" : "text-[#ff3771]")}>{liveMetrics.change24h >= 0 ? "+" : ""}{liveMetrics.change24h.toFixed(2)}% <i className="font-mono text-[9.5px] not-italic uppercase tracking-[0.05em] text-[#626d68]">24H</i></motion.span>
         </div>
 
-        <dl className="flex min-w-0 flex-1 overflow-hidden">
-          <Metric label="24h volume" value={formatUsd(liveMetrics.volume24h)} className={compactLayout ? "hidden" : undefined} />
-          <Metric label="Pool" value={`${formatQuoteAmount(liveMetrics.poolQuote)} ${token.quoteSymbol}`} className={compactLayout ? "hidden" : "max-[1400px]:hidden"} />
-          <Metric label="Market cap" value={formatUsd(liveMetrics.marketCap)} />
-          <Metric label="Target market cap" value={formatUsd(token.target)} accent />
-        </dl>
-      </div>
+        <motion.dl layout className="flex min-w-0 flex-1 overflow-hidden max-[600px]:border-l max-[600px]:border-[#242a27]" transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}>
+          <Metric label="24h volume" value={formatUsd(liveMetrics.volume24h)} className={compactLayout ? "hidden min-[1800px]:flex" : "max-[1180px]:hidden"} />
+          <Metric label="Pool" value={`${formatQuoteAmount(liveMetrics.poolQuote)} ${token.quoteSymbol}`} className={compactLayout ? "max-[1400px]:hidden" : "max-[1320px]:hidden"} />
+          <MarketCapProgressMetric marketCap={liveMetrics.marketCap} target={token.target} progress={progress} compactLayout={compactLayout} containerRef={progressMetricRef} />
+        </motion.dl>
+      </motion.div>
 
-      <div className={cx("flex min-h-[36px] min-w-0 items-center overflow-hidden bg-[#151918] px-3 text-[9.5px] text-[#aeb8b4]", compactLayout ? "gap-3" : "gap-5 max-[1400px]:gap-3")}>
-        {projectSocials.length ? <div className={cx("flex shrink-0 items-center gap-0.5", !compactLayout && "pr-2 max-[1400px]:pr-0", "max-[1180px]:hidden")}>{projectSocials.map(({ key, label, href, icon: Icon }) => <a key={key} href={href} target="_blank" rel="noreferrer" aria-label={label} title={label} className="grid h-6 w-6 place-items-center text-[#66716c] outline-none transition-colors hover:text-[#d6e0dc] focus-visible:text-[#52dfb2]"><Icon className="h-3.5 w-3.5" /></a>)}</div> : null}
-        <div className={cx("flex min-w-0 shrink-0 items-center", compactLayout ? "gap-1.5" : "gap-2")}><span className={cx("shrink-0 uppercase tracking-[0.1em] text-[#515b57]", compactLayout ? "hidden" : "max-[1400px]:hidden")}>DEX</span>{dex.icon ? <Image unoptimized src={dex.icon} alt="" width={16} height={16} className="h-4 w-4 shrink-0 object-contain" /> : null}<strong className="whitespace-nowrap font-medium text-[#aeb8b4]">{dex.name} <span className="font-mono font-normal text-[#66716c]">{dex.version}</span></strong>{!compactLayout ? <span className="shrink-0 font-mono text-[#78847e] max-[1650px]:hidden">{token.poolFee.toFixed(2)}%</span> : null}</div>
-        <div className="flex shrink-0 items-center gap-2 whitespace-nowrap"><span className="uppercase tracking-[0.1em] text-[#515b57]">Contract</span><a href={`${EXPLORERS[token.network]}${token.contract}`} target="_blank" rel="noreferrer" className="font-mono text-[#aeb8b4] transition hover:text-white/88">{shortAddress(token.contract)}</a><CopyAddress value={token.contract} /></div>
-        <div className="flex min-w-0 shrink items-center gap-1.5 whitespace-nowrap max-[520px]:hidden"><span className="uppercase tracking-[0.1em] text-[#515b57]">by</span><Link href={`/u/${token.creator}`} className="max-w-[72px] truncate font-medium text-[#aeb8b4] hover:text-white/90">{token.creator}</Link><span className="text-[#515b57]">on</span><Link href={token.board === "based" ? "/" : `/b/${token.board}`} className="max-w-[82px] truncate font-medium text-[#aeb8b4] hover:text-white/90">b/{token.board}</Link></div>
-        <div className={cx("ml-auto flex shrink-0 items-center", compactLayout ? "gap-0" : "min-w-[120px] gap-2 max-[1500px]:min-w-0")}>
-          {!compactLayout ? <div className="h-[3px] min-w-[72px] flex-1 overflow-hidden rounded-full bg-white/[0.08] max-[1500px]:hidden"><span className="block h-full rounded-full bg-[#18c98e] shadow-[0_0_10px_rgba(24,201,142,0.3)]" style={{ width: `${progress}%` }} /></div> : null}
-          <strong className="w-8 text-right font-mono text-[10px] text-[#18c98e]">{progress.toFixed(0)}%</strong>
+      <div className="relative min-h-[38px] min-w-0 overflow-hidden bg-[#151918] text-[10px] text-[#aeb8b4]">
+        <div className={cx("flex min-h-[38px] min-w-0 items-center px-3 transition-[gap,padding-right] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]", compactLayout ? "gap-3" : "gap-5 max-[1400px]:gap-3")} style={showProgressRail ? { paddingRight: progressRail.width + 12 } : undefined}>
+          {projectSocials.length ? <div className={cx("shrink-0 items-center gap-0.5", compactLayout ? "hidden min-[1700px]:flex min-[1700px]:pr-1" : "flex pr-2 max-[1400px]:pr-0 max-[1180px]:hidden")}>{projectSocials.map(({ key, label, href, icon: Icon }) => <a key={key} href={href} target="_blank" rel="noreferrer" aria-label={label} title={label} className="grid h-6 w-6 place-items-center text-[#66716c] outline-none transition-colors hover:text-[#d6e0dc] focus-visible:text-[#52dfb2]"><Icon className="h-3.5 w-3.5" /></a>)}</div> : null}
+          <div className={cx("flex min-w-0 shrink-0 items-center", compactLayout ? "gap-1.5" : "gap-2")}><span className={cx("shrink-0 uppercase tracking-[0.1em] text-[#515b57]", compactLayout ? "hidden min-[1700px]:inline" : "max-[1400px]:hidden")}>DEX</span>{dex.icon ? <Image unoptimized src={dex.icon} alt="" width={16} height={16} className="h-4 w-4 shrink-0 object-contain" /> : null}<strong className="whitespace-nowrap font-medium text-[#aeb8b4]">{dex.name} <span className="font-mono font-normal text-[#66716c]">{dex.version}</span></strong><span className={cx("shrink-0 font-mono text-[#78847e]", compactLayout ? "hidden min-[1800px]:inline" : "max-[1650px]:hidden")}>{token.poolFee.toLocaleString("en-US", { maximumFractionDigits: 2 })}%</span></div>
+          <div className="flex shrink-0 items-center gap-2 whitespace-nowrap"><span className="uppercase tracking-[0.1em] text-[#515b57]">Contract</span><a href={`${EXPLORERS[token.network]}${token.contract}`} target="_blank" rel="noreferrer" className="font-mono text-[#aeb8b4] transition hover:text-white/88">{shortAddress(token.contract)}</a><CopyAddress value={token.contract} /></div>
+          <div className="flex min-w-0 shrink items-center gap-1.5 whitespace-nowrap max-[520px]:hidden"><span className="uppercase tracking-[0.1em] text-[#515b57]">by</span><Link href={`/u/${token.creator}`} className="max-w-[72px] truncate font-medium text-[#aeb8b4] hover:text-white/90">{token.creator}</Link><span className="text-[#515b57]">on</span><Link href={token.board === "based" ? "/" : `/b/${token.board}`} className="max-w-[82px] truncate font-medium text-[#aeb8b4] hover:text-white/90">b/{token.board}</Link></div>
         </div>
+        {showProgressPercent ? (
+          <motion.div
+            aria-label={`${progress.toFixed(0)}% of target market cap`}
+            className="pointer-events-none absolute bottom-0 top-0 flex items-center"
+            animate={{ left: progressRail.left, width: progressRail.width }}
+            transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <div className="relative h-full w-full">
+              <motion.span key={progress} initial={{ opacity: 0.62 }} animate={{ opacity: 1 }} transition={{ duration: 0.22 }} className="absolute left-1/2 top-[5px] -translate-x-1/2 font-mono text-[9.5px] font-medium leading-none text-white/78 tabular-nums">{progress.toFixed(0)}%</motion.span>
+              {showProgressRail ? (
+                <div className="absolute bottom-[13px] left-[18px] right-[18px] h-[3px] overflow-hidden rounded-full bg-white/[0.085] max-[1400px]:left-3 max-[1400px]:right-3">
+                  <span className="block h-full rounded-full bg-[#18c98e] shadow-[0_0_10px_rgba(24,201,142,0.3)] transition-[width] duration-500 ease-out" style={{ width: `${progress}%` }} />
+                </div>
+              ) : null}
+            </div>
+          </motion.div>
+        ) : null}
       </div>
-    </section>
+    </motion.section>
   );
 }
 
@@ -787,28 +881,37 @@ function PriceChart({ token, livePrice, focusHidden = false }: { token: LbpToken
 
   return (
     <section
-      className={cx("relative flex basis-0 flex-col overflow-hidden bg-[#0d100f] transition-[flex-grow,min-height,opacity] duration-[360ms] ease-[cubic-bezier(0.22,1,0.36,1)]", focusHidden && "pointer-events-none opacity-0")}
+      className={cx("relative flex basis-0 flex-col overflow-hidden bg-[#0d100f] transition-[flex-grow,min-height,opacity] duration-[360ms] ease-[cubic-bezier(0.22,1,0.36,1)] max-[600px]:basis-auto max-[600px]:!min-h-[320px]", focusHidden && "pointer-events-none opacity-0 max-[600px]:!min-h-0")}
       style={{ flexGrow: focusHidden ? 0 : 1, minHeight: focusHidden ? 0 : 150 }}
       aria-label={`${token.ticker} price chart`}
       aria-hidden={focusHidden || undefined}
     >
-      <div className="flex h-[40px] shrink-0 items-center border-b border-white/[0.07] px-3">
-        <div className="flex items-center gap-0.5">
-          {TIMEFRAMES.map((item) => <button key={item} type="button" onClick={() => setTimeframe(item)} className={cx("h-7 min-w-8 cursor-pointer rounded px-2 text-[9.5px] transition", item === timeframe ? "bg-[#18c98e]/10 text-[#69e492]" : "text-white/40 hover:bg-white/[0.04] hover:text-white/72")}>{item}</button>)}
+      <div className="bb-scroll flex h-[42px] shrink-0 items-center overflow-x-auto border-b border-white/[0.07] px-3 max-[520px]:px-2">
+        <div className="flex shrink-0 items-center gap-0.5">
+          {TIMEFRAMES.map((item) => <button key={item} type="button" onClick={() => setTimeframe(item)} className={cx("h-7 min-w-8 cursor-pointer rounded px-2 text-[10px] transition", item === timeframe ? "bg-[#18c98e]/10 text-[#69e492]" : "text-white/42 hover:bg-white/[0.04] hover:text-white/72")}>{item}</button>)}
         </div>
-        <span className="mx-2 h-4 w-px bg-white/[0.07]" />
+        <span className="mx-2 h-4 w-px bg-white/[0.07] max-[520px]:mx-1" />
         <div className="flex items-center gap-1">
           <button type="button" onClick={() => setMode("candles")} aria-label="Candlestick chart" className={cx("grid h-7 w-7 place-items-center rounded transition", mode === "candles" ? "bg-white/[0.07] text-white/80" : "text-white/35 hover:text-white/70")}><CandlestickChart className="h-3.5 w-3.5" /></button>
           <button type="button" onClick={() => setMode("line")} aria-label="Line chart" className={cx("grid h-7 w-7 place-items-center rounded transition", mode === "line" ? "bg-white/[0.07] text-white/80" : "text-white/35 hover:text-white/70")}><LineChart className="h-3.5 w-3.5" /></button>
         </div>
-        <div className="ml-auto flex items-center gap-2">
-          <button type="button" onClick={() => setCreatorTradesVisible((current) => !current)} aria-pressed={creatorTradesVisible} aria-label={`${creatorTradesVisible ? "Hide" : "Show"} creator buys and sells`} className={cx("inline-flex h-7 items-center gap-1.5 rounded-md border px-2 text-[9px] font-semibold transition", creatorTradesVisible ? "border-white/[0.13] bg-white/[0.045] text-white/72 shadow-[inset_0_1px_rgba(255,255,255,0.025)]" : "border-white/[0.07] bg-transparent text-white/34 hover:border-white/[0.11] hover:text-white/62")}>
-            <span className="grid h-3.5 w-3.5 shrink-0 place-items-center" aria-hidden><Crown className="h-[11px] w-[11px] text-white/42" strokeWidth={1.8} /></span>
+        <div className="ml-auto flex shrink-0 items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => setCreatorTradesVisible((current) => !current)}
+            aria-pressed={creatorTradesVisible}
+            aria-label={`${creatorTradesVisible ? "Hide" : "Show"} creator buys and sells`}
+            className={cx(
+              "inline-flex h-7 items-center gap-1.5 rounded-[8px] border px-2.5 text-[9.5px] font-medium shadow-[inset_0_1px_rgba(255,255,255,0.018)] transition-[background-color,border-color,color] max-[520px]:px-2",
+              creatorTradesVisible ? "border-[#f0ca61]/20 bg-[#f0ca61]/[0.045] text-white/78" : "border-white/[0.075] bg-black/10 text-white/36 hover:border-[#f0ca61]/14 hover:text-white/62",
+            )}
+          >
+            <Crown className={cx("h-[11px] w-[11px] shrink-0 drop-shadow-[0_0_4px_rgba(255,216,95,0.34)] transition-colors", creatorTradesVisible ? "fill-[#ffd85f] text-[#fff0a6]" : "fill-[#ffd85f]/35 text-[#fff0a6]/35")} strokeWidth={1.45} aria-hidden />
             <span className="leading-none">Creator</span>
           </button>
-          <div className="flex rounded-full bg-white/[0.035] p-0.5 ring-1 ring-white/[0.07]">
-            <button type="button" onClick={() => setBasis("marketCap")} className={cx("h-6 rounded-full px-2.5 text-[9.5px] transition", basis === "marketCap" ? "bg-white/[0.09] text-white/82" : "text-white/38")}>Market cap</button>
-            <button type="button" onClick={() => setBasis("price")} className={cx("h-6 rounded-full px-2.5 text-[9.5px] transition", basis === "price" ? "bg-white/[0.09] text-white/82" : "text-white/38")}>Price</button>
+          <div className="flex h-7 items-center rounded-[8px] border border-white/[0.075] bg-black/10 p-0.5 shadow-[inset_0_1px_rgba(255,255,255,0.018)]">
+            <button type="button" onClick={() => setBasis("marketCap")} aria-pressed={basis === "marketCap"} className={cx("h-6 rounded-[6px] px-2.5 text-[10px] font-medium transition-[background-color,color] max-[520px]:px-2", basis === "marketCap" ? "bg-white/[0.075] text-white/82" : "text-white/38 hover:text-white/66")}>Market cap</button>
+            <button type="button" onClick={() => setBasis("price")} aria-pressed={basis === "price"} className={cx("h-6 rounded-[6px] px-2.5 text-[10px] font-medium transition-[background-color,color] max-[520px]:px-2", basis === "price" ? "bg-white/[0.075] text-white/82" : "text-white/38 hover:text-white/66")}>Price</button>
           </div>
         </div>
       </div>
@@ -866,7 +969,8 @@ function PriceChart({ token, livePrice, focusHidden = false }: { token: LbpToken
               >
                 <line x1={markerX} x2={markerX} y1={markerY + 7} y2={y(candle.high * factor) - 2} stroke={sideColor} strokeWidth={hovered ? 1.35 : 0.9} strokeDasharray="2 2" opacity={hovered ? 0.9 : 0.48} vectorEffect="non-scaling-stroke" />
                 <circle cx={markerX} cy={markerY} r={hovered ? 9.75 : 8.25} fill={sideColor} stroke="rgba(255,255,255,0.48)" strokeWidth={hovered ? 1.5 : 0.85} style={{ transition: "r 150ms ease,stroke-width 150ms ease" }} />
-                <path d="M2 4l3 12h14l3-12-6 7-4-7-4 7-6-7M5 20h14" fill="none" stroke="#fff1b8" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" transform={`translate(${markerX - 5.4} ${markerY - 5.4}) scale(.45)`} />
+                <path d="M2 4l3 12h14l3-12-6 7-4-7-4 7-6-7Z" fill="#ffd85f" stroke="#fff0a6" strokeWidth="1.15" strokeLinecap="round" strokeLinejoin="round" transform={`translate(${markerX - 5.4} ${markerY - 5.4}) scale(.45)`} />
+                <path d="M5 20h14" fill="none" stroke="#ffd85f" strokeWidth="2.4" strokeLinecap="round" transform={`translate(${markerX - 5.4} ${markerY - 5.4}) scale(.45)`} />
                 {hovered ? (
                   <g pointerEvents="none">
                     <rect x={tooltipX} y={tooltipY} width={tooltipWidth} height={tooltipHeight} rx="7" fill="rgba(11,14,13,0.985)" stroke="rgba(255,255,255,0.13)" strokeWidth="1" vectorEffect="non-scaling-stroke" />
@@ -1502,7 +1606,7 @@ function ActivityPanel({ token, liveMetrics, height, focusMode, compactLayout = 
     setComments((current) => sortPinnedCommentTree(updateCommentTree(current, commentId, (comment) => ({ ...comment, pinned: !comment.pinned }))));
   };
 
-  const tabClass = (item: ActivityTab) => cx("relative inline-flex h-full items-center gap-1.5 px-[11px] text-[11px] font-semibold outline-none transition focus-visible:outline-none", tab === item ? "text-[#edf2ef] after:absolute after:inset-x-[10px] after:bottom-[-1px] after:h-[2px] after:bg-[#18c98e] after:shadow-[0_-4px_12px_rgba(24,201,142,0.16)]" : "text-[#7f8a85] hover:text-[#edf2ef]");
+  const tabClass = (item: ActivityTab) => cx("relative inline-flex h-full items-center gap-1.5 px-3 text-[11.5px] font-semibold outline-none transition focus-visible:outline-none", tab === item ? "text-[#edf2ef] after:absolute after:inset-x-[11px] after:bottom-[-1px] after:h-[2px] after:bg-[#18c98e] after:shadow-[0_-4px_12px_rgba(24,201,142,0.16)]" : "text-[#7f8a85] hover:text-[#edf2ef]");
   const selectTab = (item: ActivityTab) => {
     setTab(item);
     const shouldFocusComments = item === "comments" && commentCount >= 9;
@@ -1551,26 +1655,26 @@ function ActivityPanel({ token, liveMetrics, height, focusMode, compactLayout = 
       <button type="button" disabled={focusMode} onPointerDown={startResize} onPointerMove={moveResize} onPointerUp={finishResize} onPointerCancel={finishResize} aria-label={collapsed ? "Expand market activity" : "Resize market activity"} aria-hidden={focusMode || undefined} className={cx("group absolute left-1/2 top-0 z-30 grid h-5 w-12 -translate-x-1/2 -translate-y-1/2 touch-none place-items-center outline-none transition-[opacity,transform] duration-300", focusMode && "pointer-events-none scale-90 opacity-0", resizing ? "cursor-grabbing" : "cursor-ns-resize")}>
         <span className={cx("h-[4px] w-7 rounded-full border shadow-[0_3px_10px_rgba(0,0,0,0.42),inset_0_1px_rgba(255,255,255,0.045)] transition-[width,background-color,border-color,box-shadow] duration-200", resizing ? "w-8 border-[#52dfb2]/[0.55] bg-[#52dfb2]/[0.55] shadow-[0_0_14px_rgba(82,223,178,0.2)]" : "border-white/[0.13] bg-[#59635f]/[0.42] group-hover:w-8 group-hover:border-[#52dfb2]/[0.38] group-hover:bg-[#52dfb2]/[0.42] group-focus-visible:w-8 group-focus-visible:border-[#52dfb2]/[0.45] group-focus-visible:bg-[#52dfb2]/[0.48]")} />
       </button>
-      <div className="flex h-[42px] shrink-0 items-center border-b border-[#202522] px-[10px] pl-[17px]">
-        <div className="flex h-full items-center gap-[5px]">
+      <div className="flex h-[42px] shrink-0 items-center border-b border-[#202522] px-[10px] pl-[17px] max-[600px]:h-auto max-[600px]:min-h-[78px] max-[600px]:flex-wrap max-[600px]:content-center max-[600px]:gap-y-1 max-[600px]:py-1 max-[600px]:pl-[10px]">
+        <div className="flex h-full items-center gap-[5px] max-[600px]:h-9 max-[600px]:w-full max-[600px]:justify-between">
           <button type="button" onClick={() => selectTab("live")} className={tabClass("live")}>All trades{feedTradeCount ? <span className="font-mono text-[9px] font-medium text-white/32">{feedTradeCount}</span> : null}</button>
           <button type="button" onClick={() => selectTab("mine")} className={tabClass("mine")}>My trades</button>
           <button type="button" onClick={() => selectTab("comments")} className={tabClass("comments")}>Comments{commentCount ? <span className="font-mono text-[9px] font-medium text-white/32">{commentCount}</span> : null}</button>
           <button type="button" onClick={() => selectTab("holders")} className={tabClass("holders")}>Holders{token.holders ? <span className="font-mono text-[9px] font-medium text-white/32">{token.holders.toLocaleString("en-US")}</span> : null}</button>
         </div>
-        {tab === "live" ? <div className="ml-auto flex items-center gap-0.5">
+        {tab === "live" ? <div className="ml-auto flex items-center gap-0.5 max-[600px]:h-8 max-[600px]:w-full max-[600px]:justify-end">
           {(["all", "buy", "sell"] as TradeFilter[]).map((item) => <button key={item} type="button" onClick={() => { setFilter(item); setVisibleTradeCount(18); }} className={cx("h-7 rounded px-2.5 text-[11px] font-semibold capitalize transition", filter === item ? "bg-[#171b1a] text-[#cbd3d0]" : "text-[#7f8a85] hover:bg-[#171b1a] hover:text-[#cbd3d0]")}>{item === "buy" ? "Buys" : item === "sell" ? "Sells" : "All"}</button>)}
           <span className="mx-1 h-4 w-px bg-white/[0.07]" />
           <button type="button" onClick={() => setManualFeedPaused((current) => !current)} aria-label={manualFeedPaused ? "Resume live transaction feed" : "Pause live transaction feed"} aria-pressed={manualFeedPaused} className={cx("grid h-7 w-7 place-items-center rounded text-white/34 outline-none transition hover:bg-[#171b1a] hover:text-white/72 focus-visible:bg-[#171b1a] focus-visible:text-white/72", manualFeedPaused && "bg-[#d7c57f]/[0.07] text-[#d7c57f]")}>{manualFeedPaused ? <Play className="h-3 w-3 fill-current" /> : <Pause className="h-3 w-3" />}</button>
         </div> : null}
       </div>
 
-      {!collapsed && (tab === "live" || tab === "mine") ? <div className={cx("grid h-[50px] shrink-0 border-y border-white/[0.055] bg-[#111313] shadow-[inset_2px_0_rgba(24,201,142,0.82)]", compactLayout ? "grid-cols-[128px_148px_minmax(0,1fr)]" : "grid-cols-[minmax(190px,212px)_minmax(232px,248px)_minmax(0,1fr)] max-[1400px]:grid-cols-[140px_160px_minmax(0,1fr)]")}>
+      {!collapsed && (tab === "live" || tab === "mine") ? <div className={cx("grid h-[50px] shrink-0 overflow-hidden border-y border-white/[0.055] bg-[#111313] shadow-[inset_2px_0_rgba(24,201,142,0.82)]", compactLayout ? "grid-cols-[128px_220px_minmax(0,480px)] max-[760px]:grid-cols-[112px_190px_minmax(0,1fr)]" : "grid-cols-[minmax(190px,212px)_minmax(232px,248px)_minmax(0,1fr)] max-[1400px]:grid-cols-[140px_160px_minmax(0,1fr)]")}>
         <div className="flex flex-col justify-center border-r border-white/[0.07] px-[18px] max-[1400px]:px-3"><strong className="font-mono text-[11.5px] font-semibold tracking-[-0.025em] text-[#d7dfdc]">{token.ticker}/{token.quoteSymbol}</strong><span className="mt-0.5 h-3 overflow-hidden"><AnimatePresence initial={false} mode="wait">{feedPaused && tab === "live" ? <motion.span key="feed-paused" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -3 }} transition={{ duration: 0.15 }} className="flex h-3 items-center gap-1 whitespace-nowrap text-[8.5px] font-bold uppercase leading-3 tracking-[0.095em] text-[#d7c57f]"><span aria-hidden="true" className="inline-flex h-2.5 w-1.5 shrink-0 items-center justify-center gap-[2px]"><i className="h-2 w-px rounded-full bg-current" /><i className="h-2 w-px rounded-full bg-current" /></span><span>Feed paused</span>{queuedTrades.length ? <strong className="ml-0.5 font-mono text-[8.5px] font-semibold tracking-normal text-[#f0db8a]">+{queuedTrades.length}</strong> : null}</motion.span> : <motion.span key="market-state" initial={{ opacity: 0, y: 3 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -3 }} transition={{ duration: 0.15 }} className="block text-[8.5px] font-bold uppercase leading-3 tracking-[0.095em] text-[#18c98e]">{token.upcoming ? "Scheduled market" : "Realtime market"}</motion.span>}</AnimatePresence></span></div>
         <div className="flex items-center gap-[10px] border-r border-white/[0.07] px-3"><span className="text-[9px] font-semibold uppercase tracking-[0.09em] text-[#75817c]">Window</span><div className="grid min-w-0 flex-1 grid-cols-4 gap-0.5 rounded-md border border-white/[0.08] bg-[#0c0f0e] p-0.5">{["5m", "1h", "4h", "24h"].map((item) => <button key={item} type="button" onClick={() => setWindowSize(item)} className={cx("h-[26px] rounded text-[10px] font-medium transition", windowSize === item ? "bg-[#18c98e]/[0.10] text-[#78e99d] shadow-[inset_0_0_0_1px_rgba(24,201,142,0.24)]" : "text-[#7d8984] hover:bg-[#171d1b] hover:text-[#c4ceca]")}>{item}</button>)}</div></div>
-        <dl className={cx("grid min-w-0", compactLayout ? "grid-cols-3" : "grid-cols-4")}>
+        <dl className="grid min-w-0 grid-cols-4">
           <ActivityMetric label="Price change" value={`${liveMetrics.change24h >= 0 ? "+" : ""}${liveMetrics.change24h.toFixed(2)}%`} accent />
-          {!compactLayout ? <ActivityMetric label="Trades" value={feedTradeCount.toString()} /> : null}
+          <ActivityMetric label="Trades" value={feedTradeCount.toString()} />
           <ActivityMetric label="Volume" value={formatUsd(liveMetrics.volume24h)} />
           <ActivityMetric label="Buy ratio" value={`${buyRatio}%`} accent />
         </dl>
@@ -1582,7 +1686,7 @@ function ActivityPanel({ token, liveMetrics, height, focusMode, compactLayout = 
           <div className="px-5 pb-[10px] pt-[15px]">
             <AnimatePresence initial={false} mode="popLayout">
               <motion.div key={commentComposerExpanded ? "comment-expanded" : "comment-collapsed"} layout initial={{ height: 0, opacity: 0, y: -4 }} animate={{ height: "auto", opacity: 1, y: 0 }} exit={{ height: 0, opacity: 0, y: -3 }} transition={{ duration: commentComposerExpanded ? 0.24 : 0.18, ease: [0.22, 1, 0.36, 1] }} className="overflow-hidden">
-                <CommentComposer value={commentDraft} onChange={setCommentDraft} expanded={commentComposerExpanded} onExpand={() => setCommentComposerExpanded(true)} inputRef={(node) => { commentInputRef.current = node; }} placeholder="Join the conversation" submitLabel="Comment" maxLength={789} allowLinks={canModerateComments} onCancel={() => { setCommentDraft(""); setCommentComposerExpanded(false); }} onSubmit={submitComment} />
+                <CommentComposer value={commentDraft} onChange={setCommentDraft} expanded={commentComposerExpanded} onExpand={() => setCommentComposerExpanded(true)} inputRef={(node) => { commentInputRef.current = node; }} placeholder={comments.length ? "Join the conversation" : "Start the thread"} submitLabel="Comment" maxLength={789} allowLinks={canModerateComments} onCancel={() => { setCommentDraft(""); setCommentComposerExpanded(false); }} onSubmit={submitComment} />
               </motion.div>
             </AnimatePresence>
           </div>
@@ -1660,8 +1764,8 @@ function FeeBuilderDrawer({
   return (
     <aside
       className={cx(
-        "relative flex min-h-0 min-w-0 flex-col overflow-hidden border-l border-[#242a28] bg-[#0a0c0b] text-[#dce4e0] shadow-[inset_1px_0_rgba(255,255,255,0.012)] max-[1420px]:absolute max-[1420px]:bottom-0 max-[1420px]:right-0 max-[1420px]:top-0 max-[1420px]:z-30 max-[1040px]:!static max-[1040px]:order-3 max-[1040px]:min-h-11 max-[1040px]:!w-full max-[1040px]:border-t",
-        expanded ? "max-[1420px]:w-[410px] max-[480px]:w-[calc(100%_-_42px)]" : "max-[1420px]:w-[42px]",
+        "relative flex min-h-0 min-w-0 flex-col overflow-hidden border-l border-[#242a28] bg-[#0a0c0b] text-[#dce4e0] shadow-[inset_1px_0_rgba(255,255,255,0.012)] max-[1180px]:absolute max-[1180px]:bottom-0 max-[1180px]:right-0 max-[1180px]:top-0 max-[1180px]:z-30 max-[1040px]:!static max-[1040px]:order-3 max-[1040px]:min-h-11 max-[1040px]:!w-full max-[1040px]:border-t",
+        expanded ? "max-[1180px]:w-[380px] max-[480px]:w-[calc(100%_-_42px)]" : "max-[1180px]:w-[42px]",
       )}
       data-testid="pool-fee-builder-drawer"
       aria-label="Fee Builder"
@@ -1718,7 +1822,7 @@ function FeeBuilderDrawer({
                 compact
                 headerInfo={(
                   <>
-                    <span className="block font-light text-white/50"><span className="font-normal text-[#e2d39f]">Based Bid’s Fee Engine</span> transforms trading activity into programmable value.</span>
+                    <span className="block font-light text-white/50"><span className="font-normal text-[#e2d39f]">based bid’s Fee Engine</span> transforms trading activity into programmable value.</span>
                     <span className="mt-1 block font-light text-white/45">It automates <span className="font-normal text-[#e2d39f]">rewards, RWA payouts, treasury flows, buybacks and custom programmable routes.</span></span>
                     <span className="mt-1 block font-normal text-[#78e99d]">All without selling any project tokens and creating sell pressure.</span>
                     <span className="mt-1.5 block border-t border-white/[0.065] pt-1.5 text-white/42">Activates automatically after bonding completes.</span>
@@ -1768,7 +1872,17 @@ function TradeTicket({ token, livePrice }: { token: LbpTokenDetail; livePrice: n
   const validCustomSlippage = customSlippage !== "" && Number.isFinite(numericCustomSlippage) && numericCustomSlippage > 0 && numericCustomSlippage <= 999;
   const slippage = slippageMode === "fixed-50" ? 0.5 : slippageMode === "fixed-100" ? 1 : slippageMode === "fixed-500" ? 5 : slippageMode === "custom" && validCustomSlippage ? numericCustomSlippage : 0.5;
   const slippageLabel = `${slippageMode === "auto" ? "Auto " : ""}${Number.isInteger(slippage) ? slippage.toFixed(0) : slippage.toFixed(2).replace(/0$/, "")}%`;
-  const sizeStyle = { "--size-ratio": `${sizePercent / 100}`, "--size-percent": `${sizePercent}%` } as React.CSSProperties;
+  const sizeStyle = {
+    "--size-ratio": `${sizePercent / 100}`,
+    "--size-percent": `${sizePercent}%`,
+    "--order-accent": side === "buy" ? "#18c98e" : "#ff3771",
+    "--order-accent-start": side === "buy" ? "#2f9f58" : "#a92950",
+    "--order-accent-glow": side === "buy" ? "rgba(24,201,142,0.13)" : "rgba(255,55,113,0.13)",
+    "--order-accent-ring": side === "buy" ? "rgba(24,201,142,0.15)" : "rgba(255,55,113,0.15)",
+    "--order-thumb-border": side === "buy" ? "rgba(122,235,157,0.9)" : "rgba(255,116,156,0.9)",
+    "--order-thumb-center": side === "buy" ? "#c7ffd8" : "#ffd0de",
+    "--order-thumb-inner": side === "buy" ? "#142319" : "#28151c",
+  } as React.CSSProperties;
   const maxBuyNative = token.maxBuyTokens ? token.maxBuyTokens * quotedTokenPrice : 0;
 
   React.useEffect(() => {
@@ -1807,17 +1921,17 @@ function TradeTicket({ token, livePrice }: { token: LbpTokenDetail; livePrice: n
   const flip = () => changeSide(side === "buy" ? "sell" : "buy");
 
   return (
-    <aside className={cx("relative isolate min-h-0 overflow-hidden border-l border-[#242a28] bg-[#0f1111] max-[1040px]:order-2", side === "buy" ? "shadow-[inset_12px_0_36px_rgba(24,201,142,0.015)]" : "shadow-[inset_12px_0_36px_rgba(255,55,113,0.012)]")}>
-      <div className="bb-ticket-surface flex h-full min-h-0 flex-col overflow-y-auto px-5 pb-[14px] pt-4 [scrollbar-color:#303936_transparent] [scrollbar-width:thin]">
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(24,201,142,0.68)_48%,transparent)]" />
+    <aside id="trade-ticket" className={cx("relative isolate min-h-0 scroll-mt-16 overflow-hidden border-l border-[#242a28] bg-[#0f1111] max-[1040px]:order-2 max-[1040px]:border-l-0 max-[1040px]:border-t max-[1040px]:border-[#242a28]", side === "buy" ? "shadow-[inset_12px_0_36px_rgba(24,201,142,0.015)]" : "shadow-[inset_12px_0_36px_rgba(255,55,113,0.012)]")}>
+      <div className="bb-ticket-surface flex h-full min-h-0 flex-col overflow-x-hidden overflow-y-auto px-4 pb-[14px] pt-4 [scrollbar-color:#303936_transparent] [scrollbar-width:thin] sm:px-5">
+      <div className={cx("pointer-events-none absolute inset-x-0 top-0 h-px transition-colors duration-300", side === "buy" ? "bg-[linear-gradient(90deg,transparent,rgba(24,201,142,0.68)_48%,transparent)]" : "bg-[linear-gradient(90deg,transparent,rgba(255,55,113,0.64)_48%,transparent)]")} />
       <div className="flex min-h-[38px] items-start justify-between gap-4">
         <div>
-          <div className="text-[8.5px] font-semibold uppercase tracking-[0.11em] text-[#68736e]">LBP order</div><h2 className="mt-0.5 text-[16px] font-bold tracking-[-0.03em] text-[#edf2ef]">Trade {token.ticker}</h2>
+          <div className="text-[9.5px] font-semibold uppercase tracking-[0.11em] text-[#74807b]">LBP order</div><h2 className="mt-0.5 text-[16px] font-bold tracking-[-0.03em] text-[#edf2ef]">Trade {token.ticker}</h2>
         </div>
         <div className="grid shrink-0 justify-items-end gap-1">
-          <span className="text-[8px] font-semibold uppercase tracking-[0.12em] text-[#68736e]">Mode</span>
-          <button type="button" onClick={() => setSlippageOpen(true)} aria-label={`Open slippage settings. ${slippageLabel}`} className="inline-flex h-8 min-w-[104px] items-center justify-center gap-1.5 rounded-[7px] border border-[#303936] bg-[#151817] px-2.5 text-[10px] font-semibold text-[#c7d0cc] shadow-[inset_0_1px_rgba(255,255,255,0.025)] transition hover:border-[#3a4742] hover:bg-[#181d1b] hover:text-[#edf2ef] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#18c98e]/45">
-            <SlidersHorizontal className="h-3.5 w-3.5 text-[#18c98e]" strokeWidth={1.8} aria-hidden />
+          <span className="text-[9px] font-semibold uppercase tracking-[0.12em] text-[#74807b]">Mode</span>
+          <button type="button" onClick={() => setSlippageOpen(true)} aria-label={`Open slippage settings. ${slippageLabel}`} className="inline-flex h-8 min-w-[104px] items-center justify-center gap-1.5 rounded-[7px] border border-[#303936] bg-[#151817] px-2.5 text-[11px] font-semibold text-[#c7d0cc] shadow-[inset_0_1px_rgba(255,255,255,0.025)] transition hover:border-[#3a4742] hover:bg-[#181d1b] hover:text-[#edf2ef] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#18c98e]/45">
+            <SlidersHorizontal className={cx("h-3.5 w-3.5 transition-colors", side === "buy" ? "text-[#18c98e]" : "text-[#ff3771]")} strokeWidth={1.8} aria-hidden />
             <span className="font-mono">{slippageLabel}</span>
             <ChevronDown className="h-3 w-3 text-[#69736f]" strokeWidth={1.8} aria-hidden />
           </button>
@@ -1825,41 +1939,51 @@ function TradeTicket({ token, livePrice }: { token: LbpTokenDetail; livePrice: n
       </div>
 
       <div className="mt-2.5 grid h-9 grid-cols-2 gap-1 rounded-[9px] border border-[#28312e] bg-black/25 p-1">
-        <button type="button" onClick={() => changeSide("buy")} className={cx("rounded-md text-[11px] font-semibold transition", side === "buy" ? "bg-[linear-gradient(180deg,rgba(24,201,142,0.16),rgba(24,201,142,0.09))] text-[#18c98e] shadow-[inset_0_0_0_1px_rgba(24,201,142,0.08)]" : "text-[#7f8a85] hover:text-[#cbd3d0]")}>Buy</button>
-        <button type="button" onClick={() => changeSide("sell")} className={cx("rounded-md text-[11px] font-semibold transition", side === "sell" ? "bg-[linear-gradient(180deg,rgba(255,55,113,0.16),rgba(255,55,113,0.09))] text-[#ff3771] shadow-[inset_0_0_0_1px_rgba(255,55,113,0.08)]" : "text-[#7f8a85] hover:text-[#cbd3d0]")}>Sell</button>
+        <button type="button" onClick={() => changeSide("buy")} className={cx("rounded-md text-[12px] font-semibold transition", side === "buy" ? "bg-[linear-gradient(180deg,rgba(24,201,142,0.16),rgba(24,201,142,0.09))] text-[#18c98e] shadow-[inset_0_0_0_1px_rgba(24,201,142,0.08)]" : "text-[#7f8a85] hover:text-[#cbd3d0]")}>Buy</button>
+        <button type="button" onClick={() => changeSide("sell")} className={cx("rounded-md text-[12px] font-semibold transition", side === "sell" ? "bg-[linear-gradient(180deg,rgba(255,55,113,0.16),rgba(255,55,113,0.09))] text-[#ff3771] shadow-[inset_0_0_0_1px_rgba(255,55,113,0.08)]" : "text-[#7f8a85] hover:text-[#cbd3d0]")}>Sell</button>
       </div>
 
-      <div className="relative mt-[10px] overflow-visible rounded-xl border border-[#2a3330] bg-[linear-gradient(145deg,rgba(20,23,23,0.99),rgba(15,17,17,0.99))] shadow-[0_14px_34px_rgba(0,0,0,0.16),inset_0_1px_rgba(255,255,255,0.018)]">
-        <label className="grid h-[96px] gap-1.5 rounded-t-[11px] p-[11px] transition focus-within:bg-[linear-gradient(90deg,rgba(24,201,142,0.045),rgba(24,201,142,0.008)_48%,transparent_78%)]">
-        <span className="flex items-center justify-between text-[10px] text-[#9ba6a1]"><span>You pay</span><span className="font-mono text-[9px] text-[#7b8681]">Balance {balance.toLocaleString("en-US", { maximumFractionDigits: 4 })} {paySymbol}</span></span>
-        <span className="flex items-center justify-between gap-3"><input value={amount} onChange={(event) => updateAmount(event.target.value)} inputMode="decimal" placeholder="0" aria-label={`Amount of ${paySymbol} to pay`} className="min-w-0 w-[56%] bg-transparent font-mono text-[24px] font-medium tracking-[-0.05em] text-[#edf2ef] caret-[#18c98e] outline-none placeholder:text-[#56625d] focus:text-[#eef7f3] focus:drop-shadow-[0_0_9px_rgba(24,201,142,0.08)]" /><span className="inline-flex items-center gap-1.5 rounded-full border border-[#354149]/80 bg-black/35 py-0.5 pl-1 pr-1.5 text-[11px] font-semibold text-[#edf2ef]">{side === "buy" ? <QuoteMark symbol={paySymbol} /> : <TokenMark token={token} size="h-[25px] w-[25px]" showNetwork={false} />}{paySymbol}</span></span>
-        <span className="font-mono text-[10px] text-[#7d8984]">{formatUsd(side === "buy" ? numericAmount * quoteUsd : numericAmount * quotedTokenPrice * quoteUsd)}</span>
+      <div className={cx(
+        "relative mt-[10px] overflow-visible rounded-xl border bg-[linear-gradient(145deg,rgba(20,23,23,0.99),rgba(15,17,17,0.99))] shadow-[0_14px_34px_rgba(0,0,0,0.16),inset_0_1px_rgba(255,255,255,0.018)] transition-colors duration-300",
+        side === "buy"
+          ? "border-[#2a3330] shadow-[0_14px_34px_rgba(0,0,0,0.16),inset_18px_0_30px_rgba(24,201,142,0.018),inset_0_1px_rgba(255,255,255,0.018)]"
+          : "border-[#342a2e] shadow-[0_14px_34px_rgba(0,0,0,0.16),inset_18px_0_30px_rgba(255,55,113,0.022),inset_0_1px_rgba(255,255,255,0.018)]",
+      )}>
+        <label className={cx(
+          "grid h-[96px] gap-1.5 rounded-t-[11px] p-[11px] transition duration-300",
+          side === "buy"
+            ? "focus-within:bg-[linear-gradient(90deg,rgba(24,201,142,0.045),rgba(24,201,142,0.008)_48%,transparent_78%)]"
+            : "focus-within:bg-[linear-gradient(90deg,rgba(255,55,113,0.045),rgba(255,55,113,0.008)_48%,transparent_78%)]",
+        )}>
+        <span className="flex items-center justify-between text-[11.5px] text-[#aeb8b3]"><span>{side === "buy" ? "You pay" : "You sell"}</span><span className="font-mono text-[10.5px] text-[#8c9892]">Balance {balance.toLocaleString("en-US", { maximumFractionDigits: 4 })} {paySymbol}</span></span>
+        <span className="flex min-w-0 items-center justify-between gap-3"><input value={amount} onChange={(event) => updateAmount(event.target.value)} inputMode="decimal" placeholder="0" aria-label={`Amount of ${paySymbol} to pay`} className={cx("min-w-0 flex-1 bg-transparent font-mono font-medium tracking-[-0.05em] text-[#edf2ef] outline-none placeholder:text-[#56625d] focus:text-[#eef7f3]", amount.length > 16 ? "text-[15px]" : amount.length > 12 ? "text-[18px]" : amount.length > 9 ? "text-[21px]" : "text-[24px]", side === "buy" ? "caret-[#18c98e] focus:drop-shadow-[0_0_9px_rgba(24,201,142,0.08)]" : "caret-[#ff3771] focus:drop-shadow-[0_0_9px_rgba(255,55,113,0.08)]")} /><span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[#354149]/80 bg-black/35 py-0.5 pl-1 pr-1.5 text-[11px] font-semibold text-[#edf2ef]">{side === "buy" ? <QuoteMark symbol={paySymbol} /> : <TokenMark token={token} size="h-[25px] w-[25px]" showNetwork={false} />}{paySymbol}</span></span>
+        <span className="font-mono text-[10.5px] text-[#89958f]">{formatUsd(side === "buy" ? numericAmount * quoteUsd : numericAmount * quotedTokenPrice * quoteUsd)}</span>
         </label>
-        <button type="button" onClick={flip} aria-label="Switch trade direction" className="bb-swap-flip absolute left-1/2 top-1/2 z-10 grid h-[34px] w-[34px] -translate-x-1/2 -translate-y-1/2 place-items-center overflow-hidden rounded-full border-4 border-[#111414] bg-[#1a201e] text-[#9aa6a1] shadow-[0_6px_14px_rgba(0,0,0,0.34),inset_0_1px_rgba(255,255,255,0.06),0_0_0_1px_rgba(24,201,142,0.1)] transition hover:bg-[#1d2925] hover:text-[#78e99d] hover:shadow-[0_7px_16px_rgba(0,0,0,0.38),inset_0_1px_rgba(255,255,255,0.07),0_0_0_1px_rgba(24,201,142,0.2)]"><span className="bb-swap-flip-motion grid place-items-center"><ArrowDownUp className="h-3.5 w-3.5" /></span></button>
+        <button type="button" onClick={flip} aria-label="Switch trade direction" className={cx("bb-swap-flip absolute left-1/2 top-1/2 z-10 grid h-[34px] w-[34px] -translate-x-1/2 -translate-y-1/2 place-items-center overflow-hidden rounded-full border-4 border-[#111414] bg-[#1a201e] text-[#9aa6a1] shadow-[0_6px_14px_rgba(0,0,0,0.34),inset_0_1px_rgba(255,255,255,0.06)] transition", side === "buy" ? "shadow-[0_6px_14px_rgba(0,0,0,0.34),inset_0_1px_rgba(255,255,255,0.06),0_0_0_1px_rgba(24,201,142,0.1)] hover:bg-[#1d2925] hover:text-[#78e99d] hover:shadow-[0_7px_16px_rgba(0,0,0,0.38),inset_0_1px_rgba(255,255,255,0.07),0_0_0_1px_rgba(24,201,142,0.2)]" : "shadow-[0_6px_14px_rgba(0,0,0,0.34),inset_0_1px_rgba(255,255,255,0.06),0_0_0_1px_rgba(255,55,113,0.1)] hover:bg-[#291d21] hover:text-[#ff759f] hover:shadow-[0_7px_16px_rgba(0,0,0,0.38),inset_0_1px_rgba(255,255,255,0.07),0_0_0_1px_rgba(255,55,113,0.2)]")}><span className="bb-swap-flip-motion grid place-items-center"><ArrowDownUp className="h-3.5 w-3.5" /></span></button>
         <div className="grid h-[96px] gap-1.5 rounded-b-[11px] border-t border-[#2a3330] bg-black/[0.18] p-[11px]">
-        <span className="flex items-center justify-between text-[10px] text-[#9ba6a1]"><span>You receive</span><span className="text-[9px] text-[#7b8681]">Estimated</span></span>
-        <span className="flex items-center justify-between gap-3"><output className="min-w-0 w-[56%] truncate font-mono text-[24px] font-medium tracking-[-0.05em] text-[#edf2ef]">{receive ? receive.toLocaleString("en-US", { maximumFractionDigits: side === "buy" ? 2 : 5 }) : "0"}</output><span className="inline-flex items-center gap-1.5 rounded-full border border-[#354149]/80 bg-black/35 py-0.5 pl-1 pr-1.5 text-[11px] font-semibold text-[#edf2ef]">{side === "buy" ? <TokenMark token={token} size="h-[25px] w-[25px]" showNetwork={false} /> : <QuoteMark symbol={receiveSymbol} />}{receiveSymbol}</span></span>
-        <span className="font-mono text-[10px] text-[#7d8984]">{formatUsd(side === "buy" ? receive * quotedTokenPrice * quoteUsd : receive * quoteUsd)}</span>
+        <span className="flex items-center justify-between text-[11.5px] text-[#aeb8b3]"><span>You receive</span><span className="text-[10.5px] text-[#8c9892]">Estimated</span></span>
+        <span className="flex min-w-0 items-center justify-between gap-3"><output title={receive ? formatFullTerminalAmount(receive, side === "buy" ? 2 : 5) : "0"} className="block min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap font-mono text-[24px] font-medium tracking-[-0.05em] text-[#edf2ef]">{formatTerminalAmount(receive, side === "buy" ? 2 : 5)}</output><span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[#354149]/80 bg-black/35 py-0.5 pl-1 pr-1.5 text-[11px] font-semibold text-[#edf2ef]">{side === "buy" ? <TokenMark token={token} size="h-[25px] w-[25px]" showNetwork={false} /> : <QuoteMark symbol={receiveSymbol} />}{receiveSymbol}</span></span>
+        <span className="font-mono text-[10.5px] text-[#89958f]">{formatUsd(side === "buy" ? receive * quotedTokenPrice * quoteUsd : receive * quoteUsd)}</span>
         </div>
       </div>
 
-      <div className="bb-size-control mt-2 rounded-[9px] border border-[#27302d] bg-[linear-gradient(180deg,rgba(20,23,23,0.92),rgba(10,11,11,0.82))] px-[10px] pb-1 pt-1.5 shadow-[inset_0_1px_rgba(255,255,255,0.018)] focus-within:border-[#18c98e]/30" style={sizeStyle}>
-        <div className="flex min-h-[15px] items-center justify-between text-[9.5px] text-[#899590]"><label htmlFor="lbp-order-size" className="font-semibold">Order size</label><output htmlFor="lbp-order-size" className="font-mono text-[10px] font-semibold text-[#c8d4d1]">{sizePercentLabel(sizePercent)}</output></div>
+      <div className={cx("bb-size-control mt-2 rounded-[9px] border bg-[linear-gradient(180deg,rgba(20,23,23,0.92),rgba(10,11,11,0.82))] px-[10px] pb-1 pt-1.5 shadow-[inset_0_1px_rgba(255,255,255,0.018)] transition-colors", side === "buy" ? "border-[#27302d] focus-within:border-[#18c98e]/30" : "border-[#32272b] focus-within:border-[#ff3771]/30")} style={sizeStyle}>
+        <div className="flex min-h-[17px] items-center justify-between text-[11px] text-[#9ca7a2]"><label htmlFor="lbp-order-size" className="font-semibold">Order size</label><output htmlFor="lbp-order-size" className="font-mono text-[11px] font-semibold text-[#d3dcda]">{sizePercentLabel(sizePercent)}</output></div>
         <div className="bb-size-slider relative mx-2 h-[21px]">
           <input id="lbp-order-size" type="range" min="0" max="100" step="0.1" value={sizePercent} onChange={(event) => setPercent(Number(event.currentTarget.value), true)} aria-label="Order size" aria-valuetext={`${sizePercentLabel(sizePercent)} of available ${paySymbol} balance`} className="bb-size-range absolute inset-0 z-[3] h-[21px] w-full cursor-pointer appearance-none bg-transparent" />
           <span className="bb-size-fill pointer-events-none absolute z-[1]" aria-hidden="true" />
           <span className="bb-size-halo pointer-events-none absolute z-[1]" aria-hidden="true" />
         </div>
-        <div className="flex h-5 items-start justify-between">{SNAP_POINTS.map((point) => { const selected = Math.abs(sizePercent - point) < 0.05; return <button key={point} type="button" onClick={() => setPercent(point)} className={cx("grid h-5 w-7 justify-items-center gap-0.5 font-mono text-[9px] leading-none transition", selected ? "text-[#18c98e]" : "text-[#75817c] hover:text-[#18c98e]")}><i className={cx("h-1 w-0.5 rounded-full bg-[#4b5551] transition", selected ? "translate-y-[-2px] scale-50 opacity-0" : "group-hover:bg-[#18c98e]")} /><span>{point}%</span></button>; })}</div>
+        <div className="flex h-5 items-start justify-between">{SNAP_POINTS.map((point) => { const selected = Math.abs(sizePercent - point) < 0.05; return <button key={point} type="button" onClick={() => setPercent(point)} className={cx("grid h-5 w-7 justify-items-center gap-0.5 font-mono text-[9.5px] leading-none transition", selected ? (side === "buy" ? "text-[#18c98e]" : "text-[#ff3771]") : (side === "buy" ? "text-[#7f8b85] hover:text-[#18c98e]" : "text-[#7f8b85] hover:text-[#ff3771]"))}><i className={cx("h-1 w-0.5 rounded-full bg-[#4b5551] transition", selected ? "translate-y-[-2px] scale-50 opacity-0" : "")} /><span>{point}%</span></button>; })}</div>
       </div>
 
-      <button type="button" disabled={token.upcoming} onClick={() => setConnected(true)} className={cx("relative mt-2 grid min-h-[46px] shrink-0 place-items-center overflow-hidden rounded-lg border px-4 text-[12px] font-bold transition", token.upcoming ? "cursor-not-allowed border-[#25312d] bg-[#17221f] text-[#52615c] shadow-[inset_0_1px_rgba(255,255,255,0.025)]" : side === "buy" ? "border-[#6be991] bg-[#18c98e] text-[#04140f] shadow-[0_8px_18px_rgba(0,0,0,0.28),inset_0_1px_rgba(235,255,241,0.22),inset_0_-1px_rgba(20,89,45,0.22)] hover:border-[#8df0aa] hover:bg-[#65e892] hover:shadow-[0_10px_22px_rgba(0,0,0,0.32),0_0_16px_rgba(24,201,142,0.13),inset_0_1px_rgba(243,255,247,0.24)]" : "border-[#ff5f8d] bg-[#ff3771] text-[#19050c] shadow-[0_8px_18px_rgba(0,0,0,0.28)] hover:bg-[#ff4d7d]")}>{token.upcoming ? "Trading opens soon" : connected ? `Review ${side}` : "Connect wallet"}</button>
+      <button type="button" disabled={token.upcoming} onClick={() => setConnected(true)} className={cx("relative mt-2 grid min-h-[46px] shrink-0 place-items-center overflow-hidden rounded-lg border px-4 text-[12px] font-bold transition", token.upcoming ? "cursor-not-allowed border-[#25312d] bg-[#17221f] text-[#52615c] shadow-[inset_0_1px_rgba(255,255,255,0.025)]" : !connected || side === "buy" ? "border-[#6be991] bg-[#18c98e] text-[#04140f] shadow-[0_8px_18px_rgba(0,0,0,0.28),inset_0_1px_rgba(235,255,241,0.22),inset_0_-1px_rgba(20,89,45,0.22)] hover:border-[#8df0aa] hover:bg-[#65e892] hover:shadow-[0_10px_22px_rgba(0,0,0,0.32),0_0_16px_rgba(24,201,142,0.13),inset_0_1px_rgba(243,255,247,0.24)]" : "border-[#ff5f8d] bg-[#ff3771] text-[#19050c] shadow-[0_8px_18px_rgba(0,0,0,0.28)] hover:bg-[#ff4d7d]")}>{token.upcoming ? "Trading opens soon" : connected ? `Review ${side}` : "Connect wallet"}</button>
 
-      <dl className="mt-3 space-y-2 border-t border-[#28302e] pt-3 text-[10.5px]">
+      <dl className="mt-3 space-y-2 border-t border-[#28302e] pt-3 text-[11px]">
         {token.maxBuyTokens ? <div className="flex min-h-[27px] items-start justify-between gap-3"><dt className="pt-0.5 text-[#7f8a85]">Max buy</dt><dd className="grid justify-items-end font-mono font-semibold leading-tight text-[#d1d8da]"><span>{token.maxBuyTokens.toLocaleString("en-US", { maximumFractionDigits: 4 })} {token.ticker} <span className="text-[#78e99d]">({maxBuyNative.toLocaleString("en-US", { maximumFractionDigits: 2 })} {token.quoteSymbol})</span></span><span className="mt-1 text-[8.5px] font-normal text-[#68736e]">refresh in {quoteCountdown}s</span></dd></div> : null}
         <div className="flex min-h-[19px] items-center justify-between gap-3"><dt className="text-[#7f8a85]">{token.quoteSymbol} value</dt><dd className="inline-flex items-center gap-1.5 font-mono font-semibold text-[#d1d8da]"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#18c98e] shadow-[0_0_8px_rgba(24,201,142,0.45)]" /><span>{formatQuoteUsd(quoteUsd)}</span><span className="text-[8.5px] font-normal text-[#68736e]">quote in {quoteCountdown}s</span></dd></div>
         <div className="flex min-h-[19px] items-center justify-between gap-3"><dt className="text-[#7f8a85]">Rate</dt><dd className="font-mono font-semibold text-[#d1d8da]">1 {token.ticker} = {quotedTokenPrice.toFixed(6)} {token.quoteSymbol}</dd></div>
-        <div className="flex min-h-[19px] items-center justify-between gap-3"><dt className="text-[#7f8a85]">Minimum received</dt><dd className="font-mono font-semibold text-[#d1d8da]">{receive ? (receive * (1 - slippage / 100)).toLocaleString("en-US", { maximumFractionDigits: 4 }) : "0"} {receiveSymbol}</dd></div>
+        <div className="flex min-h-[19px] items-center justify-between gap-3"><dt className="shrink-0 text-[#7f8a85]">Minimum received</dt><dd title={`${formatFullTerminalAmount(receive * (1 - slippage / 100), 4)} ${receiveSymbol}`} className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-right font-mono font-semibold text-[#d1d8da]">{formatTerminalAmount(receive * (1 - slippage / 100), 4)} {receiveSymbol}</dd></div>
       </dl>
 
       </div>
@@ -1899,12 +2023,31 @@ export default function TokenTerminalPage({ token }: { token: LbpTokenDetail }) 
   const [feeBuilderOpen, setFeeBuilderOpen] = React.useState(false);
   const [manageOpen, setManageOpen] = React.useState(false);
   const [liveMetrics, setLiveMetrics] = React.useState<LiveMarketMetrics>(() => initialLiveMarketMetrics(token));
+  const { expanded: sidebarExpanded, setTemporaryExpanded } = useTerminalSidebar();
   const lastExpandedHeight = React.useRef(292);
   const marketSequence = React.useRef(0);
+  const restoreSidebarAfterFeeBuilder = React.useRef(false);
+  const openFeeBuilder = React.useCallback(() => {
+    const shouldTemporarilyCollapse = sidebarExpanded && window.innerWidth < 2200;
+    restoreSidebarAfterFeeBuilder.current = shouldTemporarilyCollapse;
+    if (shouldTemporarilyCollapse) setTemporaryExpanded(false);
+    setFeeBuilderOpen(true);
+  }, [setTemporaryExpanded, sidebarExpanded]);
+  const closeFeeBuilder = React.useCallback(() => {
+    setFeeBuilderOpen(false);
+    if (restoreSidebarAfterFeeBuilder.current) {
+      restoreSidebarAfterFeeBuilder.current = false;
+      setTemporaryExpanded(null);
+    }
+  }, [setTemporaryExpanded]);
   React.useEffect(() => {
+    if (restoreSidebarAfterFeeBuilder.current) {
+      restoreSidebarAfterFeeBuilder.current = false;
+      setTemporaryExpanded(null);
+    }
     setFeeBuilderOpen(false);
     setManageOpen(false);
-  }, [token.id]);
+  }, [setTemporaryExpanded, token.id]);
   React.useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("manage") !== "1") return;
@@ -1921,6 +2064,9 @@ export default function TokenTerminalPage({ token }: { token: LbpTokenDetail }) 
     window.addEventListener("keydown", closeOnEscape);
     return () => window.removeEventListener("keydown", closeOnEscape);
   }, [manageOpen]);
+  React.useEffect(() => () => {
+    if (restoreSidebarAfterFeeBuilder.current) setTemporaryExpanded(null);
+  }, [setTemporaryExpanded]);
   React.useEffect(() => {
     marketSequence.current = 0;
     setLiveMetrics(initialLiveMarketMetrics(token));
@@ -1967,9 +2113,9 @@ export default function TokenTerminalPage({ token }: { token: LbpTokenDetail }) 
         "relative grid h-[calc(100vh-100px)] min-h-[680px] min-w-0 overflow-hidden bg-[#090a0a] text-white transition-[grid-template-columns] duration-[240ms] ease-[cubic-bezier(0.2,0.72,0.2,1)] max-[1040px]:h-auto max-[1040px]:min-h-0 max-[1040px]:!grid-cols-1 max-[1040px]:overflow-visible",
         token.feeBuilderEnabled
           ? feeBuilderOpen
-            ? "grid-cols-[minmax(0,1fr)_340px_410px] max-[1420px]:!grid-cols-[minmax(0,1fr)_340px_42px]"
-            : "grid-cols-[minmax(0,1fr)_340px_42px] max-[1420px]:!grid-cols-[minmax(0,1fr)_340px_42px]"
-          : "grid-cols-[minmax(0,1fr)_340px] max-[1420px]:!grid-cols-[minmax(0,1fr)_340px]",
+            ? "grid-cols-[minmax(0,1fr)_340px_410px] max-[1600px]:grid-cols-[minmax(0,1fr)_320px_390px] max-[1320px]:grid-cols-[minmax(0,1fr)_300px_360px] max-[1180px]:!grid-cols-[minmax(0,1fr)_300px_42px]"
+            : "grid-cols-[minmax(0,1fr)_340px_42px] max-[1780px]:!grid-cols-[minmax(0,1fr)_340px_42px]"
+          : "grid-cols-[minmax(0,1fr)_340px] max-[1780px]:!grid-cols-[minmax(0,1fr)_340px]",
       )}
     >
       <style jsx global>{TERMINAL_CONTROL_CSS}</style>
@@ -1983,8 +2129,8 @@ export default function TokenTerminalPage({ token }: { token: LbpTokenDetail }) 
         <FeeBuilderDrawer
           token={token}
           expanded={feeBuilderOpen}
-          onExpand={() => setFeeBuilderOpen(true)}
-          onCollapse={() => setFeeBuilderOpen(false)}
+          onExpand={openFeeBuilder}
+          onCollapse={closeFeeBuilder}
         />
       ) : null}
       <AnimatePresence>{commentsFocus ? <FloatingChart token={token} livePrice={liveMetrics.price} onRestore={restoreChartFromComments} rightOffset={token.feeBuilderEnabled ? (feeBuilderOpen ? 426 : 58) : 14} /> : null}</AnimatePresence>
@@ -2000,7 +2146,7 @@ export default function TokenTerminalPage({ token }: { token: LbpTokenDetail }) 
               animate={{ x: 0, opacity: 1 }}
               exit={{ x: 56, opacity: 0 }}
               transition={{ duration: 0.34, ease: [0.22, 1, 0.36, 1] }}
-              className="relative h-full w-[min(1080px,calc(100vw-18px))] overflow-y-auto overscroll-contain border-l border-white/[0.09] bg-[#090a0a] shadow-[-30px_0_90px_rgba(0,0,0,0.62)]"
+              className="relative h-full w-[min(1080px,calc(100vw-18px))] overflow-y-auto overscroll-contain border-l border-white/[0.11] bg-[#0d100f] shadow-[-30px_0_90px_rgba(0,0,0,0.62)]"
             >
               <TokenManagePage token={token} presentation="drawer" onClose={() => setManageOpen(false)} />
             </motion.aside>

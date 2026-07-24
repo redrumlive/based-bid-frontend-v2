@@ -2088,7 +2088,7 @@ function PageFour() {
           <div className="relative grid gap-4 xl:grid-cols-[1fr_12.5rem]">
             <div>
               <p className="text-[0.65rem] font-semibold uppercase tracking-[0.22em] text-[#52dfb2]/42">
-                Based bid boards
+                based bid boards
               </p>
               <h2 className="mt-2 max-w-[40rem] text-[1.24rem] font-semibold leading-[1.08] text-white/92 sm:mt-2.5 sm:text-[1.58rem] md:text-[1.95rem] xl:text-[2.35rem]">
                 Boards turn launches into owned distribution.
@@ -4253,7 +4253,7 @@ function PageFive() {
                 <span className="overview-equation-gold">based.bid Infrastructure</span>
               </div>
 
-              <div className="overview-resource-panel" aria-label="Based Bid GitBook resources">
+              <div className="overview-resource-panel" aria-label="based bid GitBook resources">
                 <p className="overview-resource-label">Learn more on our GitBook</p>
                 <div className="overview-resource-grid">
                   {OVERVIEW_RESOURCES.map((resource) => {

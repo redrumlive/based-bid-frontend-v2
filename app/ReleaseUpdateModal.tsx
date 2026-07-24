@@ -901,7 +901,7 @@ export default function ReleaseUpdateModal() {
             </main>
 
             <footer className="mt-4 flex min-h-[66px] items-center gap-3 border-t border-white/[0.07] px-5 py-3 sm:px-6">
-              <div className="hidden min-w-0 items-center gap-2 sm:flex"><img src="/brand-icon.svg" alt="" className="h-5 w-5" /><div className="truncate text-[9.5px] text-white/34"><span className="font-semibold text-white/58">based bid</span> just updated</div></div>
+              <div className="hidden min-w-0 items-center gap-2 sm:flex"><img src="/brand-icon.png" alt="" className="h-5 w-5 object-contain" /><div className="truncate text-[9.5px] text-white/34"><span className="font-semibold text-white/58">based bid</span> just updated</div></div>
               <div className="flex-1" />
               <button type="button" onClick={next} className="group inline-flex h-9 shrink-0 cursor-pointer items-center justify-center gap-1.5 px-1 text-[10.5px] font-semibold text-white/46 transition hover:text-[#8ee6c4]">Close<Check className="h-3.5 w-3.5" /></button>
             </footer>

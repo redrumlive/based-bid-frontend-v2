@@ -77,7 +77,12 @@ type Plan = {
   border: string;
 };
 type DexOpt = { name: string; logo: string };
-type ChainOpt = { short: string };
+type ChainOpt = {
+  short: string;
+  name: string;
+  detail: string;
+  badge?: string;
+};
 type LiquidityTokenKind = "native" | "stable" | "stock" | "etf";
 type LiquidityTokenOption = {
   id: string;
@@ -523,8 +528,16 @@ const DEX: DexOpt[] = [
   { name: "PancakeSwap v3", logo: "/dex/pancakeswap.svg" },
 ];
 const CHAINS: { primary: ChainOpt[]; more: ChainOpt[] } = {
-  primary: [{ short: "BASE" }, { short: "ROBINHOOD" }, { short: "SOL" }],
-  more: [{ short: "BSC" }, { short: "ETH" }, { short: "MEGAETH" }],
+  primary: [
+    { short: "ROBINHOOD", name: "Robinhood", detail: "RWA-native launch network", badge: "Primary" },
+    { short: "SOL", name: "Solana", detail: "High-speed token markets" },
+    { short: "BASE", name: "Base", detail: "Ethereum L2 liquidity" },
+  ],
+  more: [
+    { short: "BSC", name: "BNB Chain", detail: "BNB ecosystem" },
+    { short: "ETH", name: "Ethereum", detail: "Ethereum mainnet" },
+    { short: "MEGAETH", name: "MegaETH", detail: "High-throughput EVM" },
+  ],
 };
 const PLANS: Plan[] = [
   {
@@ -598,8 +611,6 @@ const formatStartingPrice = (value: number, compact = false): ReactNode => {
     return `$${explicit}`;
   return compactTinyPrice(explicit);
 };
-const chainBtn = (on: boolean) =>
-  `inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold transition ${on ? "border-[#18C98E] bg-[#18C98E]/16 text-white hover:bg-[#0EA875]/18" : "border-white/10 bg-[#101010] text-white/68 hover:border-white/16 hover:bg-[#131313]"}`;
 const liquidityMarker = (selected: boolean, done: boolean) =>
   selected
     ? "h-4 w-4 border border-[#18C98E] bg-[#18C98E] shadow-[0_0_0_4px_rgba(24,201,142,0.16)]"
@@ -1381,6 +1392,7 @@ function ChainIcon({ chain, size = 16 }: { chain: string; size?: number }) {
       SOL: "/networks/sol.png",
       BSC: "/networks/bsc.png",
       ETH: "/networks/ethereum.png",
+      MEGAETH: "/networks/megaeth.png",
     } as Record<string, string>
   )[chain];
   if (src)
@@ -3481,7 +3493,7 @@ function MobileLaunchDock({
         onClick={() => setSettingsOpen(false)}
         className={`fixed inset-0 z-40 bg-black/58 backdrop-blur-[2px] transition-[opacity,backdrop-filter] duration-400 ease-[cubic-bezier(.22,1,.36,1)] lg:hidden ${settingsOpen ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"}`}
       />
-      <div className="fixed inset-x-0 bottom-[44px] z-50 lg:hidden">
+      <div className="fixed inset-x-0 bottom-0 z-50 lg:hidden">
         <div
           className={`pointer-events-none absolute inset-x-0 bottom-full will-change-transform transition-[opacity,transform,filter] duration-500 ease-[cubic-bezier(.16,1,.3,1)] ${settingsOpen ? "translate-y-0 scale-100 opacity-100 blur-0" : "translate-y-[calc(100%+10px)] scale-[0.985] opacity-0 blur-[1px]"}`}
           aria-hidden={!settingsOpen}
@@ -3854,7 +3866,7 @@ function Sidebar({
   const launchNote = ready ? (
     feeBuilderValue ? null : (
       <div className="mt-3 text-center text-[11.5px] font-normal leading-5 text-white/50">
-        Core launch details are ready. Want to stand out?{" "}
+        Launch basics are ready. Want every trade to work harder?{" "}
         <button
           type="button"
           onClick={onOpenFeeBuilder}
@@ -3891,7 +3903,7 @@ function Sidebar({
 
   return (
     <aside className="max-h-[calc(100vh-8rem)] space-y-4 overflow-y-auto overscroll-contain pr-1 [scrollbar-color:rgba(255,255,255,0.12)_transparent] [scrollbar-width:thin]">
-      <div className="flex items-center justify-between gap-3 px-1">
+      <div className="flex h-8 items-center justify-between gap-3 px-1">
         <div className="text-xs font-semibold uppercase tracking-[0.16em] text-white/46">
           Live Preview
         </div>
@@ -4047,8 +4059,7 @@ export default function BBLbpCreationReworkPreview({ launchType = "lbp" }: { lau
     [name, setName] = useState(""),
     [symbol, setSymbol] = useState(""),
     [logo, setLogo] = useState(false),
-    [chain, setChain] = useState("BASE"),
-    [moreOpen, setMoreOpen] = useState(false),
+    [chain, setChain] = useState("ROBINHOOD"),
     [open, setOpen] = useState(OPEN0),
     [dexFee, setDexFee] = useState(1),
     [marketCap, setMarketCap] = useState(() => isTokenLaunch ? TOKEN_STARTING_CAPS[4] : BASE_MARKET_CAP),
@@ -4057,12 +4068,11 @@ export default function BBLbpCreationReworkPreview({ launchType = "lbp" }: { lau
     [dexSel, setDexSel] = useState("Uniswap v4"),
     [dexOpen, setDexOpen] = useState(false),
     [liquidityToken, setLiquidityToken] = useState<string>(() =>
-      getDefaultLiquidityToken("BASE"),
+      getDefaultLiquidityToken("ROBINHOOD"),
     ),
     [preset, setPreset] = useState<number | null>(null),
     [supplyText, setSupplyText] = useState<string>(DEFAULT_SUPPLY_TEXT);
-  const moreRef = useRef<HTMLDivElement | null>(null),
-    nameRef = useRef<HTMLInputElement | null>(null),
+  const nameRef = useRef<HTMLInputElement | null>(null),
     symbolRef = useRef<HTMLInputElement | null>(null),
     logoRef = useRef<HTMLButtonElement | null>(null);
   const centerTimeoutRef = useRef<number | null>(null),
@@ -4096,13 +4106,7 @@ export default function BBLbpCreationReworkPreview({ launchType = "lbp" }: { lau
   );
 
   useEffect(() => {
-    const close = (e: MouseEvent) => {
-      if (moreRef.current && !moreRef.current.contains(e.target as Node))
-        setMoreOpen(false);
-    };
-    document.addEventListener("mousedown", close);
     return () => {
-      document.removeEventListener("mousedown", close);
       if (centerTimeoutRef.current !== null)
         window.clearTimeout(centerTimeoutRef.current);
       if (centerFrameRef.current !== null)
@@ -4339,7 +4343,7 @@ export default function BBLbpCreationReworkPreview({ launchType = "lbp" }: { lau
       key: "dex" as Sec,
       title: "DEX Settings",
       description: isTokenLaunch
-        ? "Choose your launch DEX, tier, starting market cap and token supply."
+        ? "Choose where it trades and how the market opens."
         : "Choose your launch DEX, tier, define market cap and token supply.",
       /*
       summary: `${dexSel} • ${dexFee}% • ${marketCapSummary}`,
@@ -4374,7 +4378,7 @@ export default function BBLbpCreationReworkPreview({ launchType = "lbp" }: { lau
     {
       key: "feeBuilder" as Sec,
       title: "Fee Builder",
-      description: "Configure and route Fee Builder trading fees & mechanics.",
+      description: "Make every trade work harder with programmable fee routes.",
       summary:
         open.feeBuilder && feeBuilderTotal > 0 ? "Configured" : "Not set",
       tag: "optional",
@@ -4393,7 +4397,7 @@ export default function BBLbpCreationReworkPreview({ launchType = "lbp" }: { lau
       key: "initialBuy" as Sec,
       title: "Initial Buy",
       description:
-        "Buy and distribute your token supply immediately on launch.",
+        "Choose how much supply enters your wallet at launch.",
       summary:
         initialBuy > 0
           ? `${initialBuy.toFixed(1)}% selected`
@@ -4412,7 +4416,7 @@ export default function BBLbpCreationReworkPreview({ launchType = "lbp" }: { lau
       key: "lbp" as Sec,
       title: "LBP Settings",
       description:
-        "Adjust settings and rules for your liquidity bootstrapping pool before graduation.",
+        "Set the bonding curve, graduation and launch rules.",
       summary:
         lbpEnabledCount > 0
           ? `${lbpEnabledCount} settings enabled`
@@ -4433,67 +4437,27 @@ export default function BBLbpCreationReworkPreview({ launchType = "lbp" }: { lau
     },
   ].filter((section) => !isTokenLaunch || section.key !== "lbp");
 
-  const chainPills = (
-    <div className="flex flex-wrap justify-center gap-2 md:justify-end">
-      {CHAINS.primary.map((c) => {
-        const active = chain === c.short;
+  const chainSelector = (
+    <div className="grid grid-cols-3 gap-0.5 rounded-[14px] border border-white/[0.09] bg-[#0b0d0c] p-1.5 shadow-[0_14px_32px_rgba(0,0,0,0.22),inset_0_1px_rgba(255,255,255,0.018)] sm:grid-cols-6">
+      {[...CHAINS.primary, ...CHAINS.more].map((item) => {
+        const active = chain === item.short;
         return (
           <button
-            key={c.short}
+            key={item.short}
             type="button"
-            onClick={() => {
-              applyChainSelection(c.short);
-              setMoreOpen(false);
-            }}
-            className={chainBtn(active)}
+            aria-pressed={active}
+            onClick={() => applyChainSelection(item.short)}
+            className={`flex h-10 min-w-0 items-center justify-center gap-2 rounded-[9px] px-2 transition ${
+              active
+                ? "bg-[#18c98e]/[0.105] text-white shadow-[inset_0_-2px_rgba(24,201,142,0.72)]"
+                : "text-white/44 hover:bg-white/[0.035] hover:text-white/72"
+            }`}
           >
-            <ChainIcon chain={c.short} size={16} />
-            <span>{c.short}</span>
+            <ChainIcon chain={item.short} size={17} />
+            <span className="truncate text-[10.5px] font-medium">{item.name}</span>
           </button>
         );
       })}
-      <div className="relative" ref={moreRef}>
-        <button
-          type="button"
-          onClick={() => setMoreOpen((v) => !v)}
-          className={chainBtn(CHAINS.more.some((c) => c.short === chain))}
-        >
-          <span>
-            {CHAINS.more.some((c) => c.short === chain) ? chain : "MORE"}
-          </span>
-          <span
-            className={`text-[10px] transition duration-300 ${moreOpen ? "rotate-180" : ""}`}
-          >
-            ▾
-          </span>
-        </button>
-        {moreOpen ? (
-          <div className="smooth-pop absolute right-0 z-20 mt-2 w-44 overflow-hidden rounded-2xl border border-white/10 bg-[#101010] p-2 shadow-[0_18px_50px_rgba(0,0,0,0.38)]">
-            <div className="space-y-1">
-              {CHAINS.more.map((c) => {
-                const active = chain === c.short;
-                return (
-                  <button
-                    key={c.short}
-                    type="button"
-                    onClick={() => {
-                      applyChainSelection(c.short);
-                      setMoreOpen(false);
-                    }}
-                    className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm transition ${active ? "bg-white/[0.07] text-white" : "text-white/72 hover:bg-[#131313] hover:text-white"}`}
-                  >
-                    <span className="inline-flex items-center gap-2">
-                      <ChainIcon chain={c.short} size={16} />
-                      <span>{c.short}</span>
-                    </span>
-                    {active ? <span className="text-[#18C98E]">✓</span> : null}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        ) : null}
-      </div>
     </div>
   );
 
@@ -4501,36 +4465,24 @@ export default function BBLbpCreationReworkPreview({ launchType = "lbp" }: { lau
     <>
       <div className="min-h-[calc(100vh-56px)] bg-[#0A0A0A] text-white">
         <style>{`${CSS}${SMOOTH_REVEAL_OPEN_CSS}`}</style>
-        <main className="mx-auto max-w-[88rem] px-6 py-8 pb-44 md:px-10 lg:px-12 lg:pb-32">
-          <div className="mb-5">
-            <CreateBackLink href="/create" />
-          </div>
+        <main className="mx-auto max-w-[88rem] px-3 py-5 pb-44 sm:px-6 sm:py-7 md:px-10 lg:px-12 lg:pb-32">
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start">
             <div className="min-w-0">
-              <section
-                className={`${UI.panel} ${UI.shadow} mb-6 overflow-visible rounded-[22px] bg-[#101010] p-4`}
-              >
-                <div className="flex flex-col gap-3">
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="min-w-0">
-                      <div className="text-sm font-medium text-white">
-                        Select chain
-                      </div>
-                      <div className="mt-1 text-xs text-white/58">
-                        Choose where you want to launch your {isTokenLaunch ? "token" : "pool"}.
-                      </div>
-                    </div>
-                    <div className="hidden md:block">{chainPills}</div>
+              <div className="mb-6">
+                <div className="mb-4 flex h-8 items-center gap-1 px-1">
+                  <CreateBackLink href="/create" iconOnly />
+                  <div className="text-xs font-semibold uppercase tracking-[0.16em] text-white/46">
+                    Network
                   </div>
-                  <div className="md:hidden">{chainPills}</div>
                 </div>
-              </section>
+                {chainSelector}
+              </div>
               <section
                 className={`${UI.panel} ${UI.shadow} relative overflow-hidden rounded-[22px] bg-[#101010] px-5 pb-2 pt-5`}
               >
                 <div className="mb-4 flex items-start justify-between gap-4">
                   <div className="text-sm text-white/58">
-                    Launch instantly with name, symbol and logo.
+                    Start with the ingredients: name, symbol and logo.
                   </div>
                   <div
                     className={`hidden rounded-full border px-3 py-1 text-xs font-medium transition-colors duration-300 sm:block ${ready ? "border-[#18c98e]/30 bg-[#18c98e]/[0.055] text-[#7bea9e]/88" : "border-[#F5C451]/28 bg-[#F5C451]/[0.035] text-[#F5D97A]/74"}`}
@@ -4643,10 +4595,10 @@ export default function BBLbpCreationReworkPreview({ launchType = "lbp" }: { lau
               <div className="mt-6">
                 <div className="mb-3.5">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/42">
-                    Optional settings
+                    Launch controls
                   </div>
                   <div className="mt-1 text-sm text-white/60">
-                    Add unique features &amp; trading mechanics.
+                    Tune the market, fees and launch mechanics.
                   </div>
                 </div>
                 <div className="-mx-3 space-y-4 sm:mx-0">
@@ -4749,7 +4701,7 @@ export default function BBLbpCreationReworkPreview({ launchType = "lbp" }: { lau
               />
             </div>
             <div className="hidden xl:block">
-              <div className="fixed top-[76px] right-[max(3rem,calc((100vw-272px-88rem)/2+3rem))] z-30 w-[360px]">
+              <div className="fixed top-[88px] right-[max(3rem,calc((100vw-272px-88rem)/2+3rem))] z-30 w-[360px]">
                 <Sidebar
                   launchType={launchType}
                   name={name}

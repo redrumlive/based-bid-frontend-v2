@@ -131,8 +131,8 @@ for (const [id, name, initials, accent] of SIDEBAR_PROFILES) {
 const AGGREGATOR_PROFILE: BoardProfile = {
   id: "based", name: "Based", handle: "based", initials: "#", accent: "#18c98e", accentSoft: "#11694d", network: "base",
   tagline: "Every board. Every launch. One programmable market.",
-  description: "The network-wide discovery layer for launches published across Based Bid boards.",
-  followers: 0, launches: 128, volume: 28400000, created: "", moderator: "Based Bid",
+  description: "The network-wide discovery layer for launches published across based bid boards.",
+  followers: 0, launches: 128, volume: 28400000, created: "", moderator: "based bid",
   socials: {}, rules: [],
 };
 
@@ -183,7 +183,7 @@ function resolveProfile(boardName: string) {
     name,
     initials: words.slice(0, 2).map((word) => word[0]?.toUpperCase()).join("") || "B",
     tagline: `${name} launches, research and community-owned markets.`,
-    description: `The official ${name} destination for launches and market discussion on Based Bid.`,
+    description: `The official ${name} destination for launches and market discussion on based bid.`,
   };
 }
 

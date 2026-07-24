@@ -744,11 +744,11 @@ function RwaDistributionModeControl({ value, onChange, disabled, portalHint = fa
           <div className='space-y-2'>
             <div>
               <div className='text-[9.5px] font-medium uppercase leading-4 tracking-[0.12em] text-white/72'>Rotating</div>
-              <p className='mt-0.5 text-[11px] font-light leading-[17px] text-white/48'>One selected asset per cycle, advancing to the next. Lowest gas cost.</p>
+              <p className='mt-0.5 text-[11px] font-light leading-[17px] text-white/48'>Pays one asset per distribution, in order. Lowest gas cost.</p>
             </div>
             <div className='border-t border-white/8 pt-2'>
               <div className='text-[9.5px] font-medium uppercase leading-4 tracking-[0.12em] text-white/72'>All at once</div>
-              <p className='mt-0.5 text-[11px] font-light leading-[17px] text-white/48'>Every selected asset is distributed each cycle. Higher gas cost.</p>
+              <p className='mt-0.5 text-[11px] font-light leading-[17px] text-white/48'>Pays every asset per distribution using its ratio. Higher gas cost.</p>
             </div>
             <div className='rounded-lg border px-2.5 py-1.5' style={{ color: '#B7F34A', background: 'rgba(183,243,74,0.045)', borderColor: 'rgba(183,243,74,0.15)' }}>
               <div className='text-[9px] font-medium uppercase leading-4 tracking-[0.12em]'>Ratio allocation</div>

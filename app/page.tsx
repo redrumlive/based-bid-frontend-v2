@@ -769,10 +769,8 @@ function GitHubMark({ className = "h-4 w-4" }: { className?: string }) {
 }
 
 function NetworkIcon({ network, className = "h-5 w-5" }: { network: Network; className?: string }) {
-  if (network === "megaeth") {
-    return <span aria-hidden="true" className={cx("grid shrink-0 place-items-center rounded-full bg-[#151515] text-[9px] font-bold text-white/88 ring-1 ring-white/20", className)}>M</span>;
-  }
-  return <Image unoptimized src={NETWORK_ICONS[network]} alt="" width={24} height={24} className={cx("shrink-0 rounded-full object-cover", className)} />;
+  const src = network === "megaeth" ? "/networks/megaeth.png" : NETWORK_ICONS[network];
+  return <Image unoptimized src={src} alt="" width={24} height={24} className={cx("shrink-0 rounded-full object-cover", className)} />;
 }
 
 function NetworkCycleMark({ selected }: { selected: ReadonlySet<Network> }) {
@@ -818,6 +816,7 @@ function NetworkFilter({ selected, onToggle, onSelectAll }: { selected: Readonly
   const allSelected = selected.size === CHAINS.length;
   const selectedNetworks = CHAINS.filter((chain) => selected.has(chain));
   const label = allSelected ? "All networks" : selectedNetworks.length === 0 ? "No networks" : selectedNetworks.length === 1 ? networkName(selectedNetworks[0]) : `${selectedNetworks.length} networks`;
+  const compactLabel = allSelected ? "All" : selectedNetworks.length === 0 ? "None" : selectedNetworks.length === 1 ? networkName(selectedNetworks[0]) : `${selectedNetworks.length}`;
 
   React.useEffect(() => {
     if (!open) return;
@@ -843,12 +842,13 @@ function NetworkFilter({ selected, onToggle, onSelectAll }: { selected: Readonly
         aria-haspopup="dialog"
         onClick={() => setOpen((value) => !value)}
         className={cx(
-          "group inline-flex h-[30px] w-[138px] cursor-pointer items-center gap-1.5 rounded-full px-2.5 text-[11px] font-medium tracking-[0.01em] ring-1 ring-inset transition-[background-color,color,box-shadow] duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#18c98e]/45",
+          "group inline-flex h-[30px] w-[68px] cursor-pointer items-center gap-1 rounded-full px-2 text-[10px] font-medium tracking-[0.01em] ring-1 ring-inset transition-[background-color,color,box-shadow] duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#18c98e]/45 sm:w-[138px] sm:gap-1.5 sm:px-2.5 sm:text-[11px]",
           allSelected ? "bg-white/[0.018] text-white/58 ring-white/[0.075] hover:bg-white/[0.045] hover:text-white/86 hover:ring-white/[0.13]" : "bg-[#18c98e]/[0.045] text-white/88 ring-[#18c98e]/25 hover:bg-[#18c98e]/[0.075] hover:ring-[#18c98e]/38",
         )}
       >
         <NetworkCycleMark selected={selected} />
-        <span className="min-w-0 flex-1 truncate text-left">{label}</span>
+        <span className="min-w-0 flex-1 truncate text-left sm:hidden">{compactLabel}</span>
+        <span className="hidden min-w-0 flex-1 truncate text-left sm:block">{label}</span>
         <ChevronDown className={cx("h-3 w-3 shrink-0 text-white/32 transition-transform duration-300", open && "rotate-180")} />
       </button>
 
@@ -974,12 +974,12 @@ function CardSocialLinks({ card }: { card: TokenCardData }) {
 
 function TokenAvatar({ card }: { card: TokenCardData }) {
   return (
-    <div className="relative h-10 w-10 shrink-0 overflow-visible">
-      <div className="grid h-10 w-10 place-items-center text-[13px] font-semibold tracking-[-0.02em]" style={{ color: card.accent, textShadow: `0 0 14px ${tokenTint(card.accent, 38)}` }}>
+    <div className="relative h-9 w-9 shrink-0 overflow-visible sm:h-10 sm:w-10">
+      <div className="grid h-9 w-9 place-items-center text-[13px] font-semibold tracking-[-0.02em] sm:h-10 sm:w-10" style={{ color: card.accent, textShadow: `0 0 14px ${tokenTint(card.accent, 38)}` }}>
         {card.avatar}
       </div>
-      <span className="bb-chain-badge -bottom-px -right-px z-20 h-[14px] w-[14px] drop-shadow-[0_2px_3px_rgba(0,0,0,0.8)]" data-ui-hint={networkName(card.network)}>
-        <NetworkIcon network={card.network} className="h-[14px] w-[14px]" />
+      <span className="bb-chain-badge -bottom-px -right-px z-20 h-[13px] w-[13px] drop-shadow-[0_2px_3px_rgba(0,0,0,0.8)] sm:h-[14px] sm:w-[14px]" data-ui-hint={networkName(card.network)}>
+        <NetworkIcon network={card.network} className="h-[13px] w-[13px] sm:h-[14px] sm:w-[14px]" />
       </span>
     </div>
   );
@@ -1176,7 +1176,7 @@ function MiniTokenChart({ card, idle = false }: { card: TokenCardData; idle?: bo
   const areaD = `${d} L424 ${areaEndY} L424 ${chartHeight} L-4 ${chartHeight} Z`;
 
   return (
-    <div className="relative -mx-5 mt-1 h-[84px] w-[calc(100%+40px)]">
+    <div className="relative -mx-3 mt-0.5 h-[56px] w-[calc(100%+24px)] sm:-mx-5 sm:mt-1 sm:h-[84px] sm:w-[calc(100%+40px)]">
       <div className="absolute inset-0">
         <svg viewBox={`0 0 420 ${chartHeight}`} preserveAspectRatio="none" className="block h-full w-full shrink-0" aria-hidden="true">
           <defs>
@@ -1238,13 +1238,13 @@ function TokenFeedCard({ card, spotlight, currentTime }: { card: TokenCardData; 
       transition={{ duration: 0.26, ease: [0.22, 1, 0.36, 1] }}
       whileHover={{ y: -2 }}
       data-smart-event={spotlight}
-      className={cx("group relative h-[210px] min-w-0 overflow-hidden rounded-[22px] border border-white/[0.055] bg-[#0f1111] p-3.5 shadow-[0_12px_34px_rgba(0,0,0,0.25)] transition-[border-color,box-shadow] duration-300 hover:border-white/[0.11] hover:shadow-[0_18px_44px_rgba(0,0,0,0.34)]", detailHref && "cursor-pointer pointer-events-none [&_a]:pointer-events-auto [&_button]:pointer-events-auto", spotlight && "bb-smart-spotlight")}
+      className={cx("group relative h-[178px] min-w-0 overflow-hidden rounded-[18px] border border-white/[0.055] bg-[#0f1111] p-3 shadow-[0_12px_34px_rgba(0,0,0,0.25)] transition-[border-color,box-shadow] duration-300 hover:border-white/[0.11] hover:shadow-[0_18px_44px_rgba(0,0,0,0.34)] sm:h-[210px] sm:rounded-[22px] sm:p-3.5", detailHref && "cursor-pointer pointer-events-none [&_a]:pointer-events-auto [&_button]:pointer-events-auto", spotlight && "bb-smart-spotlight")}
     >
       {detailHref ? (
         <Link
           href={detailHref}
           aria-label={`Open ${card.title} LBP terminal`}
-          className="absolute inset-0 z-[9] rounded-[22px] pointer-events-auto outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#18c98e]/24"
+          className="pointer-events-auto absolute inset-0 z-[9] rounded-[18px] outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#18c98e]/24 sm:rounded-[22px]"
         />
       ) : null}
       <span
@@ -1256,7 +1256,7 @@ function TokenFeedCard({ card, spotlight, currentTime }: { card: TokenCardData; 
           maskImage: "linear-gradient(to bottom, black 0%, black 54%, transparent 100%)",
         }}
       />
-      <div className="relative z-10 flex items-center gap-2.5">
+      <div className="relative z-10 flex items-center gap-2 sm:gap-2.5">
         <TokenAvatar card={card} />
         <div className="min-w-0 flex-1">
           <div className={cx("flex min-w-0 items-baseline gap-1.5", upcoming ? "pr-[132px]" : "pr-[66px]")}>
@@ -1287,10 +1287,10 @@ function TokenFeedCard({ card, spotlight, currentTime }: { card: TokenCardData; 
         <span className={cx("absolute right-3.5 top-3.5 z-10 rounded-full border px-2 py-0.5 text-[9px] font-semibold tabular-nums", isUp ? "border-[#18c98e]/10 bg-[#18c98e]/[0.045] text-[#18c98e]" : "border-[#ff3771]/10 bg-[#ff3771]/[0.04] text-[#ff3771]/88")}>{isUp ? "ATH " : ""}{Math.abs(card.change).toFixed(1)}%</span>
       )}
 
-      <p className="relative z-10 mt-2 line-clamp-2 min-h-[32px] text-[11.5px] leading-[1.42] text-white/48">{card.desc}</p>
+      <p className="relative z-10 mt-1.5 line-clamp-2 min-h-[30px] text-[11.5px] leading-[1.38] text-white/48 sm:mt-2 sm:min-h-[32px] sm:leading-[1.42]">{card.desc}</p>
       <div className="relative z-10">{card.kind === "lbp" ? <MarketProgress card={card} upcoming={upcoming} /> : <MiniTokenChart card={card} />}</div>
 
-      <div className="absolute bottom-2.5 left-3.5 right-3.5 z-10 flex items-center justify-between gap-3">
+      <div className="absolute bottom-2.5 left-3 right-3 z-10 flex items-center justify-between gap-3 sm:left-3.5 sm:right-3.5">
         <div className="flex min-w-0 items-center gap-3">
           {card.txs > 0 ? <CardStat kind="txs" value={formatCompact(card.txs)} /> : null}
           {card.volume > 0 ? <CardStat kind="volume" value={formatCompact(card.volume, true)} /> : null}
@@ -1336,7 +1336,7 @@ function TokenCardGrid({ cards, currentTime }: { cards: TokenCardData[]; current
   return (
     <div className="bb-scroll min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto">
       {cards.length ? (
-        <motion.div layout className="grid w-full grid-cols-1 gap-x-8 gap-y-6 px-6 pb-5 pt-7 md:px-8 lg:grid-cols-2 xl:grid-cols-3 min-[2360px]:grid-cols-4 min-[3000px]:grid-cols-5">
+        <motion.div layout className="grid w-full grid-cols-1 gap-x-8 gap-y-3 px-2.5 pb-4 pt-3 sm:gap-y-4 sm:px-5 sm:pb-5 sm:pt-4 md:gap-y-6 md:px-8 md:pt-7 lg:grid-cols-2 xl:grid-cols-3 min-[2360px]:grid-cols-4 min-[3000px]:grid-cols-5">
           <AnimatePresence mode="popLayout" initial={false}>
             {cards.map((card) => <TokenFeedCard key={card.id} card={card} currentTime={currentTime} spotlight={getSmartSpotlight(card, currentTime)} />)}
           </AnimatePresence>
@@ -1378,7 +1378,7 @@ function PrefToggle({ label, value, onChange, options }: ToggleProps) {
   );
 }
 
-function NavItem({ icon, label, href, tone = "emerald", onClick, activeOverride, compact = false }: { icon: React.ReactNode; label: string; href: string; tone?: "emerald" | "gold" | "violet"; onClick?: React.MouseEventHandler<HTMLAnchorElement>; activeOverride?: boolean; compact?: boolean }) {
+function NavItem({ icon, label, href, tone = "emerald", onClick, activeOverride, compact = false }: { icon: React.ReactNode; label: string; href: string; tone?: "emerald" | "gold" | "violet" | "orange"; onClick?: React.MouseEventHandler<HTMLAnchorElement>; activeOverride?: boolean; compact?: boolean }) {
   const ref = React.useRef<HTMLAnchorElement | null>(null);
   const pathname = usePathname();
   const active = activeOverride ?? (pathname === href || pathname.startsWith(`${href}/`));
@@ -1386,9 +1386,13 @@ function NavItem({ icon, label, href, tone = "emerald", onClick, activeOverride,
     ? "radial-gradient(140px circle at var(--sx) var(--sy), rgba(234,179,8,0.22), transparent 55%)"
     : tone === "violet"
       ? "radial-gradient(150px circle at var(--sx) var(--sy), rgba(139,92,246,0.25), transparent 58%)"
+      : tone === "orange"
+        ? "radial-gradient(150px circle at var(--sx) var(--sy), rgba(249,115,22,0.24), transparent 58%)"
       : "radial-gradient(140px circle at var(--sx) var(--sy), rgba(24,201,142,0.18), transparent 55%)";
   const hoverTone = tone === "violet"
     ? "hover:bg-violet-500/[0.055] hover:text-white"
+    : tone === "orange"
+      ? "hover:bg-orange-500/[0.055] hover:text-white"
     : tone === "gold"
       ? "hover:bg-amber-400/[0.045] hover:text-white"
       : "hover:bg-[#18c98e]/[0.045] hover:text-white";
@@ -1396,6 +1400,10 @@ function NavItem({ icon, label, href, tone = "emerald", onClick, activeOverride,
     ? active
       ? "bg-white/[0.035] text-violet-300 ring-white/10"
       : "bg-white/[0.035] text-white/38 ring-white/10 group-hover:bg-violet-500/[0.14] group-hover:text-violet-200 group-hover:ring-violet-400/24"
+    : tone === "orange"
+      ? active
+        ? "bg-white/[0.035] text-orange-300 ring-white/10"
+        : "bg-white/[0.035] text-white/38 ring-white/10 group-hover:bg-orange-500/[0.14] group-hover:text-orange-200 group-hover:ring-orange-400/24"
     : tone === "gold"
       ? active
         ? "bg-white/[0.035] text-amber-300 ring-white/10"
@@ -1486,10 +1494,10 @@ function LiveChatMenu() {
       </button>
       <AnimatePresence>
         {open ? (
-          <DropdownMotion id="live-chat-menu" direction="up" className="absolute bottom-[36px] right-0 z-50 w-[224px] overflow-hidden rounded-xl border border-white/[0.10] bg-[#0b0c0c]/98 shadow-[0_18px_48px_rgba(0,0,0,0.64)] backdrop-blur-xl">
+          <DropdownMotion id="live-chat-menu" direction="up" className="absolute bottom-[36px] right-0 z-50 w-[270px] overflow-hidden rounded-xl border border-white/[0.10] bg-[#0b0c0c]/98 shadow-[0_18px_48px_rgba(0,0,0,0.64)] backdrop-blur-xl">
             <div className="px-3 py-2.5">
               <div className="text-[9px] font-semibold uppercase tracking-[0.14em] text-white/34">Live chat</div>
-              <p className="mt-1 text-[10px] leading-snug text-white/46">Message a Based Bid team member on Telegram.</p>
+              <p className="mt-1 text-[10.5px] leading-snug text-white/48">Message a based bid team member to help you with anything.</p>
             </div>
             <div className="border-t border-white/[0.08] p-1.5">
               {LIVE_CHAT_CONTACTS.map((contact) => (
@@ -1498,7 +1506,7 @@ function LiveChatMenu() {
                   <span className="min-w-0 flex-1">
                     <span className="flex items-center gap-2">
                       <span className="text-[11px] font-medium text-white/76 group-hover/contact:text-white/92">{contact.name}</span>
-                      <span className={cx("text-[7.5px] font-semibold uppercase tracking-[0.12em]", contact.role === "OpenBid" ? "text-[#18c98e]/62" : contact.role === "Support" ? "text-[#69aef8]/62" : "text-white/27")}>{contact.role}</span>
+                      <span className={cx("text-[8px] font-semibold uppercase tracking-[0.10em]", contact.role === "OpenBid dev" ? "text-[#fb923c]/78" : contact.role === "Partnerships" ? "text-[#d9bd63]/74" : contact.role === "Socials Architect" ? "text-[#a78bfa]/74" : "text-[#69aef8]/70")}>{contact.role}</span>
                     </span>
                     <span className="block truncate text-[9px] text-white/34">{contact.handle}</span>
                   </span>
@@ -1520,7 +1528,7 @@ function SidebarPanel({ query, onQuery, searchRef, sortLabel, onCycleSort, board
         if (!collectFeesOpen || (event.target as Element).closest('a[href="#collect-fees"]')) return;
         onCloseCollectFees();
       }}
-      className={`relative z-[245] flex h-full shrink-0 flex-col border-r border-white/[0.08] bg-[linear-gradient(180deg,#0b0c0c_0%,#090a0a_100%)] shadow-[8px_0_32px_rgba(0,0,0,0.12)] transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${compact ? "w-[66px]" : "w-[272px]"}`}
+      className={`relative z-[245] hidden h-full shrink-0 flex-col border-r border-white/[0.08] bg-[linear-gradient(180deg,#0b0c0c_0%,#090a0a_100%)] shadow-[8px_0_32px_rgba(0,0,0,0.12)] transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] xl:flex ${compact ? "w-[66px]" : "w-[272px]"}`}
     >
       <SidebarCollapseControl compact={compact} onToggleCompact={onToggleCompact} />
       <div className={`bb-scroll min-h-0 flex-1 overflow-y-auto pb-6 pt-3 ${compact ? "px-2" : "px-3 pr-[6px]"}`}>
@@ -1534,7 +1542,7 @@ function SidebarPanel({ query, onQuery, searchRef, sortLabel, onCycleSort, board
         <div className={`mt-3 ${compact ? "space-y-1" : "space-y-2"}`}>
           <NavItem compact={compact} icon={<Plus className="h-4 w-4" />} label="Create" href="/create" tone="emerald" />
           <NavItem compact={compact} icon={<Coins className="h-4 w-4" />} label="Collect Fees" href="#collect-fees" tone="gold" activeOverride={collectFeesOpen} onClick={(event) => { event.preventDefault(); onOpenCollectFees(); }} />
-          <NavItem compact={compact} icon={<Code2 className="h-4 w-4" />} label="OpenBid" href="/openbid" tone="violet" />
+          <NavItem compact={compact} icon={<Code2 className="h-4 w-4" />} label="OpenBid" href="/openbid" tone="orange" />
         </div>
         <div className={`mt-5 items-center justify-between px-1 ${compact ? "hidden" : "flex"}`}>
           <div className="text-xs font-semibold uppercase text-white/45">Boards</div>
@@ -1611,7 +1619,7 @@ function CookieControl({ enabled, onToggle }: { enabled: boolean; onToggle: () =
           <span>Your preferences stay private</span>
         </div>
         <p className="mt-1.5 text-[10px] leading-[1.55] text-white/48">
-          Cookies remember preferred networks, filters, and sorting. Anonymous usage data helps improve Based Bid. Nothing else is stored or shared.
+          Cookies remember preferred networks, filters, and sorting. Anonymous usage data helps improve based bid. Nothing else is stored or shared.
         </p>
         <span aria-hidden="true" className="absolute -bottom-[5px] left-5 h-2.5 w-2.5 rotate-45 border-b border-r border-white/[0.10] bg-[#0c0d0d]" />
       </div>
@@ -1642,7 +1650,7 @@ function PlatformLinks() {
 
 function BottomBar({ settings, cookiesEnabled, onToggleCookies }: { settings: React.ReactNode; cookiesEnabled: boolean; onToggleCookies: () => void }) {
   return (
-    <div className="relative z-40 flex h-[44px] w-full items-center border-t border-white/[0.08] bg-[#090a0a]/96 backdrop-blur-xl">
+    <div className="relative z-40 hidden h-[44px] w-full items-center border-t border-white/[0.08] bg-[#090a0a]/96 backdrop-blur-xl xl:flex">
       <div className="h-full w-[272px] border-r border-white/[0.08]">
         <div className="relative flex h-full items-center px-3 pr-[6px]">
           {settings}
@@ -1668,7 +1676,7 @@ function BottomBar({ settings, cookiesEnabled, onToggleCookies }: { settings: Re
 
 function ContentSortPill({ active, icon, label, onClick }: SortPillProps) {
   return (
-    <motion.button type="button" aria-pressed={active} onClick={onClick} whileHover={{ y: -1 }} whileTap={{ scale: 0.985 }} className={cx("inline-flex h-[30px] items-center gap-1.5 rounded-full px-2.5 text-[11px] font-medium tracking-[0.01em] ring-1 transition-[background-color,color,box-shadow] duration-200", active ? "bg-gradient-to-b from-white/[0.11] to-white/[0.065] text-white ring-white/18 shadow-[0_8px_22px_rgba(0,0,0,0.22),inset_0_1px_0_rgba(255,255,255,0.06)]" : "bg-black/10 text-white/48 ring-white/9 hover:bg-white/[0.045] hover:text-white/78 hover:ring-white/14")}>
+    <motion.button type="button" aria-pressed={active} onClick={onClick} whileHover={{ y: -1 }} whileTap={{ scale: 0.985 }} className={cx("inline-flex h-[30px] items-center gap-1 rounded-full px-2 text-[10px] font-medium tracking-[0.01em] ring-1 transition-[background-color,color,box-shadow] duration-200 sm:gap-1.5 sm:px-2.5 sm:text-[11px]", active ? "bg-gradient-to-b from-white/[0.11] to-white/[0.065] text-white ring-white/18 shadow-[0_8px_22px_rgba(0,0,0,0.22),inset_0_1px_0_rgba(255,255,255,0.06)]" : "bg-black/10 text-white/48 ring-white/9 hover:bg-white/[0.045] hover:text-white/78 hover:ring-white/14")}>
       <span className={cx(active ? "text-[#18c98e]" : "text-white/40")}>{icon}</span>
       <span>{label}</span>
     </motion.button>
@@ -1685,8 +1693,8 @@ function MainContentHeader({ contentSort, onSetContentSort, selectedNetworks, on
   const dirty = contentSort !== "smart" || selectedNetworks.size !== CHAINS.length;
 
   return (
-    <div className="relative z-20 isolate shrink-0 bg-[#090a0a] px-4 pb-2.5 pt-5 md:px-8">
-      <div className="relative z-10 flex min-h-10 items-center justify-between gap-4">
+    <div className="relative z-20 isolate shrink-0 bg-[#090a0a] px-2.5 pb-2 pt-2.5 sm:px-5 sm:pb-2.5 sm:pt-3 md:px-8 md:pt-5">
+      <div className="relative z-10 hidden min-h-10 items-center justify-between gap-4 md:flex">
         <div className="hidden min-w-0 items-center sm:flex">
           <CreatorPayoutStat />
         </div>
@@ -1703,11 +1711,11 @@ function MainContentHeader({ contentSort, onSetContentSort, selectedNetworks, on
         </Link>
       </div>
 
-      <div className="relative z-10 mt-3 flex flex-wrap items-center justify-center gap-4">
-        <div className="flex shrink-0 items-center gap-1.5 overflow-visible">
+      <div className="relative z-10 flex w-full flex-nowrap items-center gap-1.5 overflow-visible py-1 sm:gap-3 md:mt-3 md:flex-wrap md:justify-center md:py-0">
+        <div className="flex min-w-0 flex-1 items-center justify-between gap-1 sm:flex-none sm:shrink-0 sm:justify-start sm:gap-1.5">
           {items.map(([value, icon, label]) => <ContentSortPill key={value} active={contentSort === value} icon={icon} label={label} onClick={() => onSetContentSort(value)} />)}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
           <NetworkFilter selected={selectedNetworks} onToggle={onToggleNetwork} onSelectAll={onSelectAllNetworks} />
           <button
             type="button"
@@ -1833,7 +1841,7 @@ export default function BBLayout() {
   }, [closeAll]);
 
   return (
-    <div className="bb-app relative flex h-[calc(100vh-56px)] w-full flex-col bg-[#090a0a] text-white">
+    <div className="bb-app relative flex h-[calc(100dvh-142px)] min-h-[520px] w-full flex-col overflow-x-hidden bg-[#090a0a] text-white xl:h-[calc(100vh-56px)]">
       <style>{GLOBAL_CSS}</style>
 
       <div className="flex h-full w-full flex-col">

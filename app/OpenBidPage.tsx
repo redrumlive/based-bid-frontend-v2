@@ -5,6 +5,7 @@ import Image from "next/image";
 import React from "react";
 import {
   BookOpen,
+  Bell,
   Check,
   ChevronDown,
   ChevronRight,
@@ -12,14 +13,19 @@ import {
   Crown,
   Eye,
   Globe,
+  Hash,
   ImagePlus,
   Lock,
   MessageSquare,
   Pencil,
   Play,
+  Plus,
+  Rocket,
+  Search,
   Send,
   ShieldCheck,
   Upload,
+  Users,
   X,
 } from "lucide-react";
 import CreateBackLink from "./create/CreateBackLink";
@@ -276,7 +282,7 @@ export default function OpenBidPage() {
   const [name, setName] = React.useState("Based Shibas");
   const [description, setDescription] = React.useState("A focused launch board for discovering and bidding on token launches, creator pools and fee opportunities.");
   const [banner, setBanner] = React.useState<string>();
-  const [logo, setLogo] = React.useState<string | undefined>("/brand-icon.svg");
+  const [logo, setLogo] = React.useState<string | undefined>("/brand-icon.png");
   const [socials, setSocials] = React.useState<SocialState>({ website: "based.bid", telegram: "t.me/basedbid", twitter: "x.com/basedbid", discord: "", tiktok: "", youtube: "" });
   const [socialsOpen, setSocialsOpen] = React.useState(false);
   const [visibilityOpen, setVisibilityOpen] = React.useState(false);
@@ -292,6 +298,9 @@ export default function OpenBidPage() {
   const visibilityMeta = VISIBILITY_OPTIONS.find((option) => option.key === visibility) ?? VISIBILITY_OPTIONS[0];
   const planMeta = PLAN_OPTIONS.find((plan) => plan.key === apiPlan) ?? PLAN_OPTIONS[0];
   const VisibilityIcon = visibilityMeta.icon;
+  const boardInitials = name.trim()
+    ? name.trim().split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase()
+    : "BB";
 
   return (
     <main className="min-h-[calc(100vh-3.5rem)] bg-[#090a0a] pb-28 text-white">
@@ -304,8 +313,8 @@ export default function OpenBidPage() {
               <Code2 className="h-3.5 w-3.5" strokeWidth={1.8} />
               OpenBid infrastructure
             </div>
-            <h1 className="text-[28px] font-semibold tracking-[-0.045em] text-white/94 sm:text-[34px]">Create a programmable launch board</h1>
-            <p className="mt-2 max-w-2xl text-[12.5px] leading-5 text-white/42 sm:text-[13px]">Configure a white-label launch environment with permissions, revenue settings, participation rules and API access.</p>
+            <h1 className="text-[28px] font-semibold tracking-[-0.045em] text-white/94 sm:text-[34px]">Build the place they launch from.</h1>
+            <p className="mt-2 max-w-2xl text-[12.5px] leading-5 text-white/42 sm:text-[13px]">Shape the identity, access, rules and economics.</p>
           </div>
           <a href="https://basedinc.gitbook.io/basedbid/projects-how-to-guides" target="_blank" rel="noreferrer" className="inline-flex h-9 w-fit cursor-pointer items-center gap-2 rounded-xl border border-white/10 bg-white/[0.02] px-3 text-[10px] font-medium text-white/46 transition hover:border-[#18c98e]/24 hover:bg-[#18c98e]/[0.045] hover:text-white/78">
             <BookOpen className="h-3.5 w-3.5" strokeWidth={1.8} />
@@ -382,25 +391,62 @@ export default function OpenBidPage() {
             <section className={cx(UI.panel, "overflow-hidden")}>
               <SectionHeader icon={Eye} title="Board preview" description="Review the public profile before publishing." />
               <div className="p-4">
-                <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#0c0d0d]">
-                  <div className="relative h-[106px] overflow-hidden border-b border-white/[0.07] bg-[linear-gradient(135deg,#181a20_0%,#10131a_48%,#0d0e10_100%)]">
-                    {banner ? <Image unoptimized src={banner} alt="Board banner" fill sizes="350px" className="object-cover" /> : <><span className="absolute -left-16 top-7 h-px w-[150%] rotate-[-8deg] bg-white/[0.055]" /><span className="absolute -left-16 top-14 h-px w-[150%] rotate-[-8deg] bg-[#18c98e]/12" /></>}
-                    <span className="absolute inset-0 bg-gradient-to-t from-[#0c0d0d] via-transparent to-transparent" />
+                <div className="overflow-hidden rounded-[18px] border border-white/[0.065] bg-[#0d100f] shadow-[0_12px_34px_rgba(0,0,0,0.22)]">
+                  <div className="relative h-[98px] overflow-hidden bg-[#0d1010]">
+                    {banner ? (
+                      <Image unoptimized src={banner} alt="Board banner" fill sizes="350px" className="object-cover" />
+                    ) : (
+                      <>
+                        <span className="absolute inset-0 bg-[radial-gradient(320px_circle_at_16%_0%,rgba(167,139,250,0.20),transparent_50%),radial-gradient(260px_circle_at_95%_115%,rgba(24,201,142,0.12),transparent_54%),linear-gradient(125deg,#111515_0%,#0b0d0d_55%,#101312_100%)]" />
+                        <span className="absolute inset-0 opacity-[0.08] [background-image:linear-gradient(rgba(255,255,255,.16)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.16)_1px,transparent_1px)] [background-size:28px_28px]" />
+                        <span className="absolute -right-10 -top-20 h-[190px] w-[190px] rounded-full border border-white/[0.055]" />
+                      </>
+                    )}
+                    <span className="absolute inset-0 bg-gradient-to-t from-[#0d100f]/68 via-transparent to-transparent" />
                   </div>
-                  <div className="relative px-4 pb-4">
-                    <div className="-mt-8 flex items-end justify-between gap-3">
-                      <div className="relative h-16 w-16 overflow-hidden rounded-2xl border border-white/12 bg-[#111313] shadow-[0_8px_24px_rgba(0,0,0,0.35)] ring-4 ring-[#0c0d0d]">
-                        {logo ? <Image unoptimized src={logo} alt="Board logo" fill sizes="64px" className="object-contain p-1.5" /> : <ImagePlus className="absolute left-1/2 top-1/2 h-5 w-5 -translate-x-1/2 -translate-y-1/2 text-white/20" />}
+                  <div className="relative -mt-[29px] px-4 pb-4">
+                    <div className="flex items-end justify-between gap-3">
+                      <div className="relative grid h-[62px] w-[62px] shrink-0 place-items-center rounded-full border border-white/14 bg-[#101312] shadow-[0_12px_30px_rgba(0,0,0,0.4),0_0_0_4px_#0d100f]">
+                        <span className="absolute inset-0 rounded-full bg-[radial-gradient(circle_at_32%_24%,rgba(167,139,250,0.22),transparent_62%)]" />
+                        {logo ? <Image unoptimized src={logo} alt="Board logo" fill sizes="62px" className="rounded-full object-contain p-2" /> : <span className="relative text-[15px] font-semibold tracking-[-0.04em] text-[#c4b5fd]">{boardInitials}</span>}
+                        <span className="absolute -bottom-0.5 -right-0.5 grid h-[18px] w-[18px] place-items-center rounded-full bg-[#0d100f] ring-2 ring-[#0d100f]">
+                          <Image unoptimized src="/networks/robinhood.png" alt="Robinhood" width={16} height={16} className="h-4 w-4 rounded-full object-cover" />
+                        </span>
                       </div>
-                      <span className="mb-1 inline-flex items-center gap-1.5 rounded-full border border-[#18c98e]/22 bg-[#18c98e]/[0.065] px-2.5 py-1 text-[9px] font-medium text-[#7bea9e]"><VisibilityIcon className="h-3 w-3" />{visibilityMeta.title}</span>
+                      <div className="mb-1 flex min-w-0 items-center gap-1.5">
+                        {SOCIAL_FIELDS.filter((field) => socials[field.key].trim()).slice(0, 2).map((field) => {
+                          const Icon = field.icon;
+                          return <span key={field.key} className="grid h-7 w-7 place-items-center rounded-full text-white/33"><Icon className="h-3 w-3" strokeWidth={1.7} /></span>;
+                        })}
+                        <span className="inline-flex h-7 items-center gap-1 rounded-[9px] border border-white/[0.09] bg-[#101312] px-2.5 text-[8.5px] font-semibold text-white/57"><Bell className="h-3 w-3" />Follow</span>
+                        <span className="inline-flex h-7 items-center gap-1 rounded-[9px] border border-[#18c98e]/28 bg-[linear-gradient(105deg,rgba(24,201,142,0.09),rgba(167,139,250,0.04))] px-2.5 text-[8.5px] font-semibold text-white/76"><Plus className="h-3 w-3" />Create</span>
+                      </div>
                     </div>
-                    <h3 className="mt-4 truncate text-[19px] font-semibold tracking-[-0.035em] text-white/90">{name || "Untitled board"}</h3>
-                    <p className="mt-2 line-clamp-3 min-h-[48px] text-[10.5px] leading-4 text-white/42">{description || "Your board description will appear here."}</p>
-                    <div className="mt-4 flex items-center gap-2 text-white/28">
-                      {SOCIAL_FIELDS.filter((field) => socials[field.key].trim()).slice(0, 4).map((field) => { const Icon = field.icon; return <Icon key={field.key} className="h-3.5 w-3.5" strokeWidth={1.7} />; })}
+                    <div className="mt-3 flex min-w-0 items-center gap-1.5">
+                      <h3 className="truncate text-[18px] font-semibold tracking-[-0.035em] text-white/90">b/{name || "Untitled board"}</h3>
+                      <span className="grid h-4 w-4 shrink-0 place-items-center rounded-full border border-white/[0.09] bg-white/[0.035]"><Check className="h-2.5 w-2.5 text-[#a78bfa]" /></span>
                     </div>
-                    <div className="mt-4 grid grid-cols-3 border-t border-white/[0.07] pt-4">
-                      {[{ label: "Tokens", value: "128" }, { label: "Traders", value: "2.4k" }, { label: "Volume", value: "$42.8k" }].map((stat, index) => <div key={stat.label} className={cx("px-2", index > 0 && "border-l border-white/[0.07]")}><div className="text-[8px] uppercase tracking-[0.14em] text-white/24">{stat.label}</div><div className="mt-1 text-[12px] font-semibold tabular-nums text-white/70">{stat.value}</div></div>)}
+                    <p className="mt-1.5 line-clamp-2 min-h-[30px] text-[9.5px] font-light leading-[1.55] text-white/40">{description || "Your board description will appear here."}</p>
+                    <div className="mt-3 flex items-center gap-4 border-b border-white/[0.055] pb-3 text-[8.5px] text-white/29">
+                      <span className="inline-flex items-center gap-1.5"><Users className="h-3 w-3" /><strong className="font-semibold text-white/58">0</strong> followers</span>
+                      <span className="inline-flex items-center gap-1.5"><Rocket className="h-3 w-3" /><strong className="font-semibold text-white/58">0</strong> launches</span>
+                    </div>
+                    <div className="mt-3 flex items-center gap-2 rounded-[12px] border border-white/[0.055] bg-[#0c0f0e] px-3 py-2.5">
+                      <span className="grid h-7 w-7 shrink-0 place-items-center rounded-[8px] border border-white/[0.065] bg-white/[0.02] text-[#a78bfa]"><Hash className="h-3 w-3" /></span>
+                      <span className="min-w-0"><span className="block text-[7px] font-semibold uppercase tracking-[0.14em] text-[#a78bfa]/78">Pinned by the board</span><span className="mt-0.5 block truncate text-[8.5px] text-white/34">Board context and publishing rules appear here.</span></span>
+                    </div>
+                    <div className="mt-3 flex items-center justify-between border-b border-white/[0.055] pb-3">
+                      <span className="flex items-center gap-1">
+                        {["Smart", "Hot", "New"].map((label, index) => <span key={label} className={cx("inline-flex h-6 items-center rounded-full border px-2 text-[7.5px] font-medium", index === 0 ? "border-white/14 bg-white/[0.07] text-white/76" : "border-white/[0.065] text-white/30")}>{label}</span>)}
+                      </span>
+                      <span className="grid h-6 w-6 place-items-center rounded-full border border-white/[0.065] text-white/28"><Search className="h-3 w-3" /></span>
+                    </div>
+                    <div className="mt-3 rounded-[13px] border border-white/[0.06] bg-[#0e1110] p-3">
+                      <div className="flex items-start gap-2.5">
+                        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-white/[0.08] bg-[#151817] text-[8px] font-semibold text-[#a78bfa]">{boardInitials}</span>
+                        <span className="min-w-0 flex-1"><span className="block text-[10px] font-semibold text-white/75">Launches will live here</span><span className="mt-1 block text-[8px] font-light leading-[1.5] text-white/31">Projects inherit this board identity and discovery feed.</span></span>
+                        <span className="text-[7.5px] font-semibold text-[#18c98e]">NEW</span>
+                      </div>
                     </div>
                   </div>
                 </div>

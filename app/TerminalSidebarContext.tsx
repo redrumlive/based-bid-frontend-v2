@@ -8,6 +8,7 @@ type TerminalSidebarContextValue = {
   expanded: boolean;
   expand: () => void;
   toggle: () => void;
+  setTemporaryExpanded: (expanded: boolean | null) => void;
 };
 
 const TerminalSidebarContext = React.createContext<TerminalSidebarContextValue | null>(null);
@@ -16,9 +17,11 @@ const CREATION_SIDEBAR_EXPANDED_MIN_WIDTH = 1720;
 
 export function TerminalSidebarProvider({ children }: { children: React.ReactNode }) {
   const [expanded, setExpanded] = React.useState(false);
+  const [temporaryExpanded, setTemporaryExpandedState] = React.useState<boolean | null>(null);
   const pathname = usePathname();
 
   React.useEffect(() => {
+    setTemporaryExpandedState(null);
     if (isCreationBuilderRoute(pathname)) {
       const syncCreationSidebar = () =>
         setExpanded(window.innerWidth >= CREATION_SIDEBAR_EXPANDED_MIN_WIDTH);
@@ -37,6 +40,7 @@ export function TerminalSidebarProvider({ children }: { children: React.ReactNod
   }, [pathname]);
 
   const toggle = React.useCallback(() => {
+    setTemporaryExpandedState(null);
     setExpanded((current) => {
       const next = !current;
       try {
@@ -47,14 +51,19 @@ export function TerminalSidebarProvider({ children }: { children: React.ReactNod
   }, []);
 
   const expand = React.useCallback(() => {
+    setTemporaryExpandedState(null);
     setExpanded(true);
     try {
       window.localStorage.setItem(SIDEBAR_STORAGE_KEY, "true");
     } catch {}
   }, []);
 
+  const setTemporaryExpanded = React.useCallback((nextExpanded: boolean | null) => {
+    setTemporaryExpandedState(nextExpanded);
+  }, []);
+
   return (
-    <TerminalSidebarContext.Provider value={{ expanded, expand, toggle }}>
+    <TerminalSidebarContext.Provider value={{ expanded: temporaryExpanded ?? expanded, expand, toggle, setTemporaryExpanded }}>
       {children}
     </TerminalSidebarContext.Provider>
   );

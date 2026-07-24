@@ -88,10 +88,10 @@ function LiveChatMenu() {
       </button>
       <AnimatePresence>
         {open ? (
-          <FooterDropdown id="app-footer-live-chat" className="absolute bottom-[36px] right-0 z-50 w-[224px] overflow-hidden rounded-xl border border-white/[0.10] bg-[#0b0c0c]/98 shadow-[0_18px_48px_rgba(0,0,0,0.64)] backdrop-blur-xl">
+          <FooterDropdown id="app-footer-live-chat" className="absolute bottom-[36px] right-0 z-50 w-[270px] overflow-hidden rounded-xl border border-white/[0.10] bg-[#0b0c0c]/98 shadow-[0_18px_48px_rgba(0,0,0,0.64)] backdrop-blur-xl">
             <div className="px-3 py-2.5">
               <div className="text-[9px] font-semibold uppercase tracking-[0.14em] text-white/34">Live chat</div>
-              <p className="mt-1 text-[10px] leading-snug text-white/46">Message a Based Bid team member on Telegram.</p>
+              <p className="mt-1 text-[10.5px] leading-snug text-white/48">Message a based bid team member to help you with anything.</p>
             </div>
             <div className="border-t border-white/[0.08] p-1.5">
               {LIVE_CHAT_CONTACTS.map((contact) => (
@@ -100,7 +100,7 @@ function LiveChatMenu() {
                   <span className="min-w-0 flex-1">
                     <span className="flex items-center gap-2">
                       <span className="text-[11px] font-medium text-white/76 group-hover/contact:text-white/92">{contact.name}</span>
-                      <span className={cx("text-[7.5px] font-semibold uppercase tracking-[0.12em]", contact.role === "OpenBid" ? "text-[#18c98e]/62" : contact.role === "Support" ? "text-[#69aef8]/62" : "text-white/27")}>{contact.role}</span>
+                      <span className={cx("text-[8px] font-semibold uppercase tracking-[0.10em]", contact.role === "OpenBid dev" ? "text-[#fb923c]/78" : contact.role === "Partnerships" ? "text-[#d9bd63]/74" : contact.role === "Socials Architect" ? "text-[#a78bfa]/74" : "text-[#69aef8]/70")}>{contact.role}</span>
                     </span>
                     <span className="block truncate text-[9px] text-white/34">{contact.handle}</span>
                   </span>
@@ -135,7 +135,7 @@ function CookieControl({ enabled, onToggle }: { enabled: boolean; onToggle: () =
           <span>Your preferences stay private</span>
         </div>
         <p className="mt-1.5 text-[10px] leading-[1.55] text-white/48">
-          Cookies remember preferred networks, filters, and sorting. Anonymous usage data helps improve Based Bid. Nothing else is stored or shared.
+          Cookies remember preferred networks, filters, and sorting. Anonymous usage data helps improve based bid. Nothing else is stored or shared.
         </p>
         <span aria-hidden="true" className="absolute -bottom-[5px] left-5 h-2.5 w-2.5 rotate-45 border-b border-r border-white/[0.10] bg-[#0c0d0d]" />
       </div>
@@ -169,11 +169,11 @@ function FooterBar({ settings, cookiesEnabled, onToggleCookies, fixed = false, c
     <footer
       data-app-footer="true"
       className={cx(
-        "z-[260] flex h-[44px] w-full items-center border-t border-white/[0.08] bg-[#090a0a]/96 backdrop-blur-xl",
+        "z-[260] hidden h-[44px] w-full items-center border-t border-white/[0.08] bg-[#090a0a]/96 backdrop-blur-xl xl:flex",
         fixed ? "fixed inset-x-0 bottom-0" : "relative",
       )}
     >
-      <div className={cx("hidden h-full shrink-0 border-r border-white/[0.08] transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] md:block", compactTerminalSidebar ? "w-[66px]" : "w-[272px]")}>
+      <div className={cx("hidden h-full shrink-0 border-r border-white/[0.08] transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] xl:block", compactTerminalSidebar ? "w-[66px]" : "w-[272px]")}>
         <div className={cx("relative flex h-full items-center", compactTerminalSidebar ? "justify-center px-0" : "px-3 pr-[6px]")}>
           {settings}
           <div className={cx("absolute left-[55%] top-1/2 -translate-x-1/2 -translate-y-1/2 items-center gap-2", compactTerminalSidebar ? "hidden" : "flex")}><SocialLinks /></div>
@@ -259,7 +259,7 @@ export default function AppFooter() {
 
   return (
     <>
-      <div aria-hidden="true" className="h-[44px] shrink-0" />
+      <div aria-hidden="true" className="hidden h-[44px] shrink-0 xl:block" />
       <FooterBar
         fixed
         compactTerminalSidebar={!sidebarExpanded}

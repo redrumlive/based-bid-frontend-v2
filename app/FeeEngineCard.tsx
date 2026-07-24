@@ -150,7 +150,7 @@ function EligibilityThreshold({ value, color, viewerWalletShare }: { value: numb
   const [open, setOpen] = useState(false);
   const hasWalletShare = viewerWalletShare !== undefined;
   const eligible = hasWalletShare && viewerWalletShare >= value;
-  const statusLabel = !hasWalletShare ? `Hold at least ${formatPercent(value)} of supply` : eligible ? `Eligible. Your wallet holds ${formatWalletShare(viewerWalletShare)} of supply` : `Not eligible. Your wallet holds ${formatWalletShare(viewerWalletShare)} of supply`;
+  const statusLabel = !hasWalletShare ? `Hold at least ${formatPercent(value)} of supply` : eligible ? `You're in. Your wallet holds ${formatWalletShare(viewerWalletShare)} of supply` : `Not quite there. Your wallet holds ${formatWalletShare(viewerWalletShare)} of supply`;
 
   return (
     <span className='group/eligibility relative inline-flex shrink-0 align-middle' onMouseLeave={() => setOpen(false)}>
@@ -175,9 +175,9 @@ function EligibilityThreshold({ value, color, viewerWalletShare }: { value: numb
         className={`pointer-events-none absolute bottom-[calc(100%+7px)] left-1/2 z-50 w-[min(238px,calc(100vw-32px))] -translate-x-1/2 rounded-[11px] border border-white/[0.11] bg-[#111312]/[0.98] px-3 py-2.5 text-left text-[11px] font-normal leading-[1.5] tracking-normal text-white/72 opacity-0 shadow-[0_14px_34px_rgba(0,0,0,0.52)] backdrop-blur-xl transition-opacity duration-150 group-hover/eligibility:opacity-100 group-focus-within/eligibility:opacity-100 ${open ? '!opacity-100' : ''}`}
       >
         {hasWalletShare ? eligible ? (
-          <>Your wallet holds <strong className='font-semibold text-[#5ee9b3]'>{formatWalletShare(viewerWalletShare)}</strong> of supply. You meet the <strong className='font-semibold text-white/84'>{formatPercent(value)}</strong> minimum and are eligible for rewards.</>
+          <>You&apos;re in. Your wallet holds <strong className='font-semibold text-[#5ee9b3]'>{formatWalletShare(viewerWalletShare)}</strong> of supply and meets the <strong className='font-semibold text-white/84'>{formatPercent(value)}</strong> reward minimum.</>
         ) : (
-          <>Your wallet holds <strong className='font-semibold text-[#ff789c]'>{formatWalletShare(viewerWalletShare)}</strong> of supply. Hold at least <strong className='font-semibold text-white/84'>{formatPercent(value)}</strong> to receive rewards.</>
+          <>Not quite there. Your wallet holds <strong className='font-semibold text-[#ff789c]'>{formatWalletShare(viewerWalletShare)}</strong> of supply. Hold at least <strong className='font-semibold text-white/84'>{formatPercent(value)}</strong> to receive rewards.</>
         ) : <>Hold at least <strong className='font-semibold text-white/84'>{formatPercent(value)}</strong> of the token supply to receive rewards.</>}
       </span>
     </span>
@@ -386,44 +386,47 @@ function UserRewardsPanel({ assets, payments, compact = false }: { assets: FeeEn
         aria-expanded={expanded}
         aria-controls={detailId}
         onClick={toggleExpanded}
-        className='group flex w-full min-w-0 items-center gap-2 rounded-[11px] px-1 py-0.5 text-left outline-none focus-visible:ring-1 focus-visible:ring-[#D4AF37]/35'
+        className='group flex min-h-[52px] w-full min-w-0 items-center gap-2 rounded-[11px] px-1 py-0.5 text-left outline-none focus-visible:ring-1 focus-visible:ring-[#D4AF37]/35'
       >
         <span className='grid h-8 w-8 shrink-0 place-items-center rounded-[10px] border border-[#D4AF37]/22 bg-[#D4AF37]/[0.075] text-[#FFE28A]/82'>
           <Coins size={14} strokeWidth={1.8} aria-hidden />
         </span>
-        <span className={`min-w-0 flex-1 ${compact ? '' : 'sm:flex sm:items-center sm:gap-2'}`}>
-          <span className='block shrink-0 text-[13px] font-medium tracking-[-0.005em] text-[#FFF0B7]/88'>Your rewards</span>
-          <span className={`mt-1 flex min-w-0 items-center justify-between gap-2 ${compact ? '' : 'sm:mt-0 sm:flex-1'}`}>
-            <span className='isolate flex min-w-0 items-center -space-x-2' aria-hidden>
-              {previewAssets.slice(0, compact ? 5 : 8).map((asset, index) => (
-                <span key={asset.id} className='relative rounded-full ring-2 ring-[#15150f]' style={{ zIndex: 8 - index }}>
-                  <AssetIcon asset={asset} size={21} />
-                </span>
-              ))}
-              {previewAssets.length > (compact ? 5 : 8) ? <span className='relative z-[30] grid h-[21px] min-w-[21px] place-items-center rounded-full border border-[#D4AF37]/32 bg-[#211d0d] px-1 text-[8.5px] font-semibold tabular-nums text-[#FFE28A]/92 ring-2 ring-[#15150f]'>+{previewAssets.length - (compact ? 5 : 8)}</span> : null}
-            </span>
-            <span className='ml-auto inline-flex shrink-0 items-center gap-1.5'>
-              {paidAssets.length ? (
-                <span className='inline-flex items-baseline gap-1.5 whitespace-nowrap sm:block'>
-                  <span className='text-[7.5px] font-semibold uppercase tracking-[0.08em] text-[#FFE082]/42 sm:hidden'>Total paid</span>
-                  <span className='text-[10.5px] font-medium tabular-nums text-[#FFE082]/74'>{formatUsd(totalUsd)}<span className='hidden sm:inline'> paid</span></span>
-                </span>
-              ) : (
-                <span className='inline-flex items-center gap-1.5 text-[10px] font-medium text-[#FFE082]/60'>
-                  <span className='h-2.5 w-2.5 animate-spin rounded-full border border-[#D4AF37]/50 border-r-transparent' aria-hidden />
-                  Pending
-                </span>
-              )}
-              <ChevronDown className={`h-3.5 w-3.5 text-[#FFE082]/46 transition-transform duration-300 ${expanded ? 'rotate-180' : ''}`} strokeWidth={1.8} aria-hidden />
-            </span>
+        <span className='min-w-0 flex-1'>
+          <span className='block shrink-0 text-[13.5px] font-medium tracking-[-0.005em] text-[#FFF0B7]/90'>Your rewards</span>
+          <span className='isolate mt-1 flex min-w-0 items-center -space-x-2' aria-hidden>
+            {previewAssets.slice(0, compact ? 5 : 8).map((asset, index) => (
+              <span key={asset.id} className='relative rounded-full ring-2 ring-[#15150f]' style={{ zIndex: 8 - index }}>
+                <AssetIcon asset={asset} size={21} />
+              </span>
+            ))}
+            {previewAssets.length > (compact ? 5 : 8) ? <span className='relative z-[30] grid h-[21px] min-w-[21px] place-items-center rounded-full border border-[#D4AF37]/32 bg-[#211d0d] px-1 text-[8.5px] font-semibold tabular-nums text-[#FFE28A]/92 ring-2 ring-[#15150f]'>+{previewAssets.length - (compact ? 5 : 8)}</span> : null}
           </span>
+        </span>
+        <span className='flex w-[76px] shrink-0 flex-col items-center justify-center text-center'>
+          {paidAssets.length ? (
+            <>
+              <span className='block text-[8.5px] font-medium uppercase leading-none tracking-[0.105em] text-white/38'>Total paid</span>
+              <span className='mt-1.5 block whitespace-nowrap text-[14px] font-semibold leading-none tracking-[-0.015em] tabular-nums text-[#FFE28A]/92'>{formatUsd(totalUsd)}</span>
+            </>
+          ) : (
+            <>
+              <span className='block text-[8.5px] font-medium uppercase leading-none tracking-[0.105em] text-white/38'>Payout status</span>
+              <span className='mt-1.5 inline-flex items-center gap-1.5 text-[11px] font-medium leading-none text-[#FFE082]/72'>
+                <span className='h-2.5 w-2.5 animate-spin rounded-full border border-[#D4AF37]/50 border-r-transparent' aria-hidden />
+                Pending
+              </span>
+            </>
+          )}
+        </span>
+        <span className='grid w-4 shrink-0 self-stretch place-items-center'>
+          <ChevronDown className={`h-3.5 w-3.5 text-white/34 transition-[color,transform] duration-300 group-hover:text-[#FFE28A]/78 ${expanded ? 'rotate-180' : ''}`} strokeWidth={1.8} aria-hidden />
         </span>
       </button>
 
       {expanded ? (
         <div id={detailId} className='mt-2.5 border-t border-[#D4AF37]/14 px-1 pt-2.5'>
           <div className='flex items-center justify-between gap-3'>
-            <p className='text-[11px] font-light leading-4 tracking-[0.008em] text-white/48'>{paidAssets.length ? 'Assets delivered to your connected wallet' : 'Your received assets will appear here after the first rewards payout.'}</p>
+            <p className='text-[11.5px] font-light leading-[1.45] tracking-[0.006em] text-white/52'>{paidAssets.length ? 'Assets delivered to your connected wallet' : 'Your received assets will appear here after the first rewards payout.'}</p>
             {importableAssets.length ? (
               <span className='flex shrink-0 items-center gap-0.5'>
                 <HelperTip text='Import assets to your wallet.' label='About wallet imports' align='right' compact />
@@ -466,13 +469,13 @@ function UserRewardsPanel({ assets, payments, compact = false }: { assets: FeeEn
                       <AssetIcon asset={asset} size={23} />
                       <span className='min-w-0 flex-1'>
                         <span className='block truncate text-[10.5px] font-medium text-white/80'>{asset.symbol}</span>
-                        <span className='mt-0.5 block truncate text-[8.5px] text-white/42'>{asset.name}</span>
+                        <span className='mt-0.5 block truncate text-[9.5px] text-white/46'>{asset.name}</span>
                       </span>
                     </span>
                     <span className='flex w-full min-w-0 items-end justify-between gap-1.5'>
                       <span className='min-w-0'>
-                        <span className='block truncate text-[9.5px] font-medium tabular-nums text-[#FFE28A]/80'>{formatRewardAmount(payment.amount)}</span>
-                        {payment.usdValue !== undefined ? <span className='mt-0.5 block text-[8.5px] tabular-nums text-white/44'>{formatUsd(payment.usdValue)}</span> : null}
+                        <span className='block truncate text-[10px] font-medium tabular-nums text-[#FFE28A]/82'>{formatRewardAmount(payment.amount)}</span>
+                        {payment.usdValue !== undefined ? <span className='mt-0.5 block text-[9.5px] tabular-nums text-white/48'>{formatUsd(payment.usdValue)}</span> : null}
                       </span>
                       <span className='relative inline-flex h-4 w-4 shrink-0 items-center justify-center text-white/38 group-hover:text-[#FFE28A]/88' aria-hidden>
                         {state === 'adding' ? (
@@ -526,8 +529,8 @@ function BasketDetails({ route, color, compact = false, viewerWalletShare }: { r
     : rawRatios.map((ratio) => ratioTotal > 0 ? (ratio / ratioTotal) * 100 : 100 / Math.max(orderedAssets.length, 1));
   const modeLabel = rotating ? 'Rotating' : 'All at once';
   const modeCopy = rotating
-    ? 'Pays Current first, Next second, then the remaining assets in order.'
-    : 'Pays every asset in the same distribution using the percentages shown above.';
+    ? 'One asset is paid per distribution, in order.'
+    : 'Every asset is paid using the ratios above.';
   const toggleExpanded = () => {
     const willOpen = !expanded;
     manuallyToggledRef.current = true;
@@ -633,11 +636,10 @@ function BasketDetails({ route, color, compact = false, viewerWalletShare }: { r
             })}
           </div>
           <div className='mt-2 border-t border-white/[0.06] px-0.5 pt-2 text-left'>
-            <div className='flex items-baseline gap-2'>
-              <span className='text-[10px] font-medium uppercase tracking-[0.1em] text-white/42'>Payout mode</span>
-              <span className='text-[10px] font-medium uppercase tracking-[0.1em]' style={{ color }}>{modeLabel}</span>
-            </div>
-            <p className={`mt-1 min-w-0 text-[11px] font-light leading-[1.45] tracking-[0.006em] text-white/52 ${compact ? '' : 'sm:whitespace-nowrap'}`}>{modeCopy}</p>
+            <p className='flex min-w-0 items-baseline gap-2 whitespace-nowrap text-[10.5px] leading-4'>
+              <span className='shrink-0 font-medium uppercase tracking-[0.1em]' style={{ color }}>{modeLabel}</span>
+              <span className='min-w-0 truncate font-light tracking-[0.006em] text-white/52'>{modeCopy}</span>
+            </p>
           </div>
         </div>
       </div>
@@ -653,7 +655,7 @@ function FeeRouteRow({ route, maxTotal, compact = false, viewerWalletShare }: { 
   const singleAsset = assets.length === 1 ? assets[0] : null;
 
   return (
-    <article className='rounded-[17px] border border-white/[0.085] bg-[#0d0f0e] px-3.5 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.022)] transition-[border-color,background-color] duration-200 hover:border-white/[0.13] hover:bg-[#0f1110]'>
+    <article className='rounded-[17px] border border-white/[0.085] bg-[#0d0f0e] px-3.5 py-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.022)] transition-[border-color,background-color] duration-200 hover:border-white/[0.13] hover:bg-[#0f1110]'>
       <div className='flex min-w-0 items-start justify-between gap-3'>
         <div className='flex min-w-0 items-start gap-2.5'>
           <span className='grid h-8 w-8 shrink-0 place-items-center rounded-[10px] border border-white/[0.095] bg-white/[0.025]' style={{ color }}>
@@ -738,22 +740,22 @@ export default function FeeEngineCard({
       `}</style>
 
       {!hideHeader ? (
-        <header className={`flex items-center justify-between ${compact ? 'gap-2.5' : 'gap-4'}`}>
-          <div className='flex min-w-0 items-center gap-2.5'>
+        <header className={`flex items-center justify-between ${compact ? 'gap-3' : 'gap-4'}`}>
+          <div className='flex min-w-0 flex-1 items-center gap-2.5 overflow-hidden'>
             <span className={`grid shrink-0 place-items-center border border-white/[0.10] bg-white/[0.025] text-white/58 shadow-[inset_0_1px_0_rgba(255,255,255,0.025)] ${compact ? 'h-8 w-8 rounded-[10px]' : 'h-9 w-9 rounded-[11px]'}`}>
               <Gauge size={compact ? 14 : 15} strokeWidth={1.8} aria-hidden />
             </span>
-            <div className='min-w-0'>
+            <div className='min-w-0 flex-1 overflow-hidden'>
               <div className='flex min-w-0 items-center gap-1'>
-                <h3 className={`truncate font-medium tracking-[-0.008em] text-white/90 ${compact ? 'text-[13.5px]' : 'text-[15.5px]'}`}>Fee Builder</h3>
+                <h3 className={`truncate font-medium tracking-[-0.008em] text-white/90 ${compact ? 'text-[14px]' : 'text-[15.5px]'}`}>Fee Builder</h3>
                 {headerInfo ? <HelperTip text={headerInfo} label='About the Fee Builder' align={compact ? 'center' : 'left'} compact icon='info' placement='bottom' wide panel={compact} /> : null}
               </div>
-              <p className={`mt-0.5 whitespace-nowrap font-light tracking-[0.008em] text-white/50 ${compact ? 'text-[10.5px] leading-[1.4]' : 'text-[12px] leading-[1.5]'}`}>Configured fee routes and trading mechanics</p>
+              <p className={`mt-0.5 truncate whitespace-nowrap pr-1 font-light tracking-[0.008em] text-white/50 ${compact ? 'text-[10.5px] leading-[1.4]' : 'text-[12px] leading-[1.5]'}`}>{compact ? 'Fee routes and trading mechanics' : 'Configured fee routes and trading mechanics'}</p>
             </div>
           </div>
-          <div className='inline-flex shrink-0 items-center gap-2'>
-            <div className={`inline-flex shrink-0 items-baseline border-l border-white/[0.08] pl-3 ${compact ? 'gap-1.5' : 'gap-2'}`}>
-              <span className={`font-normal text-white/46 ${compact ? 'text-[9.5px]' : 'text-[10px]'}`}>Total fee</span>
+          <div className={`inline-flex shrink-0 items-center ${compact ? 'gap-1.5' : 'gap-2'}`}>
+            <div className={`shrink-0 border-l border-white/[0.08] pl-3 ${compact ? 'flex min-w-[43px] flex-col items-end justify-center gap-0 leading-none' : 'inline-flex items-baseline gap-2'}`}>
+              <span className={`whitespace-nowrap font-normal text-white/46 ${compact ? 'text-[8.5px]' : 'text-[10px]'}`}>Total fee</span>
               <p className={`font-medium tracking-[-0.015em] tabular-nums text-white/82 ${compact ? 'text-[14px]' : 'text-[16px]'}`}>{formatPercent(total)}</p>
             </div>
             {headerAction}
@@ -772,12 +774,12 @@ export default function FeeEngineCard({
         </div>
       </div>
 
-      <div className='mt-4 border-t border-white/[0.075] pt-4'>
+      <div className='mt-[18px] border-t border-white/[0.075] pt-[18px]'>
         <div className='mb-2.5 flex items-center justify-between gap-3 px-0.5'>
-          <p className='text-[10px] font-medium uppercase tracking-[0.14em] text-white/50'>Fee routes</p>
-          <span className='text-[10px] font-normal tabular-nums text-white/42'>{activeRoutes.length} active</span>
+          <p className='text-[10.5px] font-medium uppercase tracking-[0.12em] text-white/52'>Fee routes</p>
+          <span className='text-[10.5px] font-normal tabular-nums text-white/46'>{activeRoutes.length} active</span>
         </div>
-        <div className='space-y-2'>
+        <div className='space-y-2.5'>
           {activeRoutes.length ? activeRoutes.map((route) => <FeeRouteRow key={route.id} route={route} maxTotal={maxTotal} compact={compact} viewerWalletShare={viewerWalletShare} />) : (
             <div className='rounded-[17px] border border-dashed border-white/[0.10] bg-white/[0.012] px-3 py-5 text-center'>
               <p className='text-[12.5px] font-medium text-white/68'>No fee routes configured</p>
@@ -793,10 +795,10 @@ export default function FeeEngineCard({
             <span className='grid h-9 w-9 shrink-0 place-items-center rounded-[11px] border border-white/[0.09] bg-white/[0.02] text-white/50'><Activity size={14.5} strokeWidth={1.8} aria-hidden /></span>
             <div className='min-w-0'>
               <div className='flex items-center gap-0.5'>
-                <p className='text-[13.5px] font-medium tracking-[-0.005em] text-white/84'>Distribution progress</p>
+                <p className='text-[14px] font-medium tracking-[-0.005em] text-white/86'>Distribution progress</p>
                 <HelperTip text='Collected settlement assets are distributed automatically when the configured trigger is reached.' label='About distribution progress' compact />
               </div>
-              <p className='mt-0.5 text-[11.5px] font-light leading-4 tracking-[0.008em] text-white/50'>Triggers payout across configured routes.</p>
+              <p className='mt-0.5 text-[11.5px] font-light leading-[1.45] tracking-[0.006em] text-white/54'>Triggered once threshold reached.</p>
             </div>
           </div>
           <div className='shrink-0 text-right'>
@@ -806,7 +808,7 @@ export default function FeeEngineCard({
         </div>
 
         <div className='mt-3'>
-          <div className='mb-1.5 flex items-center justify-between gap-3 text-[11px] text-white/56'>
+          <div className='mb-1.5 flex items-center justify-between gap-3 text-[11.5px] text-white/58'>
             <span>Next payout</span>
             <span className='tabular-nums text-white/52'>{formatAmount(accruedAmount)} / {formatAmount(distributionThreshold)} {settlementAsset}</span>
           </div>
@@ -818,15 +820,15 @@ export default function FeeEngineCard({
         <dl className={`mt-3 grid items-start divide-x divide-white/[0.07] rounded-[13px] border border-white/[0.075] bg-white/[0.012] py-2.5 ${compact ? 'grid-cols-[1.15fr_1fr_.72fr]' : 'grid-cols-3'}`}>
           <div className='min-w-0 px-2.5'>
             <dt className='flex h-4 items-center text-[10px] font-medium uppercase tracking-[0.08em] text-white/46'>Last payout</dt>
-            <dd className='mt-1 truncate text-[11.5px] font-medium text-white/72'>{lastPayoutAt ?? 'No payouts yet'}</dd>
+            <dd className='mt-1 truncate text-[12px] font-medium text-white/74'>{lastPayoutAt ?? 'No payouts yet'}</dd>
           </div>
           <div className='min-w-0 px-2.5'>
             <dt className='flex h-4 items-center text-[10px] font-medium uppercase tracking-[0.08em] text-white/46'>Total paid</dt>
-            <dd className='mt-1 truncate text-[11.5px] font-medium tabular-nums text-white/72'>{formatAmount(totalPaidOut)} {settlementAsset}</dd>
+            <dd className='mt-1 truncate text-[12px] font-medium tabular-nums text-white/74'>{formatAmount(totalPaidOut)} {settlementAsset}</dd>
           </div>
           <div className='min-w-0 px-2.5'>
             <dt className='flex h-4 items-center text-[10px] font-medium uppercase tracking-[0.08em] text-white/46'>Payouts</dt>
-            <dd className='mt-1 truncate text-[11.5px] font-medium tabular-nums text-white/72'>{payoutCount}</dd>
+            <dd className='mt-1 truncate text-[12px] font-medium tabular-nums text-white/74'>{payoutCount}</dd>
           </div>
         </dl>
 

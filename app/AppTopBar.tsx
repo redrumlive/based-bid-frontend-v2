@@ -27,6 +27,8 @@ import { publishWalletStatus } from "./useWalletFundingStatus";
 type Network = "eth" | "bsc" | "base" | "sol" | "robinhood" | "megaeth";
 
 const DEMO_WALLET_CONNECTION_KEY = "bb-demo-wallet-connected";
+const DEMO_WALLET_NETWORK_KEY = "bb-demo-wallet-network";
+const DEMO_WALLET_MENU_STATE_EVENT = "bb-demo-wallet-menu-state";
 
 type NotificationItem = {
   id: string;
@@ -37,7 +39,7 @@ type NotificationItem = {
   unread?: boolean;
 };
 
-const BRAND_ICON = "/brand-icon.svg";
+const BRAND_ICON = "/brand-icon.png";
 const CHAINS: Network[] = ["robinhood", "base", "bsc", "sol", "eth", "megaeth"];
 const NETWORK_ICONS: Partial<Record<Network, string>> = {
   robinhood: "/networks/robinhood.png",
@@ -45,6 +47,7 @@ const NETWORK_ICONS: Partial<Record<Network, string>> = {
   bsc: "/networks/bsc.png",
   sol: "/networks/sol.png",
   eth: "/networks/ethereum.png",
+  megaeth: "/networks/megaeth.png",
 };
 const EXPLORERS: Record<Network, string> = {
   robinhood: "https://robinhoodchain.blockscout.com/address/",
@@ -62,6 +65,7 @@ const INITIAL_NOTIFICATIONS: NotificationItem[] = [
 
 const cx = (...classes: Array<string | false | null | undefined>) => classes.filter(Boolean).join(" ");
 const shortAddress = (address: string) => `${address.slice(0, 6)}...${address.slice(-4)}`;
+const mobileShortAddress = (address: string) => `${address.slice(0, 4)}…${address.slice(-3)}`;
 const networkName = (network: Network) => network === "eth" ? "Ethereum" : network === "bsc" ? "BNB" : network === "sol" ? "Solana" : network === "megaeth" ? "MegaETH" : network[0].toUpperCase() + network.slice(1);
 const nativeSymbol = (network: Network) => network === "bsc" ? "BNB" : network === "sol" ? "SOL" : "ETH";
 
@@ -129,7 +133,7 @@ function NotificationsMenu() {
   );
 }
 
-function WalletMenu() {
+export function WalletMenu() {
   const pathname = usePathname();
   const [connected, setConnected] = useState(false);
   const [open, setOpen] = useState(false);
@@ -139,22 +143,36 @@ function WalletMenu() {
   const address = "0xA17C9e42B6D8f3057C24aE91B5d7630F8C2e4A69";
   const balance = 0.176;
 
+  const updateNetwork = (nextNetwork: Network) => {
+    setNetwork(nextNetwork);
+    window.localStorage.setItem(DEMO_WALLET_NETWORK_KEY, nextNetwork);
+    window.dispatchEvent(new CustomEvent(DEMO_WALLET_MENU_STATE_EVENT, { detail: { network: nextNetwork } }));
+  };
+
   const updateConnection = (nextConnected: boolean) => {
     setConnected(nextConnected);
     window.localStorage.setItem(DEMO_WALLET_CONNECTION_KEY, String(nextConnected));
+    window.dispatchEvent(new CustomEvent(DEMO_WALLET_MENU_STATE_EVENT, { detail: { connected: nextConnected } }));
   };
 
   useEffect(() => {
-    const syncConnection = () => {
+    const syncWalletMenu = () => {
       setConnected(window.localStorage.getItem(DEMO_WALLET_CONNECTION_KEY) === "true");
+      const storedNetwork = window.localStorage.getItem(DEMO_WALLET_NETWORK_KEY);
+      if (storedNetwork && CHAINS.includes(storedNetwork as Network)) setNetwork(storedNetwork as Network);
     };
     const handleStorage = (event: StorageEvent) => {
-      if (event.key === DEMO_WALLET_CONNECTION_KEY) syncConnection();
+      if (event.key === DEMO_WALLET_CONNECTION_KEY || event.key === DEMO_WALLET_NETWORK_KEY) syncWalletMenu();
     };
+    const handleWalletMenuState = () => syncWalletMenu();
 
-    syncConnection();
+    syncWalletMenu();
     window.addEventListener("storage", handleStorage);
-    return () => window.removeEventListener("storage", handleStorage);
+    window.addEventListener(DEMO_WALLET_MENU_STATE_EVENT, handleWalletMenuState);
+    return () => {
+      window.removeEventListener("storage", handleStorage);
+      window.removeEventListener(DEMO_WALLET_MENU_STATE_EVENT, handleWalletMenuState);
+    };
   }, []);
 
   useEffect(() => {
@@ -181,7 +199,7 @@ function WalletMenu() {
   };
 
   const connectToNetwork = (selectedNetwork: WalletNetwork) => {
-    setNetwork(selectedNetwork === "solana" ? "sol" : "base");
+    updateNetwork(selectedNetwork === "solana" ? "sol" : "base");
     setConnectModalOpen(false);
     updateConnection(true);
   };
@@ -205,7 +223,7 @@ function WalletMenu() {
         aria-haspopup={!connected && pathname === "/" ? "dialog" : undefined}
         aria-expanded={connected ? open : pathname === "/" ? connectModalOpen : undefined}
         className={cx(
-          "inline-flex h-9 w-[104px] cursor-pointer items-center overflow-hidden whitespace-nowrap rounded-lg border px-3 text-[12px] font-medium shadow-sm ring-1 transition-[width,background-color,border-color,color,box-shadow] duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] focus-visible:outline-none sm:w-[144px]",
+          "inline-flex h-9 w-[112px] cursor-pointer items-center overflow-hidden whitespace-nowrap rounded-lg border px-2.5 text-[12px] font-medium shadow-sm ring-1 transition-[width,background-color,border-color,color,box-shadow] duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] focus-visible:outline-none sm:w-[144px] sm:px-3",
           connected
             ? "justify-start gap-1.5 border-white/14 bg-[#101312] text-white ring-white/8 shadow-[0_8px_24px_rgba(0,0,0,0.32)] hover:border-white/20 hover:bg-[#131716] sm:w-[228px]"
             : "justify-center gap-2 border-white/10 bg-transparent text-white/80 ring-white/15 hover:bg-white/[0.045] hover:text-white",
@@ -218,8 +236,8 @@ function WalletMenu() {
               <span className="hidden min-w-0 flex-1 truncate text-left text-[11px] sm:block">{shortAddress(address)}</span>
               <span className="hidden h-3 w-px shrink-0 bg-white/12 sm:block" />
               <span className="hidden w-[68px] shrink-0 text-right text-[11px] tabular-nums text-white/76 sm:block">{balance.toFixed(3)} <span className="text-white/40">{nativeSymbol(network)}</span></span>
+              <span className="min-w-0 truncate text-left text-[10.5px] tabular-nums text-white/76 sm:hidden">{mobileShortAddress(address)}</span>
               <ChevronDown className={cx("ml-auto h-3.5 w-3.5 shrink-0 text-white/40 transition-transform duration-300", open && "rotate-180")} />
-              <span className="sm:hidden">Wallet</span>
             </motion.span>
           ) : (
             <motion.span key="connect" initial={{ opacity: 0, x: -7 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 5 }} transition={{ duration: 0.22 }} className="inline-flex items-center gap-2">
@@ -260,7 +278,7 @@ function WalletMenu() {
               <div className="flex items-center justify-between text-[8px] font-semibold uppercase tracking-[0.15em] text-white/28"><span>Network</span><span className="normal-case tracking-normal text-white/50">{networkName(network)}</span></div>
               <div className="mt-2 grid grid-cols-2 gap-2">
                 {CHAINS.map((item) => (
-                  <button key={item} type="button" onClick={() => setNetwork(item)} className={cx("flex h-10 cursor-pointer items-center gap-2 rounded-md px-2.5 text-[10px] font-medium ring-1 transition-colors", item === network ? "bg-white/[0.065] text-white/88 ring-white/18" : "bg-white/[0.012] text-white/54 ring-white/12 hover:bg-white/[0.04] hover:text-white/82")}>
+                  <button key={item} type="button" onClick={() => updateNetwork(item)} className={cx("flex h-10 cursor-pointer items-center gap-2 rounded-md px-2.5 text-[10px] font-medium ring-1 transition-colors", item === network ? "bg-white/[0.065] text-white/88 ring-white/18" : "bg-white/[0.012] text-white/54 ring-white/12 hover:bg-white/[0.04] hover:text-white/82")}>
                     <NetworkIcon network={item} className="h-[18px] w-[18px]" />
                     <span className="min-w-0 flex-1 truncate text-left">{networkName(item)}</span>
                     {item === network ? <Check className="h-3.5 w-3.5 shrink-0" /> : null}
@@ -302,18 +320,18 @@ export default function AppTopBar() {
 
   return (
     <header className="sticky top-0 z-[240] flex h-14 w-full shrink-0 items-center border-b border-white/[0.08] bg-[#0b0c0c]/96 shadow-[0_1px_0_rgba(255,255,255,0.015)] backdrop-blur-xl">
-      <div className={cx("flex h-full shrink-0 items-center justify-start border-r border-white/[0.08] px-3 transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]", sidebarExpanded ? "w-[272px]" : "w-[66px]")}>
-        <Link href="/" onClick={() => { if (!sidebarExpanded) expandSidebar(); }} className={cx("flex items-center px-1 py-1 transition-[gap,opacity] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:opacity-90", sidebarExpanded ? "gap-2.5" : "gap-0")} aria-label="Based Bid home">
-          <Image unoptimized src={BRAND_ICON} alt="Based Bid" width={36} height={36} className="h-9 w-9 rounded-2xl object-cover" priority />
-          <span className={cx("flex min-w-0 flex-col overflow-hidden whitespace-nowrap leading-tight transition-[max-width,opacity,transform] duration-200 ease-out", sidebarExpanded ? "max-w-[150px] translate-x-0 opacity-100 delay-100" : "max-w-0 -translate-x-1 opacity-0")}>
-            <span className="text-[15px] font-medium tracking-tight text-white">based <span className="text-[#18c98e]">bid</span></span>
-            <span className="mt-0.5 text-[7.5px] font-semibold uppercase tracking-[0.225em] text-white/38">
+      <div className={cx("flex h-full w-auto shrink-0 items-center justify-start px-2.5 transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] xl:border-r xl:border-white/[0.08] xl:px-3", sidebarExpanded ? "xl:w-[272px]" : "xl:w-[66px]")}>
+        <Link href="/" onClick={() => { if (!sidebarExpanded) expandSidebar(); }} className={cx("flex items-center gap-2 px-0.5 py-1 transition-[gap,opacity] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:opacity-90 xl:px-1", sidebarExpanded ? "xl:gap-2.5" : "xl:gap-0")} aria-label="based bid home">
+          <Image unoptimized src={BRAND_ICON} alt="based bid" width={529} height={454} className="h-8 w-8 object-contain xl:h-9 xl:w-9" priority />
+          <span className={cx("flex min-w-0 max-w-[92px] translate-x-0 flex-col overflow-hidden whitespace-nowrap leading-tight opacity-100 transition-[max-width,opacity,transform] duration-200 ease-out", sidebarExpanded ? "xl:max-w-[150px] xl:delay-100" : "xl:max-w-0 xl:-translate-x-1 xl:opacity-0")}>
+            <span className="text-[14px] font-medium tracking-tight text-white xl:text-[15px]">based <span className="text-[#18c98e]">bid</span></span>
+            <span className="mt-0.5 hidden text-[7.5px] font-semibold uppercase tracking-[0.225em] text-white/38 xl:block">
               Programmable <span className="text-[#d7c57f]">economies</span>
             </span>
           </span>
         </Link>
       </div>
-      <div className="flex min-w-0 flex-1 items-center justify-end gap-1.5 px-3 sm:gap-2 sm:px-4">
+      <div className="flex min-w-0 flex-1 items-center justify-end gap-1 px-2 sm:gap-2 sm:px-4">
         <TradeButton />
         <NotificationsMenu />
         <WalletMenu />

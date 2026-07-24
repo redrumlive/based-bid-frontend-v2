@@ -361,8 +361,9 @@ export default function LightweightTerminalChart({
                   filter: hovered ? `drop-shadow(0 0 7px ${creator.side === "buy" ? "rgba(24,201,142,0.28)" : "rgba(255,55,113,0.26)"})` : "none",
                 }}
               >
-                <svg viewBox="0 0 24 24" className="h-[11px] w-[11px]" fill="none" aria-hidden="true">
-                  <path d="M2 4l3 12h14l3-12-6 7-4-7-4 7-6-7M5 20h14" stroke="#fff1b8" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
+                <svg viewBox="0 0 24 24" className="h-[11.5px] w-[11.5px] drop-shadow-[0_1px_2px_rgba(0,0,0,0.45)]" aria-hidden="true">
+                  <path d="M2 4l3 12h14l3-12-6 7-4-7-4 7-6-7Z" fill="#ffd85f" stroke="#fff0a6" strokeWidth="1.15" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M5 20h14" fill="none" stroke="#ffd85f" strokeWidth="2.4" strokeLinecap="round" />
                 </svg>
               </button>
             );
